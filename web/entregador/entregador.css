@@ -1,16 +1,85 @@
-main { display: grid; gap: 12px; padding: 12px; max-width: 520px; margin: 0 auto; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-main h2 { margin: 0 0 8px; font-size: .9rem; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+/* ENTREGADOR: escuro, contraste alto, botões enormes. Feito para olhar de relance no suporte da moto. */
+body.tema-entregador {
+  --fundo: #0b1220;
+  --cartao: #131c30;
+  --texto: #f1f5f9;
+  --suave: #94a3b8;
+  --borda: #25314d;
+  --campo: #0f172a;
+  --acao: #22c55e;
+  --acao-texto: #052e13;
+  --secundario: #1e2a44;
+  --secundario-texto: #e2e8f0;
+  --foco: #86efac;
+  --erro: #fb7185;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .4);
+  --raio: 16px;
+  --disponivel: #22c55e;
+  --ocupado: #f59e0b;
+  --offline: #64748b;
+  min-height: 100dvh;
+}
+.tema-entregador .marca .bits { color: #4ade80; }
 
-.status-atual { font-size: 1.4rem; font-weight: 700; margin: 0 0 10px; }
-.status-atual.DISPONIVEL { color: var(--ok); }
-.status-atual.OCUPADO { color: var(--marca); }
-.status-atual.OFFLINE { color: var(--suave); }
+.tema-entregador .topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--borda); background: #0a101d; }
+.tema-entregador .marca { font-size: 1rem; }
+.tema-entregador .papel { font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #052e13; background: #4ade80; padding: 4px 10px; border-radius: 999px; }
 
-.botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.botoes > * { text-align: center; }
-a.botao { display: block; padding: 10px 14px; border-radius: 8px; background: #e9ecef; color: var(--texto); text-decoration: none; }
+.tema-entregador main { max-width: 520px; margin: 0 auto; padding: 16px 14px calc(28px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
+.saudacao { margin: 0; color: var(--suave); font-size: .95rem; }
+.saudacao b { color: var(--texto); }
 
-.pedido { font-size: 1.3rem; margin: 0 0 6px; }
-.dica { color: var(--suave); font-size: .9rem; margin: 0 0 8px; }
-.troca { display: flex; align-items: center; gap: 10px; font-size: 1rem; color: var(--texto); }
-.troca input { width: 22px; height: 22px; }
+.tema-entregador .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px; padding: 16px; display: grid; gap: 10px; }
+
+/* ---------- o status: a coisa mais importante da tela ---------- */
+.estado {
+  --cor: var(--offline);
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-left: 8px solid var(--cor);
+  border-radius: 20px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.estado[data-status="DISPONIVEL"] { --cor: var(--disponivel); }
+.estado[data-status="OCUPADO"] { --cor: var(--ocupado); }
+.estado-rotulo { margin: 0; color: var(--suave); font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.estado-valor { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; color: var(--cor); line-height: 1.05; }
+.chave { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chave button { padding: 18px 8px; font-size: 1.15rem; }
+/* o status atual (botão desabilitado) fica em destaque, na cor do estado; os outros ficam apagados */
+.estado[data-status="DISPONIVEL"] #btn-disponivel:disabled,
+.estado[data-status="OFFLINE"] #btn-offline:disabled { opacity: 1; background: var(--cor); color: #04210f; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .28); }
+.estado[data-status="OFFLINE"] #btn-offline:disabled { color: #0b1220; }
+
+/* ---------- a entrega ---------- */
+.entrega { background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px; padding: 18px 16px; }
+.vazio { text-align: center; padding: 10px 0; }
+.vazio p { margin: 4px 0; }
+.vazio-icone { font-size: 3rem; display: block; margin-bottom: 4px; }
+.entrega-etiqueta { margin: 0; color: var(--ocupado); font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.entrega-pedido { margin: 2px 0 0; font-size: 1.1rem; color: var(--suave); }
+.entrega-pedido b { font-size: 2.2rem; color: var(--texto); letter-spacing: -.03em; }
+.distancia { margin: 6px 0 2px; display: flex; align-items: baseline; gap: 10px; }
+.distancia span { font-size: 3.4rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; color: #fbbf24; }
+.distancia small { color: var(--suave); font-size: .95rem; }
+#com-entrega { display: grid; gap: 10px; }
+#com-entrega .dica { margin: 0 0 4px; }
+
+.tema-entregador .grande { width: 100%; min-height: 62px; font-size: 1.1rem; display: grid; place-items: center; text-align: center; border-radius: 18px; text-decoration: none; font-weight: 700; }
+a.botao { background: #1d4ed8; color: #fff; }
+button.confirmar { background: #22c55e; color: #052e13; }
+
+/* ---------- interruptor da localização ---------- */
+.troca { display: flex; align-items: center; gap: 14px; font-size: 1.05rem; font-weight: 600; color: var(--texto); cursor: pointer; }
+.troca input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chave-visual { flex: none; width: 56px; height: 32px; border-radius: 999px; background: #334155; position: relative; transition: background .2s; }
+.chave-visual::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.troca input:checked + .chave-visual { background: var(--acao); }
+.troca input:checked + .chave-visual::after { transform: translateX(24px); }
+.troca input:focus-visible + .chave-visual { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+.aviso { margin: 4px 0 0; padding: 12px 14px; border-radius: 14px; background: #3b2a06; color: #fde68a; font-size: .9rem; font-weight: 500; }
+.acoes-rodape { display: flex; gap: 10px; justify-content: flex-end; }
+.acoes-rodape button { padding: 10px 16px; }

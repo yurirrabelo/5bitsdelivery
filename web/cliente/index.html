@@ -3,48 +3,69 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#e8590c">
-  <title>Delivery Tracker - Promoção relâmpago</title>
+  <meta name="theme-color" content="#f76707">
+  <title>5bits Deliverty · Peça agora</title>
+  <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
   <link rel="stylesheet" href="/comum/estilo.css">
   <link rel="stylesheet" href="cliente.css">
 </head>
-<body>
-  <main>
-    <header class="capa">
-      <h1>⚡ <span id="promo">Promoção relâmpago</span></h1>
-      <p class="sub">Poucas unidades. Peça agora e acompanhe o seu pedido passo a passo.</p>
+<body class="tema-cliente">
+  <div id="login" class="oculto"></div>
+
+  <div id="app">
+    <header class="topo">
+      <a class="marca" href="/cliente/"><img src="/comum/logo.svg" alt=""><span><span class="bits">5bits</span> Deliverty</span></a>
+      <span class="papel">Cliente</span>
     </header>
 
-    <!-- 1. entrar com um apelido -->
-    <section id="entrar" class="cartao oculto">
-      <h2>Quem está pedindo?</h2>
-      <form id="form-entrar">
-        <label>Seu apelido (até 20 letras)
-          <input id="apelido" maxlength="20" autocomplete="nickname" required>
-        </label>
-        <label id="linha-codigo" class="oculto">Código do evento
-          <input id="codigo" autocomplete="off">
-        </label>
-        <button type="submit">Entrar</button>
-        <p class="erro" id="erro-entrar" role="alert"></p>
-      </form>
-    </section>
+    <main>
+      <!-- a promoção: sempre à vista -->
+      <section class="hero">
+        <p class="selo">⚡ Promoção relâmpago</p>
+        <h1 id="promo">Poucas unidades. Peça agora.</h1>
+        <div id="restam" class="restam oculto">
+          <p>Restam <b id="restam-n">–</b> de <span id="restam-total">–</span></p>
+          <div class="barra"><div id="restam-barra"></div></div>
+        </div>
+      </section>
 
-    <!-- 2. pedir -->
-    <section id="pedir" class="cartao oculto">
-      <p>Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
-      <button id="btn-pedir" class="grande">Pedir</button>
-      <p class="erro" id="erro-pedir" role="alert"></p>
-    </section>
+      <!-- 1. entrar com um apelido -->
+      <section id="entrar" class="cartao oculto">
+        <h2>Como podemos te chamar?</h2>
+        <form id="form-entrar">
+          <label>Seu apelido
+            <input id="apelido" maxlength="20" autocomplete="nickname" placeholder="Ex.: Ana" required>
+          </label>
+          <label id="linha-codigo" class="oculto">Código do evento
+            <input id="codigo" autocomplete="off" placeholder="o código que está no telão">
+          </label>
+          <button type="submit" class="grande">Entrar</button>
+          <p class="erro" id="erro-entrar" role="alert"></p>
+        </form>
+      </section>
 
-    <!-- 3. acompanhar -->
-    <section id="acompanhar" class="cartao oculto">
-      <h2>Pedido <span id="numero"></span></h2>
-      <ol class="linha-do-tempo" id="passos"></ol>
-      <p id="resultado" class="resultado"></p>
-      <button id="de-novo" class="oculto">Pedir de novo</button>
-    </section>
-  </main>
+      <!-- 2. pedir -->
+      <section id="pedir" class="cartao oculto">
+        <p class="ola">Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
+        <button id="btn-pedir" class="gigante">Pedir agora</button>
+        <p class="dica">Você acompanha cada passo do seu pedido aqui mesmo.</p>
+        <p class="erro" id="erro-pedir" role="alert"></p>
+      </section>
+
+      <!-- 3. acompanhar -->
+      <section id="acompanhar" class="cartao oculto">
+        <div class="pedido-topo">
+          <h2>Seu pedido</h2>
+          <span class="numero" id="numero"></span>
+        </div>
+        <ol class="linha-do-tempo" id="passos"></ol>
+        <p id="resultado" class="resultado"></p>
+        <button id="de-novo" class="grande oculto">Pedir de novo</button>
+      </section>
+    </main>
+
+    <footer class="rodape">5bits Deliverty · feito para a apresentação de Sistemas Distribuídos</footer>
+  </div>
 
   <script src="/comum/auth.js"></script>
   <script src="cliente.js"></script>

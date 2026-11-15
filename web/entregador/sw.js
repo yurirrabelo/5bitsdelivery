@@ -1,5 +1,5 @@
 // Service worker: guarda só a casca do app (HTML, JS, CSS, ícones). Nunca toca em /api, /gps nem /ws.
-const CACHE = 'entregador-casca-v1';
+const CACHE = 'entregador-casca-v2';
 const CASCA = [
   '/entregador/',
   '/entregador/app.js',
@@ -8,6 +8,7 @@ const CASCA = [
   '/entregador/icone-192.png',
   '/comum/auth.js',
   '/comum/estilo.css',
+  '/comum/logo.svg',
 ];
 
 self.addEventListener('install', (e) => {

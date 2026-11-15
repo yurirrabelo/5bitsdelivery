@@ -5,6 +5,7 @@
   const parametros = new URLSearchParams(location.search);
   const CHAVE_PEDIDO = 'delivery.pedidoCliente';
   let timer = null;
+  let timerEstoque = null;
 
   // o código do evento vem no link do QR (?codigo=...); sem ele, a pessoa digita
   const codigoDoLink = parametros.get('codigo');
@@ -16,9 +17,27 @@
     for (const t of ['entrar', 'pedir', 'acompanhar']) $(t).classList.toggle('oculto', t !== nome);
   }
 
+  // ---------------------------------------------------------------- quantas unidades restam
+  async function atualizarRestam() {
+    try {
+      const r = await Auth.api('/api/estoque');
+      if (!r.ok) return;
+      const e = await r.json();
+      $('restam').classList.remove('oculto');
+      $('restam-n').textContent = e.disponivel + (e.disponivel === 1 ? ' unidade' : ' unidades');
+      $('restam-total').textContent = e.total;
+      $('restam-barra').style.width = (e.total ? (100 * e.disponivel) / e.total : 0) + '%';
+    } catch (e) { /* sem rede: mantém o último valor */ }
+  }
+
   // ---------------------------------------------------------------- passos de cada status
   // O caminho feliz: recebido -> unidade reservada -> pagando -> confirmado.
-  const PASSOS = ['Pedido recebido', 'Unidade reservada para você', 'Pagando…', 'Pedido confirmado!'];
+  const PASSOS = [
+    { icone: '📝', texto: 'Pedido recebido' },
+    { icone: '📦', texto: 'Unidade reservada para você' },
+    { icone: '💳', texto: 'Pagando…' },
+    { icone: '🎉', texto: 'Pedido confirmado!' },
+  ];
 
   // quantos passos já foram vencidos em cada status
   const ETAPA = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 4, EM_ENTREGA: 4, ENTREGUE: 4 };
@@ -30,33 +49,38 @@
     resultado.textContent = '';
     resultado.className = 'resultado';
 
-    const item = (texto, classe) => {
+    const item = (icone, texto, classe) => {
       const li = document.createElement('li');
-      li.textContent = texto;
       li.className = classe;
+      const ic = document.createElement('span');
+      ic.className = 'ic';
+      ic.textContent = icone;
+      const tx = document.createElement('span');
+      tx.textContent = texto;
+      li.append(ic, tx);
       ol.appendChild(li);
     };
 
     const falha = {
-      ESGOTADO: ['Acabaram as unidades 😕', 'A promoção esgotou antes do seu pedido.'],
+      ESGOTADO: ['😕', 'Acabaram as unidades', 'A promoção esgotou antes do seu pedido.'],
       CANCELADO: p.motivo === 'PRAZO_EXPIRADO'
-        ? ['O pagamento demorou demais', 'Cancelamos o pedido e devolvemos a unidade.']
-        : ['Pagamento recusado', 'Cancelamos o pedido e devolvemos a unidade.'],
-      ESTORNADO: ['Pagamento estornado', 'O pagamento chegou atrasado e foi devolvido. Pode tentar de novo.'],
+        ? ['⏱️', 'O pagamento demorou demais', 'Cancelamos o pedido e devolvemos a unidade.']
+        : ['❌', 'Pagamento recusado', 'Cancelamos o pedido e devolvemos a unidade.'],
+      ESTORNADO: ['↩️', 'Pagamento estornado', 'O pagamento chegou atrasado e foi devolvido. Pode tentar de novo.'],
     }[p.status];
 
     if (falha) {
       // mostra por onde o pedido passou e onde ele parou
       const passou = p.status === 'ESGOTADO' ? 1 : 2;
-      PASSOS.slice(0, passou).forEach((t) => item(t, 'feito'));
-      item(falha[0], 'falhou');
-      resultado.textContent = falha[1];
+      PASSOS.slice(0, passou).forEach((s) => item(s.icone, s.texto, 'feito'));
+      item(falha[0], falha[1], 'falhou');
+      resultado.textContent = falha[2];
       resultado.classList.add('ruim');
       return true;
     }
 
     const etapa = ETAPA[p.status] ?? 0;
-    PASSOS.forEach((t, i) => item(t, i < etapa ? 'feito' : i === etapa ? 'atual' : ''));
+    PASSOS.forEach((s, i) => item(s.icone, s.texto, i < etapa ? 'feito' : i === etapa ? 'atual' : ''));
     if (etapa >= 4) {
       resultado.textContent = 'Pronto! Seu pedido está garantido. 🎉';
       resultado.classList.add('ok');
@@ -65,6 +89,7 @@
     return false;
   }
 
+  // ---------------------------------------------------------------- acompanhar (polling a cada 1 s)
   // CQRS: a leitura vem da visão (serviço "consultas", eventualmente consistente). Se ela não está no ar ou
   // ainda não recebeu o pedido (pode atrasar alguns milissegundos), cai para o pedidos, que é sempre correto.
   async function lerPedido(id) {
@@ -75,7 +100,6 @@
     return Auth.api('/api/pedidos/' + id);
   }
 
-  // ---------------------------------------------------------------- acompanhar (polling a cada 1 s)
   function acompanhar(id) {
     guardar(CHAVE_PEDIDO, String(id));
     $('numero').textContent = '#' + id;
@@ -93,6 +117,7 @@
           clearInterval(timer);
           guardar(CHAVE_PEDIDO, null);
           $('de-novo').classList.remove('oculto');
+          atualizarRestam();
         }
       } catch (e) { /* sem rede: tenta no próximo ciclo */ }
     };
@@ -120,6 +145,7 @@
   function mostrarPedir() {
     $('nome').textContent = Auth.usuario().nome; // textContent: o apelido nunca é interpretado como HTML
     tela('pedir');
+    atualizarRestam();
   }
 
   // ---------------------------------------------------------------- entrar
@@ -129,7 +155,7 @@
     erro.textContent = '';
     try {
       await Auth.entrarComoCliente($('apelido').value.trim(), codigoDoLink || $('codigo').value.trim());
-      mostrarPedir();
+      iniciarLogado();
     } catch (e) {
       erro.textContent = e.message;
     }
@@ -140,16 +166,22 @@
   $('trocar').addEventListener('click', () => Auth.sair());
 
   // ---------------------------------------------------------------- início
-  (async function iniciar() {
+  async function iniciarLogado() {
+    try {
+      const cfg = await (await Auth.api('/api/pedidos/config')).json();
+      $('promo').textContent = cfg.promocao.nome;
+    } catch (e) { /* mantém o título padrão */ }
+    clearInterval(timerEstoque);
+    timerEstoque = setInterval(atualizarRestam, 3000); // o contador da promoção anda sozinho
+    const pedido = guardado(CHAVE_PEDIDO); // retoma o acompanhamento depois de recarregar a página
+    if (pedido) acompanhar(pedido);
+    else mostrarPedir();
+  }
+
+  (function iniciar() {
     const u = Auth.usuario();
     if (u && u.role === 'cliente') {
-      try {
-        const cfg = await (await Auth.api('/api/pedidos/config')).json();
-        $('promo').textContent = cfg.promocao.nome;
-      } catch (e) { /* mantém o título padrão */ }
-      const pedido = guardado(CHAVE_PEDIDO); // retoma o acompanhamento depois de recarregar a página
-      if (pedido) acompanhar(pedido);
-      else mostrarPedir();
+      iniciarLogado();
     } else {
       if (!codigoDoLink) $('linha-codigo').classList.remove('oculto');
       tela('entrar');

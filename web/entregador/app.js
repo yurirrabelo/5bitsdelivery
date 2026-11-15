@@ -27,7 +27,13 @@
   $('sair').addEventListener('click', () => Auth.sair());
   const u = Auth.usuario();
   if (u && u.role === 'entregador') mostrarApp(u);
-  else Auth.montarLogin($('login'), ['entregador'], mostrarApp);
+  else {
+    $('login').classList.remove('oculto');
+    Auth.montarLogin($('login'), ['entregador'], mostrarApp, {
+      icone: '🛵', titulo: 'Área do entregador', subtitulo: 'Entre para receber e acompanhar as suas entregas.',
+      botao: 'Entrar e começar', rotuloUsuario: 'Seu usuário',
+    });
+  }
 
   // ---------------------------------------------------------------- status e entrega atual
   let atual = null;
@@ -52,9 +58,8 @@
 
   function renderizar() {
     const st = atual.entregador.status;
-    const el = $('status-texto');
-    el.textContent = { DISPONIVEL: 'Disponível', OCUPADO: 'Em entrega', OFFLINE: 'Offline' }[st] || st;
-    el.className = 'status-atual ' + st;
+    $('status-texto').textContent = { DISPONIVEL: 'Disponível', OCUPADO: 'Em entrega', OFFLINE: 'Offline' }[st] || st;
+    $('estado').dataset.status = st; // a cor do cartão e do título vem daqui
     // OCUPADO só o sistema define
     $('btn-disponivel').disabled = st === 'OCUPADO' || st === 'DISPONIVEL';
     $('btn-offline').disabled = st === 'OCUPADO' || st === 'OFFLINE';

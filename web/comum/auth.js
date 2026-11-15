@@ -66,16 +66,22 @@
       return r;
     },
 
-    // Monta o formulário de login dentro de um elemento
-    montarLogin(el, papeisPermitidos, aoEntrar) {
+    // Monta o formulário de login dentro de um elemento. Cada tela dá o seu ícone, título e textos,
+    // para a pessoa saber na hora onde está (cliente, entregador ou operador).
+    montarLogin(el, papeisPermitidos, aoEntrar, opcoes) {
+      const o = Object.assign({ icone: '🔐', titulo: 'Entrar', subtitulo: '', botao: 'Entrar', rotuloUsuario: 'Usuário' }, opcoes);
       el.innerHTML =
-        '<form class="cartao login">' +
-        '<h2>Entrar</h2>' +
-        '<label>Usuário <input name="u" autocomplete="username" required></label>' +
+        '<div class="login-wrap">' +
+        '<p class="login-marca marca"><img src="/comum/logo.svg" alt=""><span><span class="bits">5bits</span> Deliverty</span></p>' +
+        '<form class="login">' +
+        '<div class="login-icone">' + o.icone + '</div>' +
+        '<h2>' + o.titulo + '</h2>' +
+        (o.subtitulo ? '<p class="login-sub">' + o.subtitulo + '</p>' : '') +
+        '<label>' + o.rotuloUsuario + ' <input name="u" autocomplete="username" autocapitalize="none" required></label>' +
         '<label>Senha <input name="p" type="password" autocomplete="current-password" required></label>' +
-        '<button type="submit">Entrar</button>' +
+        '<button type="submit">' + o.botao + '</button>' +
         '<p class="erro" role="alert"></p>' +
-        '</form>';
+        '</form></div>';
       const form = el.querySelector('form');
       const erro = el.querySelector('.erro');
       form.addEventListener('submit', async (ev) => {

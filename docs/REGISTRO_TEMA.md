@@ -1,6 +1,6 @@
 # Registro do tema — Sistemas Distribuídos
 
-**Tema:** Delivery Tracker: delivery com promoção relâmpago e rastreamento do entregador
+**Tema:** 5bits Deliverty: delivery com promoção relâmpago e rastreamento do entregador
 
 **Integrantes:** _(preencher)_
 

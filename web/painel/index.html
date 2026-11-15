@@ -3,34 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Delivery Tracker - Painel do operador</title>
+  <title>5bits Deliverty · Painel do operador</title>
+  <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/comum/estilo.css">
   <link rel="stylesheet" href="painel.css">
 </head>
-<body>
-  <div id="login"></div>
+<body class="tema-operador">
+  <div id="login" class="oculto"></div>
 
   <div id="app" class="oculto">
     <header class="topo">
-      <h1>Delivery Tracker · Painel do operador</h1>
-      <a id="grafana" href="#" target="_blank" rel="noopener">Grafana</a>
-      <span class="quem" id="quem"></span>
-      <button class="secundario" id="sair">Sair</button>
+      <a class="marca" href="/painel/"><img src="/comum/logo.svg" alt=""><span><span class="bits">5bits</span> Deliverty</span></a>
+      <span class="papel">Painel do operador</span>
+
+      <div class="promo-info">
+        <span class="rotulo-topo">Promoção</span>
+        <b id="promo-nome">…</b>
+      </div>
+      <div class="estoque" id="estoque" aria-label="Estoque da promoção"></div>
+
+      <div class="acoes">
+        <button class="secundario" id="telao" title="Esconde os formulários e deixa só o que a turma precisa ver">📺 Modo telão</button>
+        <a id="grafana" class="link-topo" href="#" target="_blank" rel="noopener">Grafana ↗</a>
+        <span class="quem" id="quem"></span>
+        <button class="secundario" id="sair">Sair</button>
+      </div>
     </header>
 
     <div class="layout">
-      <div id="mapa" aria-label="Mapa"></div>
+      <section class="mapa-card" aria-label="Mapa ao vivo">
+        <div id="mapa"></div>
+        <div class="legenda">
+          <span><i class="loja"></i> loja</span>
+          <span><i class="moto">🛵</i> entregador</span>
+          <span><i class="alvo"></i> destino</span>
+        </div>
+      </section>
 
       <aside class="lateral">
-        <section class="cartao">
-          <h2>Estoque da promoção</h2>
-          <p class="promo" id="promo-nome">…</p>
-          <div class="estoque" id="estoque"></div>
-        </section>
-
-        <section class="cartao">
-          <h2>Novo pedido</h2>
+        <section class="cartao so-operador">
+          <h2><span class="num">1</span> Novo pedido</h2>
           <p class="dica" id="destino-info">Clique no mapa para escolher o destino.</p>
           <label>Entregador
             <select id="entregador"><option value="">Qualquer (o mais próximo)</option></select>
@@ -40,17 +53,17 @@
         </section>
 
         <section class="cartao">
-          <h2>Pedidos</h2>
+          <h2><span class="num">2</span> Pedidos</h2>
           <table class="pedidos">
             <thead><tr><th>Nº</th><th>Status</th><th>Entregador</th></tr></thead>
             <tbody id="pedidos"></tbody>
           </table>
         </section>
 
-        <section class="cartao">
-          <h2>QR code da promoção</h2>
+        <section class="cartao qr-card">
+          <h2><span class="num">3</span> Peça pelo celular</h2>
           <div id="qr" class="qr"></div>
-          <label>URL pública
+          <label class="so-operador">URL pública
             <input id="url-publica" placeholder="https://…trycloudflare.com">
           </label>
           <p class="dica" id="qr-link"></p>

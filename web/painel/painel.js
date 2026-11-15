@@ -13,7 +13,13 @@
   $('sair').addEventListener('click', () => Auth.sair());
   const u = Auth.usuario();
   if (u && u.role === 'operador') mostrarApp(u);
-  else Auth.montarLogin($('login'), ['operador'], mostrarApp);
+  else {
+    $('login').classList.remove('oculto');
+    Auth.montarLogin($('login'), ['operador'], mostrarApp, {
+      icone: '🎛️', titulo: 'Painel do operador', subtitulo: 'Crie pedidos, acompanhe o mapa ao vivo e controle a promoção.',
+      botao: 'Entrar no painel', rotuloUsuario: 'Usuário do operador',
+    });
+  }
 
   // ---------------------------------------------------------------- estado
   let mapa, loja, destinoEscolhido, marcadorDestino;
@@ -46,6 +52,12 @@
     });
 
     $('criar').addEventListener('click', criarPedido);
+    // modo telão: esconde os formulários e deixa só o que a turma precisa ver
+    $('telao').addEventListener('click', () => {
+      const ligado = document.body.classList.toggle('telao');
+      $('telao').textContent = ligado ? '↩️ Sair do modo telão' : '📺 Modo telão';
+      setTimeout(() => mapa.invalidateSize(), 50); // o mapa muda de largura
+    });
     configurarQr();
     await atualizarEntregadores();
     conectarWs();
