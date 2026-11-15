@@ -85,6 +85,8 @@ services:
     environment:
       <<: *app-env
       OTEL_SERVICE_NAME: pedidos
+      # os campos do MDC (correlationId, messageId, type, pedidoId) viram atributos do log no Loki
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES: "*"
       SEGREDO_DB: delivery/db/pedidos
       FILA_PEDIDOS: ${FILA_PEDIDOS}
       PRAZO_PAGAMENTO_SEG: ${PRAZO_PAGAMENTO_SEG}
@@ -114,6 +116,7 @@ services:
     environment:
       <<: *app-env
       OTEL_SERVICE_NAME: estoque
+      OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES: "*"
       SEGREDO_DB: delivery/db/estoque
       FILA_ESTOQUE: ${FILA_ESTOQUE}
       PROMOCAO_NOME: ${PROMOCAO_NOME}
@@ -370,11 +373,15 @@ services:
       # acesso anônimo somente leitura (só em localhost)
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      # "Delivery ao vivo" abre como página inicial
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /dashboards/delivery-ao-vivo.json
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
       - lgtm-data:/data
       - ./observabilidade/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
+      - ./observabilidade/dashboards:/dashboards:ro
+      - ./observabilidade/provisionamento-dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/grafana-dashboards.yaml:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health || exit 1"]
       interval: 10s

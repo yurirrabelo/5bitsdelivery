@@ -9,6 +9,5 @@ export const pagamentos = meter.createCounter('delivery_pagamentos_total', {
 
 // delivery_gateway_duracao_ms: quanto o gateway demorou para responder
 export const duracaoGateway = meter.createHistogram('delivery_gateway_duracao_ms', {
-  description: 'Duração das chamadas ao gateway de pagamento',
-  unit: 'ms',
+  description: 'Duração das chamadas ao gateway de pagamento, em milissegundos',
 });
