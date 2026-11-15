@@ -1,5 +1,7 @@
 # 5Bits Delivery
 
+> **Primeira vez?** Siga o **[PASSO_A_PASSO.md](PASSO_A_PASSO.md)**: do zero ao sistema funcionando, em passos curtos. Este README é o manual completo. O ensaio com a moto está em [material-apoio/ROTEIRO_ENSAIO.md](material-apoio/ROTEIRO_ENSAIO.md).
+
 Sistema de delivery com promoção relâmpago e rastreamento do entregador em tempo real, feito com microsserviços em Java e TypeScript, mensageria com RabbitMQ e serviços AWS emulados pelo MiniStack, tudo em Docker.
 
 Trabalho final de Sistemas Distribuídos (FURB). Arquitetura, contratos, testes e decisões estão em [docs/ESPECIFICACAO.md](docs/ESPECIFICACAO.md).
