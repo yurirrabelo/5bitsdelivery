@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Mostra o estado do sistema: containers, filas do RabbitMQ, segredos e bucket.
+# Mostra o estado do sistema: containers, filas do RabbitMQ (e DLQs), pedidos, estoque, outbox e entregadores.
 cd "$(dirname "$0")/.."
+export MSYS_NO_PATHCONV=1
+
 # Lê só as variáveis necessárias (o .env tem valores com espaço, então não dá para usar "source")
-var() { grep -E "^$1=" .env | head -1 | cut -d= -f2-; }
+var() { grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'; }
 RABBITMQ_USUARIO=$(var RABBITMQ_USUARIO); RABBITMQ_SENHA=$(var RABBITMQ_SENHA)
 AWS_ACCESS_KEY_ID=$(var AWS_ACCESS_KEY_ID); AWS_REGION=$(var AWS_REGION)
+sql() { docker compose exec -T "pg-$1" psql -U "$1" -d "$1" -At -F ' | ' -c "$2" 2>/dev/null | tr -d '\r'; }
 
 echo "== Containers"
 docker compose ps -a --format 'table {{.Service}}\t{{.State}}\t{{.Status}}'
@@ -22,6 +25,28 @@ curl -s -u "$RABBITMQ_USUARIO:$RABBITMQ_SENHA" \
       cons=$(echo "$l" | sed -nE 's/.*consumers:([0-9]+).*/\1/p')
       printf '%-28s %8s %8s %12s\n' "$nome" "${pronta:-0}" "${naoconf:-0}" "${cons:-0}"
     done | sort
+
+echo
+echo "== Pedidos por status"
+sql pedidos "SELECT status, count(*) FROM pedidos GROUP BY status ORDER BY status"
+
+echo
+echo "== Estoque (disponivel | reservado | vendido | total)"
+sql estoque "SELECT disponivel, reservado, vendido, total FROM estoque WHERE produto_id = 1"
+echo "   invariante (disponivel + reservado + vendido = total): $(sql estoque "SELECT (disponivel + reservado + vendido = total AND disponivel >= 0) FROM estoque WHERE produto_id = 1")"
+
+echo
+echo "== Outbox pendente (mensagens esperando para serem publicadas)"
+for s in pedidos estoque pagamento entregas; do printf '   %-10s %s\n' "$s" "$(sql $s "SELECT count(*) FROM outbox WHERE publicada_em IS NULL")"; done
+
+echo
+echo "== Pagamentos (status | quantidade)"
+sql pagamento "SELECT status, count(*) FROM pagamentos GROUP BY status ORDER BY status"
+
+echo
+echo "== Entregadores e entregas"
+sql entregas "SELECT id, nome, status FROM entregadores ORDER BY id"
+sql entregas "SELECT 'entregas ' || status || ': ' || count(*) FROM entregas GROUP BY status ORDER BY status"
 
 echo
 echo "== Segredos (Secrets Manager no MiniStack)"

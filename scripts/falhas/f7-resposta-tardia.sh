@@ -16,7 +16,7 @@ echo "Passo 1: gateway com latência de $((LATENCIA_MS / 1000)) s"
 gateway_ajustar "$LATENCIA_MS" 0
 
 echo "Passo 2: cria um pedido"
-id=$(criar_pedido)
+id=$(criar_pedido_cliente)
 echo "         pedido #$id criado"
 
 echo "Passo 3: no prazo (${PRAZO} s) o pedido deve virar CANCELADO"

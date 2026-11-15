@@ -3,6 +3,9 @@
 # Cada cenário provoca a falha, espera, compara o esperado com o obtido e termina com PASSOU ou FALHOU.
 # Ao sair, devolve a configuração normal (gateway sem latência nem falha, serviços no ar).
 
+# Git Bash (Windows) converte caminhos como /carga/x.js em C:/Program Files/...: desliga isso
+export MSYS_NO_PATHCONV=1
+
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RAIZ" || exit 1
 
@@ -89,6 +92,62 @@ restaurar() { # volta à configuração normal (valores do .env)
   docker compose up -d --force-recreate gateway-pagamento >/dev/null 2>&1
   docker compose up -d pagamento pedidos estoque rabbitmq >/dev/null 2>&1
 }
+
+# ---------------------------------------------------------------- RabbitMQ (API de gestão, só em 127.0.0.1)
+rabbit_api() { # rabbit_api METODO caminho [corpo]
+  curl -s -u "$(var RABBITMQ_USUARIO):$(var RABBITMQ_SENHA)" -X "$1" -H 'Content-Type: application/json' \
+    ${3:+-d "$3"} "http://127.0.0.1:15672$2"
+}
+
+fila_prontas() { # fila_prontas nome  -> mensagens prontas (sem as não confirmadas)
+  campo "$(rabbit_api GET "/api/queues/%2F/$1")" messages_ready
+}
+
+uuid() { cat /proc/sys/kernel/random/uuid 2>/dev/null || python -c 'import uuid;print(uuid.uuid4())'; }
+
+# Publica um envelope na exchange com a routing key = type. Para testar mensagens duplicadas e venenosas.
+publicar_mensagem() { # publicar_mensagem type messageId payload_json
+  local env corpo
+  env="{\"messageId\":\"$2\",\"correlationId\":\"$(uuid)\",\"type\":\"$1\",\"version\":1,\"occurredAt\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\",\"payload\":$3}"
+  corpo=$(printf '{"properties":{"message_id":"%s","content_type":"application/json","delivery_mode":2},"routing_key":"%s","payload":%s,"payload_encoding":"string"}' \
+    "$2" "$1" "$(printf '%s' "$env" | sed 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$/"/')")
+  rabbit_api POST "/api/exchanges/%2F/$(var RABBITMQ_EXCHANGE)/publish" "$corpo" >/dev/null
+}
+
+# ---------------------------------------------------------------- clientes do QR e carga
+criar_pedido_cliente() { # sessão nova de cliente + pedido (termina em CONFIRMADO, sem entrega). Escreve o id.
+  local t r
+  t=$(campo "$(curl -s -X POST "$BASE/api/auth/cliente" -H 'Content-Type: application/json' \
+    -d "{\"apelido\":\"teste$RANDOM\",\"codigo\":\"$(var EVENTO_CODIGO)\"}")" token)
+  r=$(curl -s -X POST "$BASE/api/pedidos" -H "Authorization: Bearer $t")
+  campo "$r" id
+}
+
+maior_pedido() { sql pedidos "SELECT coalesce(max(id), 0) FROM pedidos"; }
+contar_pedidos() { # contar_pedidos "id > 10 AND status = 'CONFIRMADO'"
+  sql pedidos "SELECT count(*) FROM pedidos WHERE $1"
+}
+outbox_pendentes() { sql "$1" "SELECT count(*) FROM outbox WHERE publicada_em IS NULL"; }
+
+repor_estoque() { ./scripts/reset-estoque.sh "$@" >/dev/null; }
+
+# Cenários que usam entregas partem de um estado limpo: conclui as entregas em andamento (libera os entregadores)
+# e apaga as que ficaram esperando entregador. Só para os testes: não use no dia da apresentação.
+limpar_entregas_de_teste() {
+  # primeiro as que esperam entregador (senão, ao liberar um entregador, uma delas o ocuparia de novo)
+  sql entregas "DELETE FROM entregas WHERE status = 'PENDENTE'" >/dev/null
+  for p in $(sql entregas "SELECT pedido_id FROM entregas WHERE status = 'ATRIBUIDA'"); do
+    api POST "/api/entregas/$p/confirmar" >/dev/null
+  done
+  esperar_ate "[ \"\$(sql entregas \"SELECT count(*) FROM entregadores WHERE status = 'OCUPADO'\")\" = 0 ]" 20
+}
+
+# Roda um script do k6 e devolve a linha RESUMO {...}. Segundo argumento: variáveis extras (-e NOME=valor ...).
+k6() { # k6 script.js [-e VAR=valor ...]
+  local s="$1"; shift
+  docker compose --profile carga run --rm "$@" k6 run "/carga/$s" 2>&1
+}
+resumo_k6() { echo "$1" | grep -o 'RESUMO {.*}' | tail -1 | sed 's/^RESUMO //'; }
 
 # ---------------------------------------------------------------- relatório
 titulo() { echo; echo "=== $1"; echo "    $2"; echo; }

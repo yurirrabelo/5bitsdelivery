@@ -149,7 +149,7 @@ As fontes ficam em `docs/arquitetura/`: SVG para os diagramas C4 e o caminho das
 | `gateway-pagamento` | TypeScript (Fastify) | dependência externa simulada: latência e falha por variável de ambiente | memória |
 | `simulador` | TypeScript (script) | reproduz rotas GPS (testes e plano B) | — |
 
-Versões: Java 21 (LTS), Node.js na LTS atual, bibliotecas na versão estável atual.
+Versões: Java 21 (LTS), Node.js na LTS atual, bibliotecas na versão estável atual. Na implementação: Spring Boot 4.1.2 (Jackson 3), Node.js 24, TypeScript 7, RabbitMQ 4.
 
 ### 3.2 Por que cada linguagem
 
@@ -269,7 +269,8 @@ Envelope exigido pelo enunciado, igual para toda mensagem:
 | `entrega.atribuida` | evento | entregas | pedidos | `{pedidoId, entregadorId, entregadorNome}` |
 | `entrega.concluida` | evento | entregas | pedidos | `{pedidoId, entregadorId, modo: "geofence" \| "manual"}` |
 
-`pedido.confirmado` é o evento com vários interessados exigido no registro.
+`pedido.confirmado` é o evento com vários interessados exigido no registro. O pedidos publica a versão 2 (seção 15.2); o `payload` da tabela acima é o da v1, e as entregas entendem as duas.
+`estoque.reservar` leva também o `clienteId` (opcional no contrato), que o serviço `consultas` (CQRS) usa para o cliente ver só os próprios pedidos.
 
 Filas (os nomes vêm de variáveis de ambiente, como o enunciado exige):
 
@@ -662,7 +663,7 @@ Cada serviço cria as próprias tabelas na subida, de forma idempotente (Flyway 
 - **pg-entregas:** `entregadores (id, nome, status, telegram_chat_id, device_id)`, `entregas (pedido_id PK, entregador_id, status PENDENTE | ATRIBUIDA | CONCLUIDA, destino_lat, destino_lon, criada_em, concluida_em, rota_exportada)`, `posicoes`, `notificacoes`, `outbox`, `mensagens_processadas`.
 - **redis:** stream `posicoes`, geo `entregadores:geo`, hash `entregador:<id>:ultima`.
 
-Despacho: entregador preferido, se veio no pedido; senão, o disponível mais próximo da loja. A atribuição é um UPDATE condicional (`WHERE id = :id AND status = 'DISPONIVEL'`). Sem entregador livre, a entrega fica `PENDENTE` e um laço tenta de novo a cada 5 s.
+Despacho: entregador preferido, se veio no pedido; senão, o disponível mais próximo da loja. Se o preferido estiver ocupado ou offline, a entrega espera por ele (`PENDENTE`) e não cai para outro entregador. A atribuição é um UPDATE condicional (`WHERE id = :id AND status = 'DISPONIVEL'`). Sem entregador livre, a entrega fica `PENDENTE` e um laço tenta de novo a cada 5 s.
 
 Dados iniciais (upsert na subida, a partir do `.env`):
 
@@ -757,7 +758,7 @@ delivery-tracker/
 └── scripts/
     ├── falhas/                  # f1 a f8 e todos.sh
     ├── bonus/                   # versionamento, recriar-infra e autoescala
-    ├── estado.sh  reset-estoque.sh  publicar.sh
+    ├── estado.sh  reset-estoque.sh
     └── tunnel-url.sh  smoke-test.sh  test-all.sh  diagramas.sh
 ```
 
@@ -863,3 +864,19 @@ Já fazem parte do sistema. Na apresentação, basta mostrar: o Terraform recria
 | Observabilidade num container (`otel-lgtm`) | Prometheus, Loki, Tempo e Grafana separados | um serviço no compose; feito para demonstração |
 | Pedidos do QR param em `CONFIRMADO` | entregadores simulados | foco na entrega principal, que é de verdade |
 | PWA + Traccar | app nativo | sem build e sem loja; o Traccar garante o GPS em segundo plano |
+
+---
+
+## 18. Notas de implementação
+
+Decisões tomadas na implementação, onde a especificação não definia ou foi preciso ajustar:
+
+- **Erro de mensagem usa `reject` com requeue.** No RabbitMQ 4 o `nack` com requeue não incrementa a contagem de entregas da fila quorum (a mensagem nunca chega à DLQ); o `reject` incrementa. Confirmado por teste (F4).
+- **Contratos com `$id` absoluto** (`https://delivery-tracker.local/schemas/...`): o validador Java exige. Os payloads continuam sem `additionalProperties: false`.
+- **Testes sem Testcontainers:** `docker-compose.test.yml` sobe um Postgres e um RabbitMQ descartáveis e os testes rodam em containers (`scripts/test-all.sh`).
+- **Pedido do QR:** a regra "um pedido em andamento por pessoa" usa `pg_advisory_xact_lock` por cliente, para dois cliques simultâneos não passarem juntos pelo limite.
+- **Aprovação com prazo vencido, antes do agendador cancelar:** o pedidos cancela na hora (`PRAZO_EXPIRADO`) e manda estornar, em vez de confirmar um pedido fora do prazo.
+- **Estorno retido:** se o gateway estiver fora, o pagamento não perde a mensagem de estorno (erro de infraestrutura: fica retida e tenta de novo).
+- **Posição "última" do entregador** só avança no tempo: o Traccar reenvia posições antigas quando a rede volta.
+- **Pedidos de teste dos cenários F1, F2 e F7** são pedidos de cliente (sem entrega), para não deixar entregadores ocupados.
+- **Ao apagar uma fila** (terraform destroy) o broker cancela os consumidores; depois do `apply` os serviços são reiniciados para reassinar (`scripts/bonus/recriar-infra.sh`).

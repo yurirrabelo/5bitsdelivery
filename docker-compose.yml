@@ -235,6 +235,54 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       S3_BUCKET_ROTAS: ${S3_BUCKET_ROTAS}
 
+  # ------------------------------------------------------------ Bônus (profile bonus)
+  # CQRS: a fila consultas.entrada recebe todas as mensagens; a visão de cada pedido fica no DynamoDB.
+  consultas:
+    profiles: ["bonus"]
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: consultas }
+    restart: unless-stopped
+    depends_on: *app-deps
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: consultas
+      FILA_CONSULTAS: ${FILA_CONSULTAS:-consultas.entrada}
+      DYNAMODB_TABELA_VISAO: ${DYNAMODB_TABELA_VISAO:-delivery-visao-pedidos}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Autoescala do consumidor do pagamento. Monta o socket do Docker: só para a demonstração do bônus.
+  autoscaler:
+    profiles: ["bonus"]
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: autoscaler }
+    restart: unless-stopped
+    user: root
+    depends_on:
+      pagamento: { condition: service_healthy }
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      OTEL_SERVICE_NAME: autoscaler
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      RABBITMQ_API_URL: http://rabbitmq:15672
+      RABBITMQ_USUARIO: ${RABBITMQ_USUARIO}
+      RABBITMQ_SENHA: ${RABBITMQ_SENHA}
+      FILA_PAGAMENTO: ${FILA_PAGAMENTO}
+      AUTOSCALE_MIN: ${AUTOSCALE_MIN:-2}
+      AUTOSCALE_MAX: ${AUTOSCALE_MAX:-6}
+      AUTOSCALE_MENSAGENS_POR_REPLICA: ${AUTOSCALE_MENSAGENS_POR_REPLICA:-10}
+      AUTOSCALE_INTERVALO_SEG: ${AUTOSCALE_INTERVALO_SEG:-5}
+      AUTOSCALE_ESPERA_SEG: ${AUTOSCALE_ESPERA_SEG:-15}
+
   # ------------------------------------------------------------ Bancos
   pg-pedidos:
     <<: *postgres
@@ -357,6 +405,9 @@ services:
       TF_VAR_fila_pagamento: ${FILA_PAGAMENTO}
       TF_VAR_fila_entregas: ${FILA_ENTREGAS}
       TF_VAR_max_tentativas: ${MAX_TENTATIVAS}
+      TF_VAR_dynamodb_tabela_visao: ${DYNAMODB_TABELA_VISAO:-delivery-visao-pedidos}
+      TF_VAR_fila_consultas: ${FILA_CONSULTAS:-consultas.entrada}
+      INFRA_ACAO: ${INFRA_ACAO:-apply}
       TF_VAR_jwt_segredo: ${JWT_SEGREDO}
       TF_VAR_telegram_bot_token: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
@@ -397,6 +448,21 @@ services:
     command: tunnel --no-autoupdate --url http://nginx:80
     depends_on:
       - nginx
+
+  # Testes de carga (profile carga): rodam dentro do Docker, direto no Nginx, sem passar pelo túnel
+  #   docker compose --profile carga run --rm k6 run /carga/f5-corrida.js
+  k6:
+    image: grafana/k6:2.4.0
+    profiles: ["carga"]
+    entrypoint: ["k6"]
+    depends_on:
+      nginx: { condition: service_healthy }
+    volumes:
+      - ./carga:/carga:ro
+    environment:
+      BASE_URL: http://nginx
+      EVENTO_CODIGO: ${EVENTO_CODIGO}
+      K6_NO_USAGE_REPORT: "true"
 
 volumes:
   pg-pedidos-data:

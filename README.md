@@ -20,6 +20,8 @@ Trabalho final de Sistemas Distribuídos (FURB). Arquitetura, contratos, testes 
 
 Infraestrutura: RabbitMQ, um Postgres por serviço, Redis, MiniStack (Secrets Manager e S3) criado por Terraform, e Grafana com métricas, logs e traces.
 
+Bônus (profile `bonus`, desligados por padrão): `consultas` (CQRS com DynamoDB) e `autoscaler` (autoescala do pagamento). Veja a seção [Bônus](#bônus).
+
 ## Pré-requisitos
 
 - Docker com Docker Compose v2 (no Windows e no macOS, o Docker Desktop). Reserve 6 GB de RAM para o Docker.
@@ -69,14 +71,22 @@ Faz o fluxo completo com o entregador simulado: cria o pedido, reserva, paga, de
 ./scripts/falhas/f3-mensagem-duplicada.sh # mesma mensagem 5 vezes, um efeito
 ./scripts/falhas/f4-mensagem-venenosa.sh  # payload inválido: 3 tentativas e DLQ
 ./scripts/falhas/f5-corrida.sh            # 100 pedidos para 10 unidades
-./scripts/falhas/f6-broker-fora.sh        # RabbitMQ fora por 30 s
+./scripts/falhas/f6-broker-fora.sh        # RabbitMQ fora por 30 s, com carga contínua
+./scripts/falhas/f6b-ministack-fora.sh    # MiniStack fora durante uma entrega (S3)
 ./scripts/falhas/f7-resposta-tardia.sh    # aprovação depois do prazo: estorno
 ./scripts/falhas/f8-escala.sh             # 3 réplicas dividindo a carga
 ./scripts/falhas/todos.sh                 # todos em sequência
 ./scripts/estado.sh                       # estado dos bancos e das filas
 ```
 
-Cada script mostra o esperado e o obtido e termina com **PASSOU** ou **FALHOU**. Acompanhe no Grafana (painel "Delivery ao vivo") enquanto roda.
+Cada script mostra o esperado e o obtido e termina com **PASSOU** ou **FALHOU**, e devolve a configuração normal no final. Acompanhe no Grafana (painel "Delivery ao vivo", a página inicial) enquanto roda. O `todos.sh` leva uns 14 minutos.
+
+F5 e F6 usam o k6 (`carga/`), que roda dentro do Docker, direto no Nginx:
+
+```bash
+docker compose --profile carga run --rm k6 run /carga/f5-corrida.js
+docker compose --profile carga run --rm -e PEDIDOS_POR_MIN=60 -e DURACAO=60s k6 run /carga/carga-continua.js
+```
 
 Para mudar o gateway na hora, sem editar o `.env`:
 
@@ -149,6 +159,20 @@ Abra o painel pela URL do túnel (ou cole a URL pública no campo do painel). O 
 
 Sem Telegram: use `NOTIFICACAO_PROVIDER=ntfy`, instale o app **ntfy** e assine o tópico de `NTFY_TOPICO`. Ou deixe `log` e veja as mensagens em `docker compose logs entregas`.
 
+## Bônus
+
+Cada bônus só vale se for demonstrado. Os dois serviços extras ficam no profile `bonus`:
+
+| Bônus | Como demonstrar |
+|---|---|
+| Tracing distribuído | no Grafana, abra o trace de um pedido (Explore → Tempo): pedidos → estoque → pagamento → gateway → entregas |
+| Infraestrutura como código | `./scripts/bonus/recriar-infra.sh`: `terraform destroy` e `apply` ao vivo (segredos, bucket, tabela e filas) |
+| Versionamento de eventos | `./scripts/bonus/versionamento.sh`: `pedido.confirmado` v1 e v2 convivem; o estoque nunca foi alterado |
+| CQRS | `docker compose --profile bonus up -d --build consultas`; leitura em `GET /api/consultas/pedidos/{id}` (DynamoDB) |
+| Autoescala do consumidor | `./scripts/bonus/autoescala.sh` (sobe o `autoscaler`, gera carga e mostra as réplicas subindo e descendo) |
+
+O painel e a página do cliente passam a ler da visão do CQRS quando o `consultas` está no ar e voltam para o `pedidos` quando não está.
+
 ## Comandos do dia a dia
 
 ```bash
@@ -156,7 +180,8 @@ docker compose logs -f pedidos              # logs de um serviço
 docker compose up -d --scale pagamento=3    # mais réplicas do pagamento
 docker compose restart estoque              # reinicia um serviço
 ./scripts/reset-estoque.sh                  # repõe as unidades da promoção
-./scripts/test-all.sh                       # testes unitários, dentro de containers
+./scripts/test-all.sh                       # testes unitários e de integração, dentro de containers
+./scripts/estado.sh                         # containers, filas, DLQs, pedidos, estoque e outbox
 docker compose down                         # para tudo e mantém os dados
 docker compose down -v                      # para tudo e apaga os dados
 ```
@@ -175,21 +200,24 @@ docker compose down -v                      # para tudo e apaga os dados
 | Pedido do operador fica em `CONFIRMADO` | nenhum entregador disponível | confira o status do entregador no app ou escolha o entregador ao criar o pedido |
 | Pedidos caindo em `ESGOTADO` | unidades da promoção acabaram | `./scripts/reset-estoque.sh` |
 | Erro com `\r` em script `.sh` | final de linha do Windows | `git config --global core.autocrlf input` e clone de novo |
+| `docker compose run ... /carga/x.js` falha no Git Bash com `C:/Program Files/Git/...` | o Git Bash converte caminhos | `export MSYS_NO_PATHCONV=1` (os scripts já fazem isso) |
 | Telegram não chega | bot sem `/start` ou chat id errado | `docker compose logs entregas` |
 
 ## Estrutura
 
 ```
-contracts/       AsyncAPI e JSON Schemas das mensagens
-docs/            especificação, registro do tema e diagramas
-nginx/           API Gateway
-web/             painel, PWA do entregador e página do cliente
-services/java/   pedidos e estoque (+ biblioteca comum)
-services/ts/     auth, pagamento, gateway simulado, entregas, simulador (+ biblioteca comum)
-infra/           Terraform e configuração do RabbitMQ
-observabilidade/ Prometheus e painel do Grafana
-carga/           testes de carga (k6)
-scripts/         testes do professor, bônus, túnel e utilitários
+contracts/        AsyncAPI e JSON Schemas das mensagens
+docs/             especificação, registro do tema e diagramas
+nginx/            API Gateway
+web/              painel, PWA do entregador, página do cliente e bibliotecas (Leaflet, QR code)
+services/java/    pedidos e estoque (+ biblioteca commons)
+services/ts/      auth, pagamento, gateway simulado, entregas, simulador (+ commons); bônus: consultas e autoscaler
+infra/            Terraform (núcleo em main.tf, bônus em bonus.tf) e configuração do RabbitMQ
+observabilidade/  Prometheus e painel "Delivery ao vivo" do Grafana
+carga/            testes de carga (k6)
+simulador/rotas/  rotas GeoJSON do simulador
+scripts/          testes do professor (falhas/), bônus, túnel e utilitários
+material-apoio/   prompt e roteiro da demonstração
 ```
 
 ## Equipe

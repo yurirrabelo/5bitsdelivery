@@ -12,7 +12,7 @@ echo "Passo 1: gateway passa a falhar em 100% das cobranças"
 gateway_ajustar 0 100
 
 echo "Passo 2: cria um pedido"
-id=$(criar_pedido)
+id=$(criar_pedido_cliente)
 echo "         pedido #$id criado"
 
 echo "Passo 3: espera a compensação (até 30 s)"

@@ -13,7 +13,7 @@ docker compose up -d --scale pagamento=2 pagamento >/dev/null 2>&1
 esperar_saudavel pagamento 60
 
 echo "Passo 2: cria um pedido"
-id=$(criar_pedido)
+id=$(criar_pedido_cliente)
 echo "         pedido #$id criado"
 
 echo "Passo 3: acha a réplica que pegou a mensagem (pelo log) e dá docker kill nela"
