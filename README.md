@@ -1,4 +1,4 @@
-# 5bits Deliverty
+# 5Bits Delivery
 
 Sistema de delivery com promoção relâmpago e rastreamento do entregador em tempo real, feito com microsserviços em Java e TypeScript, mensageria com RabbitMQ e serviços AWS emulados pelo MiniStack, tudo em Docker.
 

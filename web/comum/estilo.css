@@ -4,7 +4,7 @@
 :root {
   --fonte: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --raio: 14px;
-  --marca: #e8590c; /* laranja 5bits */
+  --marca: #e8590c; /* laranja 5Bits */
 }
 
 html { -webkit-text-size-adjust: 100%; }

@@ -1,5 +1,5 @@
 {
-  "name": "5bits Deliverty - Entregador",
+  "name": "5Bits Delivery - Entregador",
   "short_name": "Entregador",
   "description": "App do entregador: status, entrega atual e localização",
   "start_url": "/entregador/",

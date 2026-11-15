@@ -1,4 +1,4 @@
-# Especificação técnica — 5bits Deliverty (v2)
+# Especificação técnica — 5Bits Delivery (v2)
 
 Documento de referência do trabalho final de Sistemas Distribuídos (FURB). É a fonte da verdade para a implementação, inclusive para o Claude Code. Mudou alguma decisão? Atualize aqui primeiro.
 

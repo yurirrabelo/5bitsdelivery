@@ -4,7 +4,7 @@
 
 ---
 
-Você vai implementar o "5bits Deliverty", trabalho final da disciplina de Sistemas Distribuídos. A apresentação é em 26/11, com demonstração ao vivo e falhas provocadas na frente do professor. A prioridade é: simples, estável e fácil de explicar.
+Você vai implementar o "5Bits Delivery", trabalho final da disciplina de Sistemas Distribuídos. A apresentação é em 26/11, com demonstração ao vivo e falhas provocadas na frente do professor. A prioridade é: simples, estável e fácil de explicar.
 
 ## Fonte da verdade
 

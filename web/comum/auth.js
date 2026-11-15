@@ -72,7 +72,7 @@
       const o = Object.assign({ icone: '🔐', titulo: 'Entrar', subtitulo: '', botao: 'Entrar', rotuloUsuario: 'Usuário' }, opcoes);
       el.innerHTML =
         '<div class="login-wrap">' +
-        '<p class="login-marca marca"><img src="/comum/logo.svg" alt=""><span><span class="bits">5bits</span> Deliverty</span></p>' +
+        '<p class="login-marca marca"><img src="/comum/logo.svg" alt=""><span><span class="bits">5Bits</span> Delivery</span></p>' +
         '<form class="login">' +
         '<div class="login-icone">' + o.icone + '</div>' +
         '<h2>' + o.titulo + '</h2>' +

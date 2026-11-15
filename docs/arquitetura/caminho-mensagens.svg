@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1560" height="940" viewBox="0 0 1560 940">
 <defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker><marker id="seta-ini" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#5f6b7a"/></marker></defs>
 <rect width="1560" height="940" fill="#ffffff"/>
-<text x="56" y="54" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#1f2933" text-anchor="start">5bits Deliverty · caminho das mensagens</text>
+<text x="56" y="54" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#1f2933" text-anchor="start">5Bits Delivery · caminho das mensagens</text>
 <text x="56" y="82" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#52606d" text-anchor="start">Todas as setas passam pelo RabbitMQ. Números: caminho feliz. Tracejado: compensação.</text>
 <rect x="70" y="150" width="330" height="740" rx="12" fill="#1168bd" stroke="#0b4884" stroke-width="1.5"/>
 <text x="235" y="190" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff" text-anchor="middle">pedidos</text>

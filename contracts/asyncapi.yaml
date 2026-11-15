@@ -1,6 +1,6 @@
 asyncapi: 3.0.0
 info:
-  title: 5bits Deliverty - mensagens
+  title: 5Bits Delivery - mensagens
   version: 1.0.0
   description: >
     Todas as mensagens trafegam na exchange topic `delivery.eventos` (variável RABBITMQ_EXCHANGE).
