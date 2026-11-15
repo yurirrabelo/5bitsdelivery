@@ -56,7 +56,7 @@ A ordem importa: o pedido principal sai primeiro, porque reserva uma das unidade
 
 ```bash
 docker compose --profile sim run --rm simulador rota \
-  --arquivo rotas/ensaio.geojson --device <ENTREGADOR1_DEVICE_ID> --velocidade 40
+  --arquivo /rotas/ensaio.geojson --device <ENTREGADOR1_DEVICE_ID> --velocidade 40
 ```
 
 No telão, a reprodução é idêntica a uma posição real.
