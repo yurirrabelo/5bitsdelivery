@@ -2,11 +2,51 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Delivery Tracker - Página do cliente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e8590c">
+  <title>Delivery Tracker - Promoção relâmpago</title>
+  <link rel="stylesheet" href="/comum/estilo.css">
+  <link rel="stylesheet" href="cliente.css">
 </head>
 <body>
-  <h1>Página do cliente</h1>
-  <p>Página provisória da Fase 1. A tela real entra em uma fase seguinte.</p>
+  <main>
+    <header class="capa">
+      <h1>⚡ <span id="promo">Promoção relâmpago</span></h1>
+      <p class="sub">Poucas unidades. Peça agora e acompanhe o seu pedido passo a passo.</p>
+    </header>
+
+    <!-- 1. entrar com um apelido -->
+    <section id="entrar" class="cartao oculto">
+      <h2>Quem está pedindo?</h2>
+      <form id="form-entrar">
+        <label>Seu apelido (até 20 letras)
+          <input id="apelido" maxlength="20" autocomplete="nickname" required>
+        </label>
+        <label id="linha-codigo" class="oculto">Código do evento
+          <input id="codigo" autocomplete="off">
+        </label>
+        <button type="submit">Entrar</button>
+        <p class="erro" id="erro-entrar" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- 2. pedir -->
+    <section id="pedir" class="cartao oculto">
+      <p>Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
+      <button id="btn-pedir" class="grande">Pedir</button>
+      <p class="erro" id="erro-pedir" role="alert"></p>
+    </section>
+
+    <!-- 3. acompanhar -->
+    <section id="acompanhar" class="cartao oculto">
+      <h2>Pedido <span id="numero"></span></h2>
+      <ol class="linha-do-tempo" id="passos"></ol>
+      <p id="resultado" class="resultado"></p>
+      <button id="de-novo" class="oculto">Pedir de novo</button>
+    </section>
+  </main>
+
+  <script src="/comum/auth.js"></script>
+  <script src="cliente.js"></script>
 </body>
 </html>

@@ -11,6 +11,8 @@ ENV SERVICO=${SERVICO} NODE_ENV=production CONTRACTS_DIR=/app/contracts
 WORKDIR /app
 COPY --from=build /app ./
 COPY contracts ./contracts
+# o autoescalador cria e remove réplicas pelo socket do Docker
+RUN if [ "$SERVICO" = "autoscaler" ]; then apk add --no-cache docker-cli; fi
 USER node
 EXPOSE 3000
 # registro.js liga a telemetria OpenTelemetry antes do código do serviço

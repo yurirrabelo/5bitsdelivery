@@ -19,7 +19,12 @@ public class Outbox {
      * (ex.: o agendador do prazo), usa o traceparentPadrao (o guardado no pedido).
      */
     public Envelope publicar(String type, String correlationId, Object payload, String traceparentPadrao) {
-        Envelope envelope = Envelope.novo(type, correlationId, payload);
+        return publicar(type, correlationId, 1, payload, traceparentPadrao);
+    }
+
+    /** Publica uma versão específica do contrato (ex.: pedido.confirmado v2). */
+    public Envelope publicar(String type, String correlationId, int version, Object payload, String traceparentPadrao) {
+        Envelope envelope = Envelope.novo(type, correlationId, payload, version);
         gravar(envelope, traceparentPadrao);
         return envelope;
     }

@@ -25,6 +25,7 @@ provider "aws" {
   endpoints {
     s3             = var.aws_endpoint_url
     secretsmanager = var.aws_endpoint_url
+    dynamodb       = var.aws_endpoint_url
   }
 }
 

@@ -30,6 +30,7 @@ channels:
       pagamento.estornar: { $ref: '#/components/messages/pagamento.estornar' }
       pagamento.estornado: { $ref: '#/components/messages/pagamento.estornado' }
       pedido.confirmado: { $ref: '#/components/messages/pedido.confirmado' }
+      pedido.confirmado.v2: { $ref: '#/components/messages/pedido.confirmado.v2' }
       pedido.cancelado: { $ref: '#/components/messages/pedido.cancelado' }
       entrega.atribuida: { $ref: '#/components/messages/entrega.atribuida' }
       entrega.concluida: { $ref: '#/components/messages/entrega.concluida' }
@@ -50,8 +51,9 @@ operations:
     messages: [ { $ref: '#/channels/eventos/messages/pagamento.estornar' } ]
   pedidos.publica.pedido.confirmado:
     action: send
+    description: Publica a versão 2 (a v1 continua válida para consumidores antigos)
     channel: { $ref: '#/channels/eventos' }
-    messages: [ { $ref: '#/channels/eventos/messages/pedido.confirmado' } ]
+    messages: [ { $ref: '#/channels/eventos/messages/pedido.confirmado.v2' } ]
   pedidos.publica.pedido.cancelado:
     action: send
     channel: { $ref: '#/channels/eventos' }
@@ -83,6 +85,7 @@ operations:
     messages:
       - { $ref: '#/channels/eventos/messages/estoque.reservar' }
       - { $ref: '#/channels/eventos/messages/pedido.confirmado' }
+      - { $ref: '#/channels/eventos/messages/pedido.confirmado.v2' }
       - { $ref: '#/channels/eventos/messages/pedido.cancelado' }
 
   # --- pagamento ---
@@ -110,10 +113,11 @@ operations:
       - { $ref: '#/channels/eventos/messages/entrega.concluida' }
   entregas.consome:
     action: receive
-    description: Fila entregas.entrada (FILA_ENTREGAS)
+    description: Fila entregas.entrada (FILA_ENTREGAS). Entende v1 e v2 (converte a v1 para a v2 ao ler)
     channel: { $ref: '#/channels/eventos' }
     messages:
       - { $ref: '#/channels/eventos/messages/pedido.confirmado' }
+      - { $ref: '#/channels/eventos/messages/pedido.confirmado.v2' }
 
 components:
   messages:
@@ -153,6 +157,10 @@ components:
       name: pedido.confirmado
       title: Evento - pedido confirmado (estoque e entregas consomem)
       payload: { $ref: 'schemas/pedido.confirmado.v1.schema.json' }
+    pedido.confirmado.v2:
+      name: pedido.confirmado
+      title: Evento - pedido confirmado, versão 2 (dados de entrega dentro de 'entrega')
+      payload: { $ref: 'schemas/pedido.confirmado.v2.schema.json' }
     pedido.cancelado:
       name: pedido.cancelado
       title: Evento - pedido cancelado (estoque devolve a unidade)

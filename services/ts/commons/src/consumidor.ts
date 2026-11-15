@@ -26,9 +26,12 @@ export class EstadoSaude {
 
 export interface OpcoesConsumidor {
   broker: Broker;
-  pool: Pool;
+  pool?: Pool; // obrigatório com "manipuladores" (inbox e efeito no Postgres)
   fila: string;
-  manipuladores: Record<string, Manipulador>;
+  manipuladores?: Record<string, Manipulador>;
+  // Alternativa ao Postgres: um consumidor idempotente próprio (ex.: o CQRS grava a inbox e a visão no DynamoDB).
+  // Devolve 'duplicada' se a mensagem já foi processada. Erro de rede deve lançar ErroInfraestrutura.
+  executar?: (envelope: Envelope, log: Logger) => Promise<'processada' | 'duplicada'>;
   validador: ValidadorContratos;
   log: Logger;
   estado: EstadoSaude;
@@ -96,15 +99,16 @@ async function processar(o: OpcoesConsumidor, msg: ConsumeMessage): Promise<'pro
   } catch (e) {
     throw e instanceof MensagemInvalida ? e : new MensagemInvalida(`JSON inválido: ${(e as Error).message}`);
   }
-  const manipulador = o.manipuladores[envelope.type];
-  if (!manipulador) throw new MensagemInvalida(`sem manipulador para ${envelope.type}`);
-
   const log = o.log.child({
     correlationId: envelope.correlationId,
     messageId: envelope.messageId,
     type: envelope.type,
     pedidoId: envelope.payload?.pedidoId,
   });
+  if (o.executar) return o.executar(envelope, log);
+
+  const manipulador = o.manipuladores?.[envelope.type];
+  if (!manipulador || !o.pool) throw new MensagemInvalida(`sem manipulador para ${envelope.type}`);
   const aposCommit: (() => void)[] = [];
   const resultado = await transacao(o.pool, async (c) => {
     if (!(await registrarNaInbox(c, envelope))) {

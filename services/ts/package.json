@@ -2,7 +2,7 @@
   "name": "delivery-ts",
   "private": true,
   "version": "1.0.0",
-  "workspaces": ["commons", "auth", "gateway-pagamento", "pagamento", "entregas", "simulador"],
+  "workspaces": ["commons", "auth", "gateway-pagamento", "pagamento", "entregas", "simulador", "consultas", "autoscaler"],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm test --workspaces --if-present"

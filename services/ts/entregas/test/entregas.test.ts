@@ -45,13 +45,14 @@ beforeEach(async () => {
 });
 
 // ---------------------------------------------------------------- utilidades
-function confirmado(pedidoId: number, opcoes: { preferido?: number | null; semDestino?: boolean } = {}): Envelope {
-  return criarEnvelope('pedido.confirmado', randomUUID(), {
-    pedidoId,
-    origem: { nome: 'Loja', ...LOJA },
-    destino: opcoes.semDestino ? null : { ...DESTINO, endereco: null },
-    entregadorPreferidoId: opcoes.preferido ?? null,
-  });
+function confirmado(pedidoId: number, opcoes: { preferido?: number | null; semDestino?: boolean; versao?: 1 | 2 } = {}): Envelope {
+  const destino = opcoes.semDestino ? null : { ...DESTINO, endereco: null };
+  const preferido = opcoes.preferido ?? null;
+  const origem = { nome: 'Loja', ...LOJA };
+  // v1: destino e entregadorPreferidoId no payload. v2 (a que o pedidos publica): dentro de "entrega".
+  return opcoes.versao === 1
+    ? criarEnvelope('pedido.confirmado', randomUUID(), { pedidoId, origem, destino, entregadorPreferidoId: preferido }, 1)
+    : criarEnvelope('pedido.confirmado', randomUUID(), { pedidoId, origem, entrega: { destino, entregadorPreferidoId: preferido } }, 2);
 }
 
 // roda o manipulador como o consumidor faz: transação + ações pós-commit
@@ -132,6 +133,19 @@ describe('despacho', () => {
     await Promise.all([receberConfirmado(confirmado(20)), receberConfirmado(confirmado(21))]);
     const r = await pool.query("SELECT status FROM entregas ORDER BY pedido_id");
     expect(r.rows.map((x) => x.status).sort()).toEqual(['ATRIBUIDA', 'PENDENTE']);
+  });
+
+  it('versionamento: entende pedido.confirmado v1 e v2 (converte a v1 ao ler)', async () => {
+    await receberConfirmado(confirmado(31, { versao: 1, preferido: 1 }));
+    await receberConfirmado(confirmado(32, { versao: 2, preferido: 2 }));
+    expect(await entrega(31)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 1, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
+    expect(await entrega(32)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 2, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
+  });
+
+  it('v1 e v2 sem destino (QR) também não viram entrega', async () => {
+    await receberConfirmado(confirmado(33, { versao: 1, semDestino: true }));
+    await receberConfirmado(confirmado(34, { versao: 2, semDestino: true }));
+    expect((await pool.query('SELECT count(*)::int n FROM entregas')).rows[0].n).toBe(0);
   });
 
   it('pedido.confirmado repetido não cria duas entregas', async () => {

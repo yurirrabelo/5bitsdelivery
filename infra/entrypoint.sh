@@ -14,5 +14,6 @@ until wget -q -O /dev/null --header "Authorization: Basic ${AUTH}" \
 rm -rf /tmp/tf && cp -r /terraform /tmp/tf && cd /tmp/tf
 
 terraform init -input=false -upgrade=false
-terraform apply -input=false -auto-approve -state=/state/terraform.tfstate "$@"
+# INFRA_ACAO=destroy destrói tudo (scripts/bonus/recriar-infra.sh); o padrão é apply
+terraform "${INFRA_ACAO:-apply}" -input=false -auto-approve -state=/state/terraform.tfstate "$@"
 echo "[infra] pronto"

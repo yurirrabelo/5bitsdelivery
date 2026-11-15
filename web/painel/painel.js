@@ -79,10 +79,24 @@
   }
 
   // ---------------------------------------------------------------- lista de pedidos e estoque
+  // CQRS: se o serviço "consultas" estiver no ar, a lista vem da visão (DynamoDB, eventualmente consistente);
+  // senão, vem direto do pedidos. Quando a visão não responde, tenta de novo só a cada 30 s.
+  let consultasProximaTentativa = 0;
+
+  async function listarPedidos() {
+    if (Date.now() >= consultasProximaTentativa) {
+      const r = await Auth.api('/api/consultas/pedidos');
+      if (r.ok) return r.json();
+      consultasProximaTentativa = Date.now() + 30000;
+    }
+    const r = await Auth.api('/api/pedidos?ativos=true');
+    return r.ok ? r.json() : null;
+  }
+
   async function atualizarLista() {
     try {
-      const [rp, re] = await Promise.all([Auth.api('/api/pedidos?ativos=true'), Auth.api('/api/estoque')]);
-      if (rp.ok) renderPedidos(await rp.json());
+      const [lista, re] = await Promise.all([listarPedidos(), Auth.api('/api/estoque')]);
+      if (lista) renderPedidos(lista);
       if (re.ok) renderEstoque(await re.json());
     } catch (e) { /* servidor fora: tenta no próximo ciclo */ }
   }

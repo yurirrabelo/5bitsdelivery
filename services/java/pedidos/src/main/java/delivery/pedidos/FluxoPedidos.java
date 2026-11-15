@@ -90,7 +90,7 @@ public class FluxoPedidos {
         UUID corr = UUID.fromString(e.correlationId());
         if (repo.transicionar(id, "AGUARDANDO_PAGAMENTO", "CONFIRMADO", null, "pagamento.aprovado", corr, null, "prazo_pagamento > now()")) {
             Pedido p = repo.buscar(id).orElseThrow();
-            outbox.publicar("pedido.confirmado", e.correlationId(), payloadConfirmado(p), p.traceparent());
+            outbox.publicar("pedido.confirmado", e.correlationId(), 2, payloadConfirmado(p), p.traceparent());
             return;
         }
         Pedido p = repo.buscar(id).orElse(null);
@@ -138,7 +138,8 @@ public class FluxoPedidos {
         repo.transicionar(e.payloadLong("pedidoId"), "EM_ENTREGA", "ENTREGUE", null, "entrega.concluida", UUID.fromString(e.correlationId()));
     }
 
-    // destino e entregadorPreferidoId são null nos pedidos do QR (ficam em CONFIRMADO, sem entrega)
+    // pedido.confirmado v2: os dados de entrega ficam em "entrega". Destino e entregadorPreferidoId são null
+    // nos pedidos do QR (ficam em CONFIRMADO, sem entrega). Quem só conhece a v1 continua funcionando.
     private Map<String, Object> payloadConfirmado(Pedido p) {
         Map<String, Object> origem = new LinkedHashMap<>();
         origem.put("nome", regras.origemNome);
@@ -151,11 +152,13 @@ public class FluxoPedidos {
             destino.put("lon", p.destinoLon());
             destino.put("endereco", p.destinoEndereco());
         }
+        Map<String, Object> entrega = new LinkedHashMap<>();
+        entrega.put("destino", destino);
+        entrega.put("entregadorPreferidoId", p.entregadorPreferidoId());
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("pedidoId", p.id());
         payload.put("origem", origem);
-        payload.put("destino", destino);
-        payload.put("entregadorPreferidoId", p.entregadorPreferidoId());
+        payload.put("entrega", entrega);
         return payload;
     }
 }

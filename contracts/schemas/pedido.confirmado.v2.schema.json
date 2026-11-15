@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delivery-tracker.local/schemas/pedido.confirmado.v2.schema.json",
+  "title": "Payload de pedido.confirmado (v2): os dados de entrega passam para o objeto 'entrega'",
+  "type": "object",
+  "required": ["pedidoId", "origem", "entrega"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "origem": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": { "nome": { "type": "string" }, "lat": { "type": "number" }, "lon": { "type": "number" } }
+    },
+    "entrega": {
+      "type": "object",
+      "required": ["destino", "entregadorPreferidoId"],
+      "properties": {
+        "destino": {
+          "type": ["object", "null"],
+          "required": ["lat", "lon"],
+          "properties": { "lat": { "type": "number" }, "lon": { "type": "number" }, "endereco": { "type": ["string", "null"] } }
+        },
+        "entregadorPreferidoId": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

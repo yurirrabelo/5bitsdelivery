@@ -36,6 +36,19 @@ class ContratoValidadorTest {
     }
 
     @Test
+    void pedidoConfirmadoV1eV2Convivem() {
+        Map<String, Object> origem = Map.of("lat", -26.9, "lon", -49.0);
+        Map<String, Object> destino = Map.of("lat", -26.91, "lon", -49.07);
+        Map<String, Object> v1 = Map.of("pedidoId", 7, "origem", origem, "destino", destino, "entregadorPreferidoId", 2);
+        Map<String, Object> v2 = Map.of("pedidoId", 7, "origem", origem, "entrega", Map.of("destino", destino, "entregadorPreferidoId", 2));
+        assertDoesNotThrow(() -> validador.validar(Json.MAPPER.valueToTree(Envelope.novo("pedido.confirmado", correlacao, v1, 1))));
+        assertDoesNotThrow(() -> validador.validar(Json.MAPPER.valueToTree(Envelope.novo("pedido.confirmado", correlacao, v2, 2))));
+        // o formato de uma versão não vale para a outra
+        assertThrows(MensagemInvalidaException.class, () -> validador.validar(Json.MAPPER.valueToTree(Envelope.novo("pedido.confirmado", correlacao, v2, 1))));
+        assertThrows(MensagemInvalidaException.class, () -> validador.validar(Json.MAPPER.valueToTree(Envelope.novo("pedido.confirmado", correlacao, v1, 2))));
+    }
+
+    @Test
     void toleraCamposAMaisNoPayload() {
         assertDoesNotThrow(() -> validador.validar(json("estoque.reservar", Map.of("pedidoId", 1, "campoNovo", "x"))));
     }

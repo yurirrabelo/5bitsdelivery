@@ -4,5 +4,8 @@
   "title": "Payload de estoque.reservar (v1)",
   "type": "object",
   "required": ["pedidoId"],
-  "properties": { "pedidoId": { "type": "integer", "minimum": 1 } }
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "clienteId": { "type": "string" }
+  }
 }

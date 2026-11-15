@@ -32,6 +32,17 @@ describe('validação de contratos', () => {
     expect(() => validador.validar(e)).not.toThrow();
   });
 
+  it('pedido.confirmado v1 e v2 convivem; o formato de uma não vale para a outra', () => {
+    const origem = { lat: -26.9, lon: -49.0 };
+    const destino = { lat: -26.91, lon: -49.07 };
+    const v1 = { pedidoId: 7, origem, destino, entregadorPreferidoId: 2 };
+    const v2 = { pedidoId: 7, origem, entrega: { destino, entregadorPreferidoId: 2 } };
+    expect(() => validador.validar(criarEnvelope('pedido.confirmado', correlacao, v1, 1))).not.toThrow();
+    expect(() => validador.validar(criarEnvelope('pedido.confirmado', correlacao, v2, 2))).not.toThrow();
+    expect(() => validador.validar(criarEnvelope('pedido.confirmado', correlacao, v2, 1))).toThrow(MensagemInvalida);
+    expect(() => validador.validar(criarEnvelope('pedido.confirmado', correlacao, v1, 2))).toThrow(MensagemInvalida);
+  });
+
   it('tolera campos a mais no payload (leitor tolerante)', () => {
     const e = criarEnvelope('estoque.reservar', correlacao, { pedidoId: 1, campoNovo: 'x' });
     expect(() => validador.validar(e)).not.toThrow();

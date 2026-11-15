@@ -1,0 +1,30 @@
+main { max-width: 480px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.capa h1 { margin: 8px 0 4px; font-size: 1.6rem; }
+.sub { margin: 0; color: var(--suave); }
+form { display: grid; gap: 12px; }
+h2 { margin: 0 0 10px; font-size: 1rem; }
+button.grande { width: 100%; font-size: 1.3rem; padding: 16px; }
+button.link { background: none; color: var(--suave); text-decoration: underline; padding: 0 4px; font-size: .9rem; }
+button.link:hover { background: none; color: var(--texto); }
+
+.linha-do-tempo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.linha-do-tempo li { position: relative; padding: 10px 0 10px 40px; color: var(--suave); }
+.linha-do-tempo li::before { /* a bolinha de cada passo */
+  content: ''; position: absolute; left: 8px; top: 14px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--borda);
+}
+.linha-do-tempo li::after { /* a linha que liga um passo ao próximo */
+  content: ''; position: absolute; left: 15px; top: 32px; width: 2px; height: calc(100% - 18px); background: var(--borda);
+}
+.linha-do-tempo li:last-child::after { display: none; }
+.linha-do-tempo li.feito { color: var(--texto); }
+.linha-do-tempo li.feito::before { background: var(--ok); border-color: var(--ok); }
+.linha-do-tempo li.atual { color: var(--texto); font-weight: 600; }
+.linha-do-tempo li.atual::before { background: #fff; border-color: var(--marca); animation: pulsa 1s ease-in-out infinite; }
+.linha-do-tempo li.falhou { color: var(--erro); font-weight: 600; }
+.linha-do-tempo li.falhou::before { background: var(--erro); border-color: var(--erro); }
+@keyframes pulsa { 50% { box-shadow: 0 0 0 6px rgba(232, 89, 12, .2); } }
+
+.resultado { font-size: 1.1rem; font-weight: 600; margin: 12px 0 0; }
+.resultado.ok { color: var(--ok); }
+.resultado.ruim { color: var(--erro); }

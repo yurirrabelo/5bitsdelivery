@@ -19,19 +19,33 @@ type AposCommit = (acao: () => void) => void;
 
 export const linkMapas = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
+export interface DadosEntrega {
+  destino: { lat: number; lon: number } | null;
+  entregadorPreferidoId: number | null;
+}
+
+// Versionamento do pedido.confirmado: a v2 traz os dados de entrega dentro de "entrega". Quem lê entende as
+// duas versões e converte a v1 para a v2 ao ler (as mensagens antigas na fila continuam funcionando).
+export function lerEntrega(e: Envelope): DadosEntrega {
+  const p = e.payload;
+  const d = e.version >= 2 ? p.entrega : p; // v1: destino e entregadorPreferidoId ficam direto no payload
+  return { destino: d?.destino ?? null, entregadorPreferidoId: d?.entregadorPreferidoId ?? null };
+}
+
 // pedido.confirmado: cria a entrega (só pedidos com destino) e já tenta despachar.
 // Pedidos do QR não têm destino: terminam em CONFIRMADO e não viram entrega.
 export function aoConfirmarPedido(deps: Deps) {
   return async (c: PoolClient, e: Envelope, log: Logger, aposCommit: AposCommit) => {
     const p = e.payload;
-    if (!p.destino) {
+    const { destino, entregadorPreferidoId } = lerEntrega(e);
+    if (!destino) {
       log.info('pedido sem destino (QR): não há entrega');
       return;
     }
     const r = await c.query(
       `INSERT INTO entregas (pedido_id, entregador_preferido_id, origem_lat, origem_lon, destino_lat, destino_lon, correlation_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (pedido_id) DO NOTHING`,
-      [p.pedidoId, p.entregadorPreferidoId ?? null, p.origem.lat, p.origem.lon, p.destino.lat, p.destino.lon, e.correlationId],
+      [p.pedidoId, entregadorPreferidoId, p.origem.lat, p.origem.lon, destino.lat, destino.lon, e.correlationId],
     );
     if (r.rowCount) await tentarDespachar(c, Number(p.pedidoId), deps, aposCommit);
   };

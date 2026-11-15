@@ -52,7 +52,8 @@ public class PedidoServico {
                 entregadorPreferidoId,
                 correlationId,
                 traceparent);
-        outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id), traceparent);
+        // o clienteId é opcional no contrato: o serviço consultas (CQRS) o usa para o cliente ver só os próprios pedidos
+        outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id, "clienteId", clienteId), traceparent);
         return id;
     }
 }

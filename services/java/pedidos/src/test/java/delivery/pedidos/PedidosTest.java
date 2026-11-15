@@ -145,9 +145,11 @@ class PedidosTest {
 
         assertEquals("CONFIRMADO", status(id));
         assertEquals(List.of("estoque.reservar", "pagamento.cobrar", "pedido.confirmado"), mensagens(id));
-        JsonNode payload = Json.MAPPER.readTree(jdbc.queryForObject("SELECT payload::text FROM outbox WHERE type = 'pedido.confirmado'", String.class)).get("payload");
-        assertEquals(-26.91, payload.get("destino").get("lat").asDouble());
-        assertEquals(2, payload.get("entregadorPreferidoId").asInt());
+        JsonNode envelope = Json.MAPPER.readTree(jdbc.queryForObject("SELECT payload::text FROM outbox WHERE type = 'pedido.confirmado'", String.class));
+        assertEquals(2, envelope.get("version").asInt()); // o pedidos publica a v2
+        JsonNode entrega = envelope.get("payload").get("entrega");
+        assertEquals(-26.91, entrega.get("destino").get("lat").asDouble());
+        assertEquals(2, entrega.get("entregadorPreferidoId").asInt());
     }
 
     @Test
@@ -157,9 +159,9 @@ class PedidosTest {
         receber("pagamento.aprovado", id, Map.of("referencia", "ref-1"));
 
         assertEquals("CONFIRMADO", status(id));
-        JsonNode payload = Json.MAPPER.readTree(jdbc.queryForObject("SELECT payload::text FROM outbox WHERE type = 'pedido.confirmado'", String.class)).get("payload");
-        assertTrue(payload.get("destino").isNull());
-        assertTrue(payload.get("entregadorPreferidoId").isNull());
+        JsonNode entrega = Json.MAPPER.readTree(jdbc.queryForObject("SELECT payload::text FROM outbox WHERE type = 'pedido.confirmado'", String.class)).get("payload").get("entrega");
+        assertTrue(entrega.get("destino").isNull());
+        assertTrue(entrega.get("entregadorPreferidoId").isNull());
     }
 
     @Test
