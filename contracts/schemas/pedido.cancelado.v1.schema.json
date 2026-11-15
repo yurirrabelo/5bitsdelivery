@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "pedido.cancelado.v1.schema.json",
+  "$id": "https://delivery-tracker.local/schemas/pedido.cancelado.v1.schema.json",
   "title": "Payload de pedido.cancelado (v1)",
   "type": "object",
   "required": ["pedidoId", "motivo"],

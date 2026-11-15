@@ -1,0 +1,38 @@
+{
+  "name": "@delivery/commons",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./registro": "./dist/registro.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1169.0",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.83.1",
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/sdk-node": "^0.301.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "amqp-connection-manager": "^5.0.1",
+    "amqplib": "^2.3.1",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

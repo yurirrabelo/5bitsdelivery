@@ -286,7 +286,7 @@ Regras de entrega:
 
 - Publicação só pela outbox (5.1), com publisher confirms, mensagem persistente e `content-type: application/json`.
 - Consumo com ack manual e `prefetch 1`.
-- **Erro de mensagem** (JSON inválido, contrato violado): `nack` com requeue. A fila quorum conta as entregas e, na falha de número `MAX_TENTATIVAS` (3), manda para a DLQ: configurar `x-delivery-limit = MAX_TENTATIVAS − 1`, porque a mensagem vai para a DLQ quando é devolvida mais vezes que o limite (confirmar no F4). As outras mensagens seguem normalmente.
+- **Erro de mensagem** (JSON inválido, contrato violado): `reject` com requeue (no RabbitMQ 4 o `nack` com requeue não incrementa a contagem de entregas e a mensagem nunca chegaria à DLQ; confirmado por teste). A fila quorum conta as entregas e, na falha de número `MAX_TENTATIVAS` (3), manda para a DLQ: configurar `x-delivery-limit = MAX_TENTATIVAS − 1`, porque a mensagem vai para a DLQ quando é devolvida mais vezes que o limite (confirmar no F4). As outras mensagens seguem normalmente.
 - **Erro de infraestrutura** (banco fora): não rejeita a mensagem. O consumidor segura a mensagem, tenta de novo com backoff e o `/health` responde 503 até a dependência voltar. Assim, uma queda de banco não manda mensagens boas para a DLQ.
 - Entrega at-least-once: todo consumidor é idempotente (5.2).
 - **Ordem (discutir no R4):** o RabbitMQ entrega em ordem por fila, mas com réplicas concorrentes a ordem de processamento entre mensagens diferentes não é garantida. O fluxo não depende de ordem global: cada pedido tem um passo por vez (o pedidos só envia o próximo comando depois da resposta do anterior) e a máquina de estados ignora mensagens fora de hora.

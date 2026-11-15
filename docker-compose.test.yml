@@ -1,0 +1,71 @@
+name: delivery-tracker-test
+
+# Ambiente descartável dos testes: Postgres e RabbitMQ próprios (nada do sistema real é tocado).
+# Uso: ./scripts/test-all.sh
+
+services:
+  pg-teste:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: teste
+      POSTGRES_PASSWORD: teste
+      POSTGRES_DB: teste
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teste -d teste"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  rabbitmq-teste:
+    image: rabbitmq:4-alpine
+    hostname: rabbitmq-teste
+    environment:
+      RABBITMQ_DEFAULT_USER: teste
+      RABBITMQ_DEFAULT_PASS: teste
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  testes-ts:
+    image: node:24-alpine
+    profiles: ["testes"]
+    depends_on:
+      pg-teste: { condition: service_healthy }
+      rabbitmq-teste: { condition: service_healthy }
+    environment:
+      TEST_PG_URL: postgres://teste:teste@pg-teste:5432/teste
+      TEST_AMQP_URL: amqp://teste:teste@rabbitmq-teste:5672
+      CONTRACTS_DIR: /contracts
+    volumes:
+      - ./services/ts:/src:ro
+      - ./contracts:/contracts:ro
+      - npm-cache:/root/.npm
+    # copia as fontes para dentro do container: node_modules nunca vai para o disco do host
+    command: sh -c "mkdir -p /work && cp -r /src/. /work/ && cd /work && npm ci --no-audit --no-fund && npm run build && npm test"
+
+  testes-java:
+    image: maven:3.9-eclipse-temurin-21
+    profiles: ["testes"]
+    depends_on:
+      pg-teste: { condition: service_healthy }
+      rabbitmq-teste: { condition: service_healthy }
+    environment:
+      TEST_PG_URL: jdbc:postgresql://pg-teste:5432/teste
+      TEST_PG_USER: teste
+      TEST_PG_PASSWORD: teste
+      TEST_AMQP_URL: amqp://teste:teste@rabbitmq-teste:5672
+      CONTRACTS_DIR: /contracts
+    volumes:
+      - ./services/java:/src:ro
+      - ./contracts:/contracts:ro
+      - maven-cache:/root/.m2
+    command: sh -c "mkdir -p /work && cp -r /src/. /work/ && cd /work && mvn -B -ntp test"
+
+volumes:
+  npm-cache:
+  maven-cache:
