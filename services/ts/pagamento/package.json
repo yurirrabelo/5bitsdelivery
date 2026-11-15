@@ -1,0 +1,24 @@
+{
+  "name": "@delivery/pagamento",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@delivery/commons": "*",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "@opentelemetry/api": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

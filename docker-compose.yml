@@ -125,6 +125,53 @@ services:
       retries: 30
       start_period: 40s
 
+  gateway-pagamento:
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: gateway-pagamento }
+    restart: unless-stopped
+    environment:
+      OTEL_SERVICE_NAME: gateway-pagamento
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      # com default para um script poder sobrescrever na hora, sem editar o .env:
+      #   GATEWAY_TAXA_FALHA=100 docker compose up -d gateway-pagamento
+      GATEWAY_LATENCIA_MS: ${GATEWAY_LATENCIA_MS:-0}
+      GATEWAY_TAXA_FALHA: ${GATEWAY_TAXA_FALHA:-0}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Várias réplicas consumindo a mesma fila (sem container_name, para poder escalar)
+  pagamento:
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: pagamento }
+    restart: unless-stopped
+    deploy:
+      replicas: ${PAGAMENTO_REPLICAS}
+    depends_on:
+      <<: *app-deps
+      pg-pagamento: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      gateway-pagamento: { condition: service_started }
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: pagamento
+      SEGREDO_DB: delivery/db/pagamento
+      FILA_PAGAMENTO: ${FILA_PAGAMENTO}
+      GATEWAY_URL: http://gateway-pagamento:3000
+      GATEWAY_TIMEOUT_MS: ${GATEWAY_TIMEOUT_MS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   # ------------------------------------------------------------ Bancos
   pg-pedidos:
     <<: *postgres

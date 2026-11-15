@@ -57,12 +57,17 @@ export async function transacao<T>(pool: Pool, fn: (c: PoolClient) => Promise<T>
   }
 }
 
+// Para o código de negócio sinalizar "dependência fora do ar, tente de novo" (ex.: gateway no estorno):
+// o consumidor segura a mensagem em vez de mandá-la para a DLQ.
+export class ErroInfraestrutura extends Error {}
+
 const CODIGOS_REDE = ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'EPIPE', 'EHOSTUNREACH'];
 
 // Erro de infraestrutura (banco fora do ar): a mensagem não tem culpa, não pode ir para a DLQ.
 export function erroDeInfra(e: unknown): boolean {
   const err = e as { code?: string; message?: string; errors?: unknown[]; cause?: unknown } | undefined;
   if (!err) return false;
+  if (e instanceof ErroInfraestrutura) return true;
   const codigo = err.code ?? '';
   if (CODIGOS_REDE.includes(codigo)) return true;
   // classe 08 (falha de conexão), 53 (recursos) e 57P (banco desligando) do Postgres
