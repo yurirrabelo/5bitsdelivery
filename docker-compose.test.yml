@@ -5,7 +5,7 @@ name: delivery-tracker-test
 
 services:
   pg-teste:
-    image: postgres:16-alpine
+    image: postgres:16.16-alpine
     environment:
       POSTGRES_USER: teste
       POSTGRES_PASSWORD: teste
@@ -19,7 +19,7 @@ services:
       retries: 30
 
   rabbitmq-teste:
-    image: rabbitmq:4-alpine
+    image: rabbitmq:4.4.0-alpine
     hostname: rabbitmq-teste
     environment:
       RABBITMQ_DEFAULT_USER: teste

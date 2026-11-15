@@ -3,7 +3,7 @@ name: delivery-tracker
 # Fase 1: infraestrutura. Os serviços de aplicação entram nas fases seguintes.
 
 x-postgres: &postgres
-  image: postgres:16-alpine
+  image: postgres:16.16-alpine
   restart: unless-stopped
   healthcheck:
     test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -29,7 +29,7 @@ x-app-deps: &app-deps
 services:
   # ------------------------------------------------------------ Entrada
   nginx:
-    image: nginx:alpine
+    image: nginx:1.31-alpine
     restart: unless-stopped
     ports:
       - "${NGINX_PORTA}:80"
@@ -321,7 +321,7 @@ services:
       - pg-entregas-data:/var/lib/postgresql/data
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -331,7 +331,7 @@ services:
 
   # ------------------------------------------------------------ Mensageria
   rabbitmq:
-    image: rabbitmq:4-management-alpine
+    image: rabbitmq:4.4.0-management-alpine
     # hostname fixo + volume: sem isso as filas somem quando o container é recriado
     hostname: rabbitmq
     restart: unless-stopped
@@ -374,7 +374,7 @@ services:
 
   # Cria segredos, bucket, exchanges, filas e bindings (Terraform) e sai com 0
   infra:
-    image: hashicorp/terraform:latest
+    image: hashicorp/terraform:1.17.2
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     restart: "no"
     depends_on:
@@ -418,7 +418,7 @@ services:
 
   # ------------------------------------------------------------ Observabilidade
   lgtm:
-    image: grafana/otel-lgtm:latest
+    image: grafana/otel-lgtm:0.41.0
     restart: unless-stopped
     environment:
       # acesso anônimo somente leitura (só em localhost)
@@ -442,7 +442,7 @@ services:
 
   # ------------------------------------------------------------ Túnel HTTPS (opcional)
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.11.0
     profiles: ["tunnel"]
     restart: unless-stopped
     command: tunnel --no-autoupdate --url http://nginx:80
