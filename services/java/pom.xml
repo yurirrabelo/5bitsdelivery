@@ -24,6 +24,8 @@
 
   <modules>
     <module>commons</module>
+    <module>pedidos</module>
+    <module>estoque</module>
   </modules>
 
   <dependencyManagement>

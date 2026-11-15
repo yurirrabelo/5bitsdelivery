@@ -71,6 +71,60 @@ services:
       timeout: 3s
       retries: 20
 
+  pedidos:
+    build:
+      context: .
+      dockerfile: services/java/Dockerfile
+      args: { SERVICO: pedidos }
+    restart: unless-stopped
+    depends_on:
+      <<: *app-deps
+      pg-pedidos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    mem_limit: 640m
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: pedidos
+      SEGREDO_DB: delivery/db/pedidos
+      FILA_PEDIDOS: ${FILA_PEDIDOS}
+      PRAZO_PAGAMENTO_SEG: ${PRAZO_PAGAMENTO_SEG}
+      CLIENTE_PEDIDOS_EM_ANDAMENTO: ${CLIENTE_PEDIDOS_EM_ANDAMENTO}
+      ORIGEM_NOME: ${ORIGEM_NOME}
+      ORIGEM_LAT: ${ORIGEM_LAT}
+      ORIGEM_LON: ${ORIGEM_LON}
+      PROMOCAO_NOME: ${PROMOCAO_NOME}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  estoque:
+    build:
+      context: .
+      dockerfile: services/java/Dockerfile
+      args: { SERVICO: estoque }
+    restart: unless-stopped
+    depends_on:
+      <<: *app-deps
+      pg-estoque: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    mem_limit: 640m
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: estoque
+      SEGREDO_DB: delivery/db/estoque
+      FILA_ESTOQUE: ${FILA_ESTOQUE}
+      PROMOCAO_NOME: ${PROMOCAO_NOME}
+      PROMOCAO_QUANTIDADE: ${PROMOCAO_QUANTIDADE}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
   # ------------------------------------------------------------ Bancos
   pg-pedidos:
     <<: *postgres

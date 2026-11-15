@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: pedidos
+server:
+  port: 8080
+delivery:
+  # fila de entrada deste serviço (vem do ambiente, criada pelo Terraform)
+  fila: ${FILA_PEDIDOS}
