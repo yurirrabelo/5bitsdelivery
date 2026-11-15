@@ -11,7 +11,13 @@ import { Logger } from './logger';
 import { mensagens } from './metricas';
 
 // O manipulador roda na mesma transação da inbox: se lançar erro, nada é gravado.
-export type Manipulador = (c: PoolClient, envelope: Envelope, log: Logger) => Promise<void>;
+// aposCommit registra uma ação (ex.: avisar o WebSocket) que só roda depois que a transação confirmou.
+export type Manipulador = (
+  c: PoolClient,
+  envelope: Envelope,
+  log: Logger,
+  aposCommit: (acao: () => void) => void,
+) => Promise<void>;
 
 // Compartilhado com o /health: true enquanto o consumidor segura uma mensagem por falha de infraestrutura
 export class EstadoSaude {
@@ -99,14 +105,23 @@ async function processar(o: OpcoesConsumidor, msg: ConsumeMessage): Promise<'pro
     type: envelope.type,
     pedidoId: envelope.payload?.pedidoId,
   });
-  return transacao(o.pool, async (c) => {
+  const aposCommit: (() => void)[] = [];
+  const resultado = await transacao(o.pool, async (c) => {
     if (!(await registrarNaInbox(c, envelope))) {
       log.info('mensagem duplicada descartada');
-      return 'duplicada';
+      return 'duplicada' as const;
     }
-    await manipulador(c, envelope, log);
-    return 'processada';
+    await manipulador(c, envelope, log, (acao) => aposCommit.push(acao));
+    return 'processada' as const;
   });
+  for (const acao of aposCommit) {
+    try {
+      acao();
+    } catch (e) {
+      log.warn({ err: (e as Error).message }, 'ação pós-commit falhou');
+    }
+  }
+  return resultado;
 }
 
 // ack/nack falham se o canal caiu no meio; o broker devolve a mensagem e a inbox descarta a repetição

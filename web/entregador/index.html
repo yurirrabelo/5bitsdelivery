@@ -2,36 +2,63 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e8590c">
   <title>Delivery Tracker - Entregador</title>
+  <link rel="manifest" href="/entregador/manifest.webmanifest">
+  <link rel="icon" href="/entregador/icone-192.png">
+  <link rel="apple-touch-icon" href="/entregador/icone-192.png">
   <link rel="stylesheet" href="/comum/estilo.css">
+  <link rel="stylesheet" href="entregador.css">
 </head>
 <body>
   <div id="login"></div>
 
   <div id="app" class="oculto">
     <header class="topo">
-      <h1>Entregador</h1>
-      <span class="quem" id="quem"></span>
+      <h1>🛵 <span id="quem"></span></h1>
+      <button class="secundario" id="instalar" hidden>Instalar app</button>
       <button class="secundario" id="sair">Sair</button>
     </header>
-    <main style="padding:16px">
-      <p>Login funcionando. O status, a entrega atual e o envio de localização entram nas próximas fases.</p>
+
+    <main>
+      <section class="cartao">
+        <h2>Meu status</h2>
+        <p class="status-atual" id="status-texto">…</p>
+        <div class="botoes">
+          <button id="btn-disponivel">Disponível</button>
+          <button id="btn-offline" class="secundario">Offline</button>
+        </div>
+        <p class="erro" id="status-erro" role="alert"></p>
+      </section>
+
+      <section class="cartao" id="cartao-entrega">
+        <h2>Entrega atual</h2>
+        <div id="sem-entrega" class="dica">Nenhuma entrega no momento. Fique <b>Disponível</b> para receber pedidos.</div>
+        <div id="com-entrega" class="oculto">
+          <p class="pedido">Pedido <b id="entrega-pedido"></b></p>
+          <p class="dica">Destino: <span id="entrega-destino"></span></p>
+          <p class="dica">Distância: <b id="entrega-distancia">–</b></p>
+          <div class="botoes">
+            <a class="botao" id="abrir-rota" target="_blank" rel="noopener">Abrir rota no Google Maps</a>
+            <button id="confirmar">Confirmar entrega</button>
+          </div>
+          <p class="erro" id="entrega-erro" role="alert"></p>
+        </div>
+      </section>
+
+      <section class="cartao">
+        <h2>Localização</h2>
+        <label class="troca">
+          <input type="checkbox" id="enviar-local">
+          <span>Enviar localização pelo app</span>
+        </label>
+        <p class="dica" id="local-info">A fonte principal é o Traccar Client. Use uma fonte por vez. Este modo só funciona com o app aberto.</p>
+      </section>
     </main>
   </div>
 
   <script src="/comum/auth.js"></script>
-  <script>
-    function mostrarApp(u) {
-      document.getElementById('login').classList.add('oculto');
-      document.getElementById('app').classList.remove('oculto');
-      document.getElementById('quem').textContent = u.nome;
-    }
-    document.getElementById('sair').addEventListener('click', () => Auth.sair());
-
-    const u = Auth.usuario();
-    if (u && u.role === 'entregador') mostrarApp(u);
-    else Auth.montarLogin(document.getElementById('login'), ['entregador'], mostrarApp);
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

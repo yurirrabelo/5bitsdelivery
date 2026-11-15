@@ -172,6 +172,66 @@ services:
       timeout: 3s
       retries: 20
 
+  entregas:
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: entregas }
+    restart: unless-stopped
+    depends_on:
+      <<: *app-deps
+      pg-entregas: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: entregas
+      SEGREDO_DB: delivery/db/entregas
+      SEGREDO_TELEGRAM: delivery/telegram
+      REDIS_URL: redis://redis:6379
+      FILA_ENTREGAS: ${FILA_ENTREGAS}
+      GEOFENCE_RAIO_M: ${GEOFENCE_RAIO_M}
+      NOTIFICACAO_PROVIDER: ${NOTIFICACAO_PROVIDER}
+      NTFY_TOPICO: ${NTFY_TOPICO}
+      S3_BUCKET_ROTAS: ${S3_BUCKET_ROTAS}
+      ENTREGADOR1_NOME: ${ENTREGADOR1_NOME}
+      ENTREGADOR1_DEVICE_ID: ${ENTREGADOR1_DEVICE_ID}
+      ENTREGADOR1_TELEGRAM_CHAT_ID: ${ENTREGADOR1_TELEGRAM_CHAT_ID:-}
+      ENTREGADOR2_NOME: ${ENTREGADOR2_NOME}
+      ENTREGADOR2_DEVICE_ID: ${ENTREGADOR2_DEVICE_ID}
+      ENTREGADOR2_TELEGRAM_CHAT_ID: ${ENTREGADOR2_TELEGRAM_CHAT_ID:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Entregador simulado: envia posições pelo mesmo caminho do Traccar (profile sim)
+  #   docker compose --profile sim run --rm simulador smoke
+  #   docker compose --profile sim run --rm simulador rota --arquivo /rotas/exemplo.geojson --device $ENTREGADOR2_DEVICE_ID
+  simulador:
+    profiles: ["sim"]
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: simulador }
+    entrypoint: ["node", "simulador/dist/main.js"]
+    depends_on:
+      nginx: { condition: service_healthy }
+    volumes:
+      - ./simulador/rotas:/rotas:ro
+    environment:
+      GPS_URL: http://nginx/gps
+      API_URL: http://nginx
+      OPERADOR_USUARIO: ${OPERADOR_USUARIO}
+      OPERADOR_SENHA: ${OPERADOR_SENHA}
+      ENTREGADOR2_DEVICE_ID: ${ENTREGADOR2_DEVICE_ID}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_ROTAS: ${S3_BUCKET_ROTAS}
+
   # ------------------------------------------------------------ Bancos
   pg-pedidos:
     <<: *postgres

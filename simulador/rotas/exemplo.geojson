@@ -1,0 +1,17 @@
+{
+  "type": "Feature",
+  "properties": { "nome": "Exemplo: da loja (centro de Blumenau) até um destino a cerca de 1 km" },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [-49.0661, -26.9194],
+      [-49.0655, -26.9188],
+      [-49.0648, -26.9180],
+      [-49.0640, -26.9175],
+      [-49.0632, -26.9168],
+      [-49.0625, -26.9160],
+      [-49.0618, -26.9153],
+      [-49.0610, -26.9148]
+    ]
+  }
+}

@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Delivery Tracker - Painel do operador</title>
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/comum/estilo.css">
+  <link rel="stylesheet" href="painel.css">
 </head>
 <body>
   <div id="login"></div>
@@ -12,26 +14,60 @@
   <div id="app" class="oculto">
     <header class="topo">
       <h1>Delivery Tracker · Painel do operador</h1>
+      <a id="grafana" href="#" target="_blank" rel="noopener">Grafana</a>
       <span class="quem" id="quem"></span>
       <button class="secundario" id="sair">Sair</button>
     </header>
-    <main style="padding:16px">
-      <p>Login funcionando. O mapa, a lista de pedidos e o QR code entram nas próximas fases.</p>
-    </main>
+
+    <div class="layout">
+      <div id="mapa" aria-label="Mapa"></div>
+
+      <aside class="lateral">
+        <section class="cartao">
+          <h2>Estoque da promoção</h2>
+          <p class="promo" id="promo-nome">…</p>
+          <div class="estoque" id="estoque"></div>
+        </section>
+
+        <section class="cartao">
+          <h2>Novo pedido</h2>
+          <p class="dica" id="destino-info">Clique no mapa para escolher o destino.</p>
+          <label>Entregador
+            <select id="entregador"><option value="">Qualquer (o mais próximo)</option></select>
+          </label>
+          <button id="criar" disabled>Criar pedido</button>
+          <p class="erro" id="criar-erro" role="alert"></p>
+        </section>
+
+        <section class="cartao">
+          <h2>Pedidos</h2>
+          <table class="pedidos">
+            <thead><tr><th>Nº</th><th>Status</th><th>Entregador</th></tr></thead>
+            <tbody id="pedidos"></tbody>
+          </table>
+        </section>
+
+        <section class="cartao">
+          <h2>QR code da promoção</h2>
+          <div id="qr" class="qr"></div>
+          <label>URL pública
+            <input id="url-publica" placeholder="https://…trycloudflare.com">
+          </label>
+          <p class="dica" id="qr-link"></p>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="barra">
+      <span id="ws-status" class="ponto ruim"></span> <span id="ws-texto">mapa desconectado</span>
+      <span class="sep">·</span>
+      <span id="ultima-posicao">sem posições ainda</span>
+    </footer>
   </div>
 
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/vendor/qrcode/qrcode.js"></script>
   <script src="/comum/auth.js"></script>
-  <script>
-    function mostrarApp(u) {
-      document.getElementById('login').classList.add('oculto');
-      document.getElementById('app').classList.remove('oculto');
-      document.getElementById('quem').textContent = u.nome + ' (' + u.role + ')';
-    }
-    document.getElementById('sair').addEventListener('click', () => Auth.sair());
-
-    const u = Auth.usuario();
-    if (u && u.role === 'operador') mostrarApp(u);
-    else Auth.montarLogin(document.getElementById('login'), ['operador'], mostrarApp);
-  </script>
+  <script src="painel.js"></script>
 </body>
 </html>
