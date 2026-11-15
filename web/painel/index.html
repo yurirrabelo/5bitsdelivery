@@ -4,9 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Delivery Tracker - Painel do operador</title>
+  <link rel="stylesheet" href="/comum/estilo.css">
 </head>
 <body>
-  <h1>Painel do operador</h1>
-  <p>Página provisória da Fase 1. A tela real entra em uma fase seguinte.</p>
+  <div id="login"></div>
+
+  <div id="app" class="oculto">
+    <header class="topo">
+      <h1>Delivery Tracker · Painel do operador</h1>
+      <span class="quem" id="quem"></span>
+      <button class="secundario" id="sair">Sair</button>
+    </header>
+    <main style="padding:16px">
+      <p>Login funcionando. O mapa, a lista de pedidos e o QR code entram nas próximas fases.</p>
+    </main>
+  </div>
+
+  <script src="/comum/auth.js"></script>
+  <script>
+    function mostrarApp(u) {
+      document.getElementById('login').classList.add('oculto');
+      document.getElementById('app').classList.remove('oculto');
+      document.getElementById('quem').textContent = u.nome + ' (' + u.role + ')';
+    }
+    document.getElementById('sair').addEventListener('click', () => Auth.sair());
+
+    const u = Auth.usuario();
+    if (u && u.role === 'operador') mostrarApp(u);
+    else Auth.montarLogin(document.getElementById('login'), ['operador'], mostrarApp);
+  </script>
 </body>
 </html>

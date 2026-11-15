@@ -11,6 +11,21 @@ x-postgres: &postgres
     timeout: 3s
     retries: 20
 
+# Variáveis comuns a todo serviço de aplicação (credenciais vêm do Secrets Manager)
+x-app-env: &app-env
+  AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+  AWS_REGION: ${AWS_REGION}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  SEGREDO_RABBITMQ: delivery/rabbitmq
+  RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+
+x-app-deps: &app-deps
+  infra:
+    condition: service_completed_successfully
+
 services:
   # ------------------------------------------------------------ Entrada
   nginx:
@@ -27,6 +42,34 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ------------------------------------------------------------ Serviços de aplicação
+  auth:
+    build:
+      context: .
+      dockerfile: services/ts/Dockerfile
+      args: { SERVICO: auth }
+    restart: unless-stopped
+    depends_on: *app-deps
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: auth
+      SEGREDO_JWT: delivery/jwt
+      JWT_EXPIRACAO_HORAS: ${JWT_EXPIRACAO_HORAS}
+      EVENTO_CODIGO: ${EVENTO_CODIGO}
+      OPERADOR_USUARIO: ${OPERADOR_USUARIO}
+      OPERADOR_SENHA: ${OPERADOR_SENHA}
+      ENTREGADOR1_USUARIO: ${ENTREGADOR1_USUARIO}
+      ENTREGADOR1_SENHA: ${ENTREGADOR1_SENHA}
+      ENTREGADOR1_NOME: ${ENTREGADOR1_NOME}
+      ENTREGADOR2_USUARIO: ${ENTREGADOR2_USUARIO}
+      ENTREGADOR2_SENHA: ${ENTREGADOR2_SENHA}
+      ENTREGADOR2_NOME: ${ENTREGADOR2_NOME}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   # ------------------------------------------------------------ Bancos
   pg-pedidos:

@@ -3,10 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Delivery Tracker - App do entregador</title>
+  <title>Delivery Tracker - Entregador</title>
+  <link rel="stylesheet" href="/comum/estilo.css">
 </head>
 <body>
-  <h1>App do entregador</h1>
-  <p>Página provisória da Fase 1. A tela real entra em uma fase seguinte.</p>
+  <div id="login"></div>
+
+  <div id="app" class="oculto">
+    <header class="topo">
+      <h1>Entregador</h1>
+      <span class="quem" id="quem"></span>
+      <button class="secundario" id="sair">Sair</button>
+    </header>
+    <main style="padding:16px">
+      <p>Login funcionando. O status, a entrega atual e o envio de localização entram nas próximas fases.</p>
+    </main>
+  </div>
+
+  <script src="/comum/auth.js"></script>
+  <script>
+    function mostrarApp(u) {
+      document.getElementById('login').classList.add('oculto');
+      document.getElementById('app').classList.remove('oculto');
+      document.getElementById('quem').textContent = u.nome;
+    }
+    document.getElementById('sair').addEventListener('click', () => Auth.sair());
+
+    const u = Auth.usuario();
+    if (u && u.role === 'entregador') mostrarApp(u);
+    else Auth.montarLogin(document.getElementById('login'), ['entregador'], mostrarApp);
+  </script>
 </body>
 </html>
