@@ -1,0 +1,167 @@
+asyncapi: 3.0.0
+info:
+  title: Delivery Tracker - mensagens
+  version: 1.0.0
+  description: >
+    Todas as mensagens trafegam na exchange topic `delivery.eventos` (variável RABBITMQ_EXCHANGE).
+    A routing key é o próprio `type`. O envelope é igual para todas (schemas/envelope.schema.json);
+    o payload tem um schema por tipo e versão (schemas/<type>.v<versao>.schema.json).
+    O contexto do tracing (`traceparent`) viaja nos headers AMQP, fora do envelope.
+
+servers:
+  rabbitmq:
+    host: rabbitmq:5672
+    protocol: amqp
+    description: RabbitMQ em container; credenciais no Secrets Manager (delivery/rabbitmq).
+
+defaultContentType: application/json
+
+channels:
+  eventos:
+    address: delivery.eventos
+    description: Exchange topic. A routing key é o type da mensagem.
+    messages:
+      estoque.reservar: { $ref: '#/components/messages/estoque.reservar' }
+      estoque.reservado: { $ref: '#/components/messages/estoque.reservado' }
+      estoque.esgotado: { $ref: '#/components/messages/estoque.esgotado' }
+      pagamento.cobrar: { $ref: '#/components/messages/pagamento.cobrar' }
+      pagamento.aprovado: { $ref: '#/components/messages/pagamento.aprovado' }
+      pagamento.recusado: { $ref: '#/components/messages/pagamento.recusado' }
+      pagamento.estornar: { $ref: '#/components/messages/pagamento.estornar' }
+      pagamento.estornado: { $ref: '#/components/messages/pagamento.estornado' }
+      pedido.confirmado: { $ref: '#/components/messages/pedido.confirmado' }
+      pedido.cancelado: { $ref: '#/components/messages/pedido.cancelado' }
+      entrega.atribuida: { $ref: '#/components/messages/entrega.atribuida' }
+      entrega.concluida: { $ref: '#/components/messages/entrega.concluida' }
+
+operations:
+  # --- pedidos ---
+  pedidos.publica.estoque.reservar:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages: [ { $ref: '#/channels/eventos/messages/estoque.reservar' } ]
+  pedidos.publica.pagamento.cobrar:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages: [ { $ref: '#/channels/eventos/messages/pagamento.cobrar' } ]
+  pedidos.publica.pagamento.estornar:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages: [ { $ref: '#/channels/eventos/messages/pagamento.estornar' } ]
+  pedidos.publica.pedido.confirmado:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages: [ { $ref: '#/channels/eventos/messages/pedido.confirmado' } ]
+  pedidos.publica.pedido.cancelado:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages: [ { $ref: '#/channels/eventos/messages/pedido.cancelado' } ]
+  pedidos.consome:
+    action: receive
+    description: Fila pedidos.entrada (FILA_PEDIDOS)
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/estoque.reservado' }
+      - { $ref: '#/channels/eventos/messages/estoque.esgotado' }
+      - { $ref: '#/channels/eventos/messages/pagamento.aprovado' }
+      - { $ref: '#/channels/eventos/messages/pagamento.recusado' }
+      - { $ref: '#/channels/eventos/messages/pagamento.estornado' }
+      - { $ref: '#/channels/eventos/messages/entrega.atribuida' }
+      - { $ref: '#/channels/eventos/messages/entrega.concluida' }
+
+  # --- estoque ---
+  estoque.publica:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/estoque.reservado' }
+      - { $ref: '#/channels/eventos/messages/estoque.esgotado' }
+  estoque.consome:
+    action: receive
+    description: Fila estoque.entrada (FILA_ESTOQUE)
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/estoque.reservar' }
+      - { $ref: '#/channels/eventos/messages/pedido.confirmado' }
+      - { $ref: '#/channels/eventos/messages/pedido.cancelado' }
+
+  # --- pagamento ---
+  pagamento.publica:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/pagamento.aprovado' }
+      - { $ref: '#/channels/eventos/messages/pagamento.recusado' }
+      - { $ref: '#/channels/eventos/messages/pagamento.estornado' }
+  pagamento.consome:
+    action: receive
+    description: Fila pagamento.entrada (FILA_PAGAMENTO)
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/pagamento.cobrar' }
+      - { $ref: '#/channels/eventos/messages/pagamento.estornar' }
+
+  # --- entregas ---
+  entregas.publica:
+    action: send
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/entrega.atribuida' }
+      - { $ref: '#/channels/eventos/messages/entrega.concluida' }
+  entregas.consome:
+    action: receive
+    description: Fila entregas.entrada (FILA_ENTREGAS)
+    channel: { $ref: '#/channels/eventos' }
+    messages:
+      - { $ref: '#/channels/eventos/messages/pedido.confirmado' }
+
+components:
+  messages:
+    estoque.reservar:
+      name: estoque.reservar
+      title: Comando - reservar uma unidade da promoção
+      payload: { $ref: 'schemas/estoque.reservar.v1.schema.json' }
+    estoque.reservado:
+      name: estoque.reservado
+      title: Evento - unidade reservada
+      payload: { $ref: 'schemas/estoque.reservado.v1.schema.json' }
+    estoque.esgotado:
+      name: estoque.esgotado
+      title: Evento - promoção esgotada
+      payload: { $ref: 'schemas/estoque.esgotado.v1.schema.json' }
+    pagamento.cobrar:
+      name: pagamento.cobrar
+      title: Comando - cobrar o pedido (vale até expiraEm)
+      payload: { $ref: 'schemas/pagamento.cobrar.v1.schema.json' }
+    pagamento.aprovado:
+      name: pagamento.aprovado
+      title: Evento - cobrança aprovada
+      payload: { $ref: 'schemas/pagamento.aprovado.v1.schema.json' }
+    pagamento.recusado:
+      name: pagamento.recusado
+      title: Evento - cobrança recusada
+      payload: { $ref: 'schemas/pagamento.recusado.v1.schema.json' }
+    pagamento.estornar:
+      name: pagamento.estornar
+      title: Comando - estornar a cobrança
+      payload: { $ref: 'schemas/pagamento.estornar.v1.schema.json' }
+    pagamento.estornado:
+      name: pagamento.estornado
+      title: Evento - cobrança estornada
+      payload: { $ref: 'schemas/pagamento.estornado.v1.schema.json' }
+    pedido.confirmado:
+      name: pedido.confirmado
+      title: Evento - pedido confirmado (estoque e entregas consomem)
+      payload: { $ref: 'schemas/pedido.confirmado.v1.schema.json' }
+    pedido.cancelado:
+      name: pedido.cancelado
+      title: Evento - pedido cancelado (estoque devolve a unidade)
+      payload: { $ref: 'schemas/pedido.cancelado.v1.schema.json' }
+    entrega.atribuida:
+      name: entrega.atribuida
+      title: Evento - entregador atribuído
+      payload: { $ref: 'schemas/entrega.atribuida.v1.schema.json' }
+    entrega.concluida:
+      name: entrega.concluida
+      title: Evento - entrega concluída
+      payload: { $ref: 'schemas/entrega.concluida.v1.schema.json' }

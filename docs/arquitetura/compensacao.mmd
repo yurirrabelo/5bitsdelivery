@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    participant P as pedidos
+    participant E as estoque
+    participant PG as pagamento
+    participant GW as gateway de pagamento
+    P--)PG: pagamento.cobrar (prazo de 15 s)
+    PG->>GW: cobrança
+    Note over GW: latência maior que o prazo
+    Note over P: prazo vence: CANCELADO
+    P--)E: pedido.cancelado
+    Note over E: devolve a unidade
+    GW-->>PG: aprovado, atrasado
+    PG--)P: pagamento.aprovado
+    P--)PG: pagamento.estornar
+    PG->>GW: estorno
+    PG--)P: pagamento.estornado
+    Note over P: ESTORNADO

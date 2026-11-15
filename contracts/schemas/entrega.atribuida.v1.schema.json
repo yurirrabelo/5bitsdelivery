@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "entrega.atribuida.v1.schema.json",
+  "title": "Payload de entrega.atribuida (v1)",
+  "type": "object",
+  "required": ["pedidoId", "entregadorId", "entregadorNome"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "entregadorId": { "type": "integer" },
+    "entregadorNome": { "type": "string" }
+  }
+}

@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor C as Operador ou cliente
+    participant P as pedidos
+    participant E as estoque
+    participant PG as pagamento
+    participant GW as gateway de pagamento
+    participant ENT as entregas
+    actor M as Entregador
+    C->>P: POST /api/pedidos
+    P-->>C: 202 Accepted + id
+    P--)E: estoque.reservar
+    E--)P: estoque.reservado
+    P--)PG: pagamento.cobrar
+    PG->>GW: cobrança (Idempotency-Key)
+    GW-->>PG: aprovado
+    PG--)P: pagamento.aprovado
+    P--)E: pedido.confirmado
+    P--)ENT: pedido.confirmado
+    ENT--)P: entrega.atribuida
+    ENT->>M: Telegram com a rota
+    loop a cada 3 s
+        M->>ENT: GPS (Traccar)
+    end
+    ENT--)P: entrega.concluida
+    C->>P: GET /api/pedidos/{id}
+    P-->>C: ENTREGUE

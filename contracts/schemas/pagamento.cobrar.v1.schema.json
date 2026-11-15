@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pagamento.cobrar.v1.schema.json",
+  "title": "Payload de pagamento.cobrar (v1)",
+  "type": "object",
+  "required": ["pedidoId", "expiraEm"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "expiraEm": { "type": "string", "format": "date-time" }
+  }
+}

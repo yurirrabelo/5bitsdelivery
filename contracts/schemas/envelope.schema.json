@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "envelope.schema.json",
+  "title": "Envelope de mensagem",
+  "type": "object",
+  "required": ["messageId", "correlationId", "type", "version", "occurredAt", "payload"],
+  "properties": {
+    "messageId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "pattern": "^[a-z]+\\.[a-z]+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": { "type": "object" }
+  }
+}

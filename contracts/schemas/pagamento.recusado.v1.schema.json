@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pagamento.recusado.v1.schema.json",
+  "title": "Payload de pagamento.recusado (v1)",
+  "type": "object",
+  "required": ["pedidoId", "motivo"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "motivo": { "type": "string", "enum": ["GATEWAY_FALHOU", "PRAZO_EXPIRADO"] }
+  }
+}

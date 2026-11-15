@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pedido.confirmado.v1.schema.json",
+  "title": "Payload de pedido.confirmado (v1)",
+  "type": "object",
+  "required": ["pedidoId", "origem", "destino", "entregadorPreferidoId"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "origem": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": { "nome": { "type": "string" }, "lat": { "type": "number" }, "lon": { "type": "number" } }
+    },
+    "destino": {
+      "type": ["object", "null"],
+      "required": ["lat", "lon"],
+      "properties": { "lat": { "type": "number" }, "lon": { "type": "number" }, "endereco": { "type": ["string", "null"] } }
+    },
+    "entregadorPreferidoId": { "type": ["integer", "null"] }
+  }
+}

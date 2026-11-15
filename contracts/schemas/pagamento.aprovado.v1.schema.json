@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pagamento.aprovado.v1.schema.json",
+  "title": "Payload de pagamento.aprovado (v1)",
+  "type": "object",
+  "required": ["pedidoId", "referencia"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "referencia": { "type": "string" }
+  }
+}

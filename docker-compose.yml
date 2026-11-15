@@ -1,0 +1,199 @@
+name: delivery-tracker
+
+# Fase 1: infraestrutura. Os serviços de aplicação entram nas fases seguintes.
+
+x-postgres: &postgres
+  image: postgres:16-alpine
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+
+services:
+  # ------------------------------------------------------------ Entrada
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORTA}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/proxy-autenticado.conf:/etc/nginx/proxy-autenticado.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/painel/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------ Bancos
+  pg-pedidos:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: pedidos
+      POSTGRES_DB: pedidos
+      POSTGRES_PASSWORD: ${DB_SENHA_PEDIDOS}
+    volumes:
+      - pg-pedidos-data:/var/lib/postgresql/data
+
+  pg-estoque:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: estoque
+      POSTGRES_DB: estoque
+      POSTGRES_PASSWORD: ${DB_SENHA_ESTOQUE}
+    volumes:
+      - pg-estoque-data:/var/lib/postgresql/data
+
+  pg-pagamento:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: pagamento
+      POSTGRES_DB: pagamento
+      POSTGRES_PASSWORD: ${DB_SENHA_PAGAMENTO}
+    volumes:
+      - pg-pagamento-data:/var/lib/postgresql/data
+
+  pg-entregas:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: entregas
+      POSTGRES_DB: entregas
+      POSTGRES_PASSWORD: ${DB_SENHA_ENTREGAS}
+    volumes:
+      - pg-entregas-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ------------------------------------------------------------ Mensageria
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    # hostname fixo + volume: sem isso as filas somem quando o container é recriado
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USUARIO}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_SENHA}
+    ports:
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
+  # ------------------------------------------------------------ Nuvem (AWS emulada)
+  ministack:
+    image: ${MINISTACK_IMAGEM}
+    restart: unless-stopped
+    environment:
+      PERSIST_STATE: "1"
+      S3_PERSIST: "1"
+      STATE_DIR: /data/state
+      S3_DATA_DIR: /data/s3
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      - ministack-data:/data
+    # o estado é gravado no desligamento
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:4566/_ministack/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # Cria segredos, bucket, exchanges, filas e bindings (Terraform) e sai com 0
+  infra:
+    image: hashicorp/terraform:latest
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    restart: "no"
+    depends_on:
+      ministack:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      TF_PLUGIN_CACHE_DIR: /cache
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_aws_endpoint_url: ${AWS_ENDPOINT_URL}
+      TF_VAR_aws_region: ${AWS_REGION}
+      TF_VAR_aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+      TF_VAR_aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+      TF_VAR_s3_bucket_rotas: ${S3_BUCKET_ROTAS}
+      TF_VAR_db_senha_pedidos: ${DB_SENHA_PEDIDOS}
+      TF_VAR_db_senha_estoque: ${DB_SENHA_ESTOQUE}
+      TF_VAR_db_senha_pagamento: ${DB_SENHA_PAGAMENTO}
+      TF_VAR_db_senha_entregas: ${DB_SENHA_ENTREGAS}
+      TF_VAR_rabbitmq_api_url: http://rabbitmq:15672
+      TF_VAR_rabbitmq_usuario: ${RABBITMQ_USUARIO}
+      TF_VAR_rabbitmq_senha: ${RABBITMQ_SENHA}
+      TF_VAR_rabbitmq_exchange: ${RABBITMQ_EXCHANGE}
+      TF_VAR_rabbitmq_dlx: ${RABBITMQ_DLX}
+      TF_VAR_fila_pedidos: ${FILA_PEDIDOS}
+      TF_VAR_fila_estoque: ${FILA_ESTOQUE}
+      TF_VAR_fila_pagamento: ${FILA_PAGAMENTO}
+      TF_VAR_fila_entregas: ${FILA_ENTREGAS}
+      TF_VAR_max_tentativas: ${MAX_TENTATIVAS}
+      TF_VAR_jwt_segredo: ${JWT_SEGREDO}
+      TF_VAR_telegram_bot_token: ${TELEGRAM_BOT_TOKEN:-}
+    volumes:
+      - ./infra/terraform:/terraform:ro
+      - ./infra/entrypoint.sh:/entrypoint.sh:ro
+      - tf-state:/state
+      - tf-cache:/cache
+
+  # ------------------------------------------------------------ Observabilidade
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    restart: unless-stopped
+    environment:
+      # acesso anônimo somente leitura (só em localhost)
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - lgtm-data:/data
+      - ./observabilidade/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # ------------------------------------------------------------ Túnel HTTPS (opcional)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    depends_on:
+      - nginx
+
+volumes:
+  pg-pedidos-data:
+  pg-estoque-data:
+  pg-pagamento-data:
+  pg-entregas-data:
+  rabbitmq-data:
+  ministack-data:
+  tf-state:
+  tf-cache:
+  lgtm-data:

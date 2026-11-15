@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> RECEBIDO
+    RECEBIDO --> AGUARDANDO_PAGAMENTO: estoque.reservado
+    RECEBIDO --> ESGOTADO: estoque.esgotado
+    AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento.aprovado no prazo
+    AGUARDANDO_PAGAMENTO --> CANCELADO: pagamento.recusado ou prazo vencido
+    CANCELADO --> ESTORNADO: aprovação atrasada estornada
+    CONFIRMADO --> EM_ENTREGA: entrega.atribuida
+    EM_ENTREGA --> ENTREGUE: entrega.concluida
+    CONFIRMADO --> [*]: pedido do QR (sem destino)
+    ESGOTADO --> [*]
+    CANCELADO --> [*]
+    ESTORNADO --> [*]
+    ENTREGUE --> [*]

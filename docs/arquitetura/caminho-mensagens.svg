@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="940" viewBox="0 0 1560 940">
+<defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker><marker id="seta-ini" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#5f6b7a"/></marker></defs>
+<rect width="1560" height="940" fill="#ffffff"/>
+<text x="56" y="54" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#1f2933" text-anchor="start">Delivery Tracker · caminho das mensagens</text>
+<text x="56" y="82" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#52606d" text-anchor="start">Todas as setas passam pelo RabbitMQ. Números: caminho feliz. Tracejado: compensação.</text>
+<rect x="70" y="150" width="330" height="740" rx="12" fill="#1168bd" stroke="#0b4884" stroke-width="1.5"/>
+<text x="235" y="190" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff" text-anchor="middle">pedidos</text>
+<text x="235" y="214" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[Java · Spring Boot]</text>
+<text x="235" y="244" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#ffffff" text-anchor="middle">dono do estado do pedido:</text>
+<text x="235" y="264" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#ffffff" text-anchor="middle">decide o próximo passo</text>
+<rect x="105" y="298" width="260" height="32" rx="6" fill="#0b4884" stroke="#7fb2e8" stroke-width="1"/>
+<text x="235" y="319" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">RECEBIDO</text>
+<path d="M235,332 L235,350" stroke="#ffffff" stroke-width="1.5" marker-end="url(#seta)"/>
+<rect x="105" y="360" width="260" height="32" rx="6" fill="#0b4884" stroke="#7fb2e8" stroke-width="1"/>
+<text x="235" y="381" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">AGUARDANDO_PAGAMENTO</text>
+<path d="M235,394 L235,412" stroke="#ffffff" stroke-width="1.5" marker-end="url(#seta)"/>
+<rect x="105" y="422" width="260" height="32" rx="6" fill="#0b4884" stroke="#7fb2e8" stroke-width="1"/>
+<text x="235" y="443" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">CONFIRMADO</text>
+<path d="M235,456 L235,474" stroke="#ffffff" stroke-width="1.5" marker-end="url(#seta)"/>
+<rect x="105" y="484" width="260" height="32" rx="6" fill="#0b4884" stroke="#7fb2e8" stroke-width="1"/>
+<text x="235" y="505" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">EM_ENTREGA</text>
+<path d="M235,518 L235,536" stroke="#ffffff" stroke-width="1.5" marker-end="url(#seta)"/>
+<rect x="105" y="546" width="260" height="32" rx="6" fill="#0b4884" stroke="#7fb2e8" stroke-width="1"/>
+<text x="235" y="567" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">ENTREGUE</text>
+<text x="235" y="624" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">ou ESGOTADO, CANCELADO</text>
+<text x="235" y="643" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">ou ESTORNADO</text>
+<rect x="95" y="700" width="280" height="160" rx="8" fill="#fff8e1" stroke="#c9a227"/>
+<text x="235" y="728" font-family="Inter, Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#5a4500" text-anchor="middle">Um evento, dois interessados</text>
+<text x="235" y="754" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">pedido.confirmado é publicado</text>
+<text x="235" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">uma vez e consumido pelo</text>
+<text x="235" y="798" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">estoque (baixa a unidade) e</text>
+<text x="235" y="820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">pelas entregas (despacho).</text>
+<rect x="732" y="150" width="70" height="740" rx="10" fill="#fdebd8" stroke="#d98a3a" stroke-width="1.5"/>
+<text x="767" y="136" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#8a4b00" text-anchor="middle">RabbitMQ</text>
+<text x="767" y="912" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#8a4b00" text-anchor="middle">exchange delivery.eventos</text>
+<rect x="1130" y="150" width="360" height="205" rx="12" fill="#1168bd" stroke="#0b4884" stroke-width="1.5"/>
+<text x="1310" y="248.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">estoque</text>
+<text x="1310" y="272.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[Java · Spring Boot]</text>
+<path d="M402,197 L1128,197" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="189" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">1 · estoque.reservar</text>
+<text x="818" y="189" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">reserva 1 unidade (UPDATE condicional)</text>
+<path d="M1128,238 L402,238" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="230" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">2 · estoque.reservado / esgotado</text>
+<text x="818" y="230" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">resultado da reserva</text>
+<path d="M402,279 L1128,279" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="271" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">5 · pedido.confirmado</text>
+<text x="818" y="271" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">a reserva vira venda</text>
+<path d="M402,320 L1128,320" fill="none" stroke="#b4441f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#seta)"/>
+<text x="418" y="312" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#b4441f" text-anchor="start">pedido.cancelado</text>
+<text x="818" y="312" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#b4441f" text-anchor="start">devolve a unidade ao estoque</text>
+<rect x="1130" y="395" width="360" height="230" rx="12" fill="#1168bd" stroke="#0b4884" stroke-width="1.5"/>
+<text x="1310" y="506.0" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">pagamento ×2–3</text>
+<text x="1310" y="530.0" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[TypeScript · réplicas]</text>
+<path d="M402,447 L1128,447" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="439" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">3 · pagamento.cobrar</text>
+<text x="818" y="439" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">cobra no gateway, com prazo</text>
+<path d="M1128,493 L402,493" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="485" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">4 · pagamento.aprovado / recusado</text>
+<text x="818" y="485" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">resultado da cobrança</text>
+<path d="M402,539 L1128,539" fill="none" stroke="#b4441f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#seta)"/>
+<text x="418" y="531" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#b4441f" text-anchor="start">pagamento.estornar</text>
+<text x="818" y="531" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#b4441f" text-anchor="start">aprovação chegou depois do prazo</text>
+<path d="M1128,585 L402,585" fill="none" stroke="#b4441f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#seta)"/>
+<text x="418" y="577" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#b4441f" text-anchor="start">pagamento.estornado</text>
+<text x="818" y="577" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#b4441f" text-anchor="start">estorno feito no gateway</text>
+<rect x="1130" y="665" width="360" height="225" rx="12" fill="#1168bd" stroke="#0b4884" stroke-width="1.5"/>
+<text x="1310" y="773.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">entregas</text>
+<text x="1310" y="797.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[TypeScript]</text>
+<path d="M402,727 L1128,727" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="719" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">5 · pedido.confirmado</text>
+<text x="818" y="719" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">despacha, se o pedido tem destino</text>
+<path d="M1128,784 L402,784" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="776" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">6 · entrega.atribuida</text>
+<text x="818" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">entregador avisado no Telegram</text>
+<path d="M1128,840 L402,840" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
+<text x="418" y="832" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">7 · entrega.concluida</text>
+<text x="818" y="832" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">chegou ao destino (geofence)</text>
+</svg>

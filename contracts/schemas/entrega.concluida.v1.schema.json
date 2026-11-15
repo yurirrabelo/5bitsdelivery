@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "entrega.concluida.v1.schema.json",
+  "title": "Payload de entrega.concluida (v1)",
+  "type": "object",
+  "required": ["pedidoId", "entregadorId", "modo"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "entregadorId": { "type": "integer" },
+    "modo": { "type": "string", "enum": ["geofence", "manual"] }
+  }
+}

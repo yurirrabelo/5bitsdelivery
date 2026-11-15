@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pedido.cancelado.v1.schema.json",
+  "title": "Payload de pedido.cancelado (v1)",
+  "type": "object",
+  "required": ["pedidoId", "motivo"],
+  "properties": {
+    "pedidoId": { "type": "integer", "minimum": 1 },
+    "motivo": { "type": "string", "enum": ["PAGAMENTO_RECUSADO", "PRAZO_EXPIRADO"] }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pagamento.estornar.v1.schema.json",
+  "title": "Payload de pagamento.estornar (v1)",
+  "type": "object",
+  "required": ["pedidoId"],
+  "properties": { "pedidoId": { "type": "integer", "minimum": 1 } }
+}
