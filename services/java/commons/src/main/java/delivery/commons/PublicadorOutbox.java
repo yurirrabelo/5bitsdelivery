@@ -139,6 +139,8 @@ public class PublicadorOutbox implements SmartLifecycle {
                 .setParent(Trace.contextoDe(l.traceparent()))
                 .setSpanKind(SpanKind.PRODUCER)
                 .startSpan();
+        Long pedidoId = envelope.payloadLong("pedidoId");
+        if (pedidoId != null) span.setAttribute("pedido.id", pedidoId);
         try (Scope ignored = span.makeCurrent()) {
             String traceparent = Trace.traceparentAtual();
             MessageProperties p = new MessageProperties();

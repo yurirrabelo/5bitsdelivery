@@ -1,6 +1,6 @@
 apiVersion: 1
 
-# Substitui o arquivo da imagem: mantém os painéis originais e acrescenta o "Delivery ao vivo"
+# Substitui o arquivo da imagem: mantém os painéis originais e acrescenta "Apresentação" e "Detalhes técnicos"
 providers:
   - name: "Delivery"
     type: file

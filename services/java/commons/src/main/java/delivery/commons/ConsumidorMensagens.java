@@ -1,6 +1,7 @@
 package delivery.commons;
 
 import com.rabbitmq.client.Channel;
+import io.opentelemetry.api.trace.Span;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -152,7 +153,11 @@ public class ConsumidorMensagens implements SmartLifecycle {
         MDC.put("messageId", envelope.messageId());
         MDC.put("type", envelope.type());
         Long pedidoId = envelope.payloadLong("pedidoId");
-        if (pedidoId != null) MDC.put("pedidoId", String.valueOf(pedidoId));
+        if (pedidoId != null) {
+            MDC.put("pedidoId", String.valueOf(pedidoId));
+            // o número do pedido no span: o Grafana acha o trace de um pedido por "pedido.id"
+            Span.current().setAttribute("pedido.id", pedidoId);
+        }
         try {
             return tx.execute(status -> {
                 if (!inbox.registrar(envelope)) {

@@ -107,6 +107,7 @@ export class PublicadorOutbox {
     await tracer.startActiveSpan('outbox publicar', { kind: SpanKind.PRODUCER }, pai, async (span) => {
       try {
         span.setAttribute('messaging.message.id', envelope.messageId);
+        if (envelope.payload?.pedidoId !== undefined) span.setAttribute('pedido.id', Number(envelope.payload.pedidoId));
         await this.broker.publicar(this.opcoes.exchange, envelope.type, JSON.stringify(envelope), {
           messageId: envelope.messageId,
           correlationId: envelope.correlationId,

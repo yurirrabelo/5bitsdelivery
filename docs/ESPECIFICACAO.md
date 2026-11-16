@@ -486,14 +486,14 @@ AWS_SECRET_ACCESS_KEY=test
 S3_BUCKET_ROTAS=delivery-rotas
 
 # ---------- Bancos (um por serviço) ----------
-DB_SENHA_PEDIDOS=dev-pedidos-123
-DB_SENHA_ESTOQUE=dev-estoque-123
-DB_SENHA_PAGAMENTO=dev-pagamento-123
-DB_SENHA_ENTREGAS=dev-entregas-123
+DB_SENHA_PEDIDOS=admin
+DB_SENHA_ESTOQUE=admin
+DB_SENHA_PAGAMENTO=admin
+DB_SENHA_ENTREGAS=admin
 
 # ---------- RabbitMQ ----------
-RABBITMQ_USUARIO=delivery
-RABBITMQ_SENHA=dev-rabbit-123
+RABBITMQ_USUARIO=admin
+RABBITMQ_SENHA=admin
 RABBITMQ_EXCHANGE=delivery.eventos
 RABBITMQ_DLX=delivery.dlx
 FILA_PEDIDOS=pedidos.entrada
@@ -506,19 +506,19 @@ MAX_TENTATIVAS=3
 # ---------- Auth ----------
 JWT_SEGREDO=troque-por-um-texto-longo-e-aleatorio
 JWT_EXPIRACAO_HORAS=12
-OPERADOR_USUARIO=operador
-OPERADOR_SENHA=dev-operador-123
+OPERADOR_USUARIO=admin
+OPERADOR_SENHA=admin
 ENTREGADOR1_USUARIO=entregador1
-ENTREGADOR1_SENHA=dev-entregador-123
+ENTREGADOR1_SENHA=admin
 ENTREGADOR1_NOME=Entregador Real
 ENTREGADOR1_DEVICE_ID=ent1-troque-por-token-aleatorio
 ENTREGADOR1_TELEGRAM_CHAT_ID=
 ENTREGADOR2_USUARIO=entregador2
-ENTREGADOR2_SENHA=dev-entregador-123
+ENTREGADOR2_SENHA=admin
 ENTREGADOR2_NOME=Entregador Simulado
 ENTREGADOR2_DEVICE_ID=ent2-troque-por-token-aleatorio
 # Código que vai no link do QR code
-EVENTO_CODIGO=troque-por-um-codigo
+EVENTO_CODIGO=promo
 
 # ---------- Regras ----------
 PROMOCAO_NOME=Promoção relâmpago
@@ -579,7 +579,7 @@ O objetivo é mostrar por onde cada passo passa, não monitorar tudo.
   - `delivery_outbox_pendentes` (todos)
   - `delivery_gps_posicoes_total` (entregas)
 - **RabbitMQ:** o Prometheus do `lgtm` coleta `rabbitmq:15692/metrics/per-object` (mensagens prontas, não confirmadas e consumidores por fila, inclusive DLQs). Para isso, montar um `prometheus.yaml` próprio sobre `/otel-lgtm/prometheus.yaml`, partindo do original da imagem (`docker run --rm grafana/otel-lgtm cat /otel-lgtm/prometheus.yaml`) e acrescentando o job.
-- **Painel "Delivery ao vivo"**, provisionado por arquivo (`observabilidade/dashboards/`) e definido como página inicial; acesso anônimo de leitura, só em localhost:
+- **Painéis "Apresentação" (página inicial) e "Detalhes técnicos"**, provisionados por arquivo (`observabilidade/dashboards/`); acesso anônimo de leitura, só em localhost. A "Apresentação" é a tela para a plateia: números grandes (pessoas, pedidos, confirmados, sem sucesso, unidades, tempo do pagamento), pedidos por minuto, tempo médio por serviço, a tabela de pedidos recentes (clique no número) com o **caminho do pedido serviço por serviço** (busca no Tempo pelo atributo de span `pedido.id`, que pedidos, estoque, pagamento e entregas gravam em cada mensagem tratada), a cascata do trace e o mapa de serviços (service graph do Tempo). O "Detalhes técnicos" tem os itens abaixo:
   1. pedidos por status e estoque (disponível, reservado e vendido);
   2. pagamentos (aprovados, recusados e estornados) e latência do gateway;
   3. filas, DLQs e outbox pendente;

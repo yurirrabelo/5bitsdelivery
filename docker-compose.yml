@@ -424,8 +424,8 @@ services:
       # acesso anônimo somente leitura (só em localhost)
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
-      # "Delivery ao vivo" abre como página inicial
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /dashboards/delivery-ao-vivo.json
+      # a tela "Apresentação" abre como página inicial
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /dashboards/apresentacao.json
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

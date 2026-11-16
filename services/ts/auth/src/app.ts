@@ -1,3 +1,4 @@
+import { metrics } from '@opentelemetry/api';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
@@ -26,6 +27,9 @@ interface Claims {
   role: Papel;
   entregadorId?: number;
 }
+
+// delivery_sessoes_total{papel}: quantas pessoas entraram (cliente do QR, entregador, operador)
+const sessoes = metrics.getMeter('delivery.auth').createCounter('delivery_sessoes_total', { description: 'Sessões iniciadas, por papel' });
 
 // Hash falso para gastar o mesmo tempo quando o usuário não existe
 const HASH_FALSO = bcrypt.hashSync('senha-que-ninguem-tem', 10);
@@ -66,6 +70,7 @@ export function registrarRotasAuth(app: FastifyInstance, cfg: ConfigAuth): void 
     const ok = await bcrypt.compare(corpo?.password ?? '', usuario?.hash ?? HASH_FALSO);
     if (!usuario || !ok) return reply.code(401).send({ erro: 'credenciais inválidas' });
     const claims: Claims = { sub: usuario.id, nome: usuario.nome, role: usuario.role, ...(usuario.entregadorId ? { entregadorId: usuario.entregadorId } : {}) };
+    sessoes.add(1, { papel: usuario.role });
     return {
       token: emitir(claims),
       expiresIn,
@@ -83,6 +88,7 @@ export function registrarRotasAuth(app: FastifyInstance, cfg: ConfigAuth): void 
     if (req.validationError || !apelido || corpo?.codigo !== cfg.eventoCodigo) {
       return reply.code(401).send({ erro: 'código do evento inválido' });
     }
+    sessoes.add(1, { papel: 'cliente' });
     return { token: emitir({ sub: `c-${randomUUID()}`, nome: apelido, role: 'cliente' }), expiresIn };
   });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bônus: autoescala do consumidor do pagamento. Com o gateway lento e carga, a fila pagamento.entrada sobe,
-# o autoescalador sobe réplicas; quando a fila esvazia, ele as remove. Acompanhe no painel "Delivery ao vivo".
+# o autoescalador sobe réplicas; quando a fila esvazia, ele as remove. Acompanhe no painel "Detalhes técnicos" do Grafana.
 source "$(dirname "$0")/../falhas/lib.sh"
 trap 'docker compose --profile bonus stop autoscaler >/dev/null 2>&1; docker ps -aq --filter label=delivery.autoscaler=pagamento | xargs -r docker rm -f >/dev/null 2>&1; repor_estoque; restaurar' EXIT
 

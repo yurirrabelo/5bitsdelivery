@@ -1,6 +1,6 @@
 {
  "uid": "delivery-ao-vivo",
- "title": "Delivery ao vivo",
+ "title": "Detalhes técnicos (para perguntas)",
  "tags": [
   "delivery"
  ],
@@ -14,7 +14,7 @@
  },
  "editable": true,
  "graphTooltip": 1,
- "description": "Mostra por onde cada pedido passa: estados, estoque, pagamentos, filas, réplicas e compensações.",
+ "description": "O painel completo, para quando alguém perguntar: filas, DLQs, outbox, réplicas, mensagens duplicadas e logs.",
  "panels": [
   {
    "id": 1,
@@ -623,5 +623,14 @@
  },
  "annotations": {
   "list": []
- }
+ },
+ "links": [
+  {
+   "title": "Voltar à tela de apresentação",
+   "type": "link",
+   "url": "/d/apresentacao/apresentacao",
+   "icon": "dashboard",
+   "targetBlank": false
+  }
+ ]
 }

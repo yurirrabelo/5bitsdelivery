@@ -13,7 +13,7 @@ Edite o `.env` (nunca commite) e troque os valores de exemplo:
 | `ORIGEM_LAT`, `ORIGEM_LON`, `ORIGEM_NOME` | coordenadas da faculdade (clique com o botão direito no Google Maps e copie) |
 | `ENTREGADOR1_DEVICE_ID` | um texto longo e aleatório (é o "token" do Traccar) |
 | `EVENTO_CODIGO` | um código novo (vai no QR) |
-| `OPERADOR_SENHA`, `ENTREGADOR1_SENHA` | senhas novas |
+| `OPERADOR_SENHA`, `ENTREGADOR1_SENHA` | pode deixar `admin` (usuários `admin` e `entregador1`); troque só se o túnel ficar aberto fora da apresentação |
 | `NOTIFICACAO_PROVIDER`, `TELEGRAM_BOT_TOKEN`, `ENTREGADOR1_TELEGRAM_CHAT_ID` | `telegram` e os dados do bot (passos no README) |
 
 Depois: `docker compose up -d --build` e `docker compose ps` (tudo `healthy`; o `infra` termina com 0). Mudou o `.env`? O mesmo comando recria só o que mudou.

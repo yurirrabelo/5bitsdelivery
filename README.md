@@ -1,6 +1,6 @@
 # 5Bits Delivery
 
-> **Primeira vez?** Siga o **[PASSO_A_PASSO.md](PASSO_A_PASSO.md)**: do zero ao sistema funcionando, em passos curtos. Este README é o manual completo. O ensaio com a moto está em [material-apoio/ROTEIRO_ENSAIO.md](material-apoio/ROTEIRO_ENSAIO.md).
+> **Primeira vez?** Siga o **[PASSO_A_PASSO.md](PASSO_A_PASSO.md)**: do zero ao sistema funcionando, em passos curtos. Este README é o manual completo. O ensaio com a moto está em [material-apoio/ROTEIRO_ENSAIO.md](material-apoio/ROTEIRO_ENSAIO.md), o roteiro da apresentação em [material-apoio/ROTEIRO_APRESENTACAO.md](material-apoio/ROTEIRO_APRESENTACAO.md) e a explicação de cada tela e painel em [docs/GUIA_DAS_TELAS.md](docs/GUIA_DAS_TELAS.md).
 
 Sistema de delivery com promoção relâmpago e rastreamento do entregador em tempo real, feito com microsserviços em Java e TypeScript, mensageria com RabbitMQ e serviços AWS emulados pelo MiniStack, tudo em Docker.
 
@@ -42,7 +42,7 @@ docker compose ps
 
 Espere todos os containers ficarem `healthy`; o `infra` (Terraform) roda uma vez e termina com código 0. Os serviços Java demoram mais na primeira vez.
 
-Os valores do `.env.example` funcionam localmente. **Troque as senhas e o `EVENTO_CODIGO` antes de expor o sistema pelo túnel.**
+Os valores do `.env.example` funcionam localmente e são todos simples (`admin` / `admin`, código do evento `promo`). **Se for expor o sistema pelo túnel fora de uma demonstração, troque as senhas e o `EVENTO_CODIGO`.**
 
 ## Endereços
 
@@ -51,11 +51,11 @@ Os valores do `.env.example` funcionam localmente. **Troque as senhas e o `EVENT
 | Painel do operador | http://localhost:8080 |
 | App do entregador (PWA) | http://localhost:8080/entregador/ |
 | Página do cliente (QR) | http://localhost:8080/cliente/ |
-| Grafana (métricas, logs e traces) | http://localhost:3000 |
-| RabbitMQ (filas e DLQs) | http://localhost:15672 (usuário e senha do `.env`) |
+| Grafana: tela "Apresentação" (página inicial) e "Detalhes técnicos" | http://localhost:3000 (abre direto; para editar, `admin` / `admin`) |
+| RabbitMQ (opcional: filas e DLQs) | http://localhost:15672 (`admin` / `admin`) |
 | MiniStack | http://localhost:4566 |
 
-Usuários, com senhas no `.env`: `operador`, `entregador1` (o entregador real, no celular) e `entregador2` (simulado).
+Usuários (senha `admin` para todos): `admin` (operador), `entregador1` (o entregador real, no celular) e `entregador2` (simulado). Cliente: abre `/cliente/?codigo=promo` e já entra.
 
 ## Testando sem celular
 
@@ -81,7 +81,7 @@ Faz o fluxo completo com o entregador simulado: cria o pedido, reserva, paga, de
 ./scripts/estado.sh                       # estado dos bancos e das filas
 ```
 
-Cada script mostra o esperado e o obtido e termina com **PASSOU** ou **FALHOU**, e devolve a configuração normal no final. Acompanhe no Grafana (painel "Delivery ao vivo", a página inicial) enquanto roda. O `todos.sh` leva uns 14 minutos.
+Cada script mostra o esperado e o obtido e termina com **PASSOU** ou **FALHOU**, e devolve a configuração normal no final. Acompanhe no Grafana ("Detalhes técnicos" mostra filas, DLQs e réplicas; a página inicial é a tela "Apresentação") enquanto roda. O `todos.sh` leva uns 14 minutos.
 
 F5 e F6 usam o k6 (`carga/`), que roda dentro do Docker, direto no Nginx:
 
@@ -167,7 +167,7 @@ Cada bônus só vale se for demonstrado. Os dois serviços extras ficam no profi
 
 | Bônus | Como demonstrar |
 |---|---|
-| Tracing distribuído | no Grafana, abra o trace de um pedido (Explore → Tempo): pedidos → estoque → pagamento → gateway → entregas |
+| Tracing distribuído | no Grafana (página inicial), clique no número de um pedido: aparece o caminho dele por pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um |
 | Infraestrutura como código | `./scripts/bonus/recriar-infra.sh`: `terraform destroy` e `apply` ao vivo (segredos, bucket, tabela e filas) |
 | Versionamento de eventos | `./scripts/bonus/versionamento.sh`: `pedido.confirmado` v1 e v2 convivem; o estoque nunca foi alterado |
 | CQRS | `docker compose --profile bonus up -d --build consultas`; leitura em `GET /api/consultas/pedidos/{id}` (DynamoDB) |
@@ -215,7 +215,7 @@ web/              painel, PWA do entregador, página do cliente e bibliotecas (L
 services/java/    pedidos e estoque (+ biblioteca commons)
 services/ts/      auth, pagamento, gateway simulado, entregas, simulador (+ commons); bônus: consultas e autoscaler
 infra/            Terraform (núcleo em main.tf, bônus em bonus.tf) e configuração do RabbitMQ
-observabilidade/  Prometheus e painel "Delivery ao vivo" do Grafana
+observabilidade/  Prometheus e painéis "Apresentação" e "Detalhes técnicos" do Grafana
 carga/            testes de carga (k6)
 simulador/rotas/  rotas GeoJSON do simulador
 scripts/          testes do professor (falhas/), bônus, túnel e utilitários

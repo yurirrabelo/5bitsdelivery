@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { ConfirmChannel, ConsumeMessage } from 'amqplib';
 import { ChannelWrapper } from 'amqp-connection-manager';
 import { Pool, PoolClient } from 'pg';
@@ -105,6 +106,8 @@ async function processar(o: OpcoesConsumidor, msg: ConsumeMessage): Promise<'pro
     type: envelope.type,
     pedidoId: envelope.payload?.pedidoId,
   });
+  // o número do pedido no span: o Grafana acha o trace de um pedido por "pedido.id"
+  if (envelope.payload?.pedidoId !== undefined) trace.getActiveSpan()?.setAttribute('pedido.id', Number(envelope.payload.pedidoId));
   if (o.executar) return o.executar(envelope, log);
 
   const manipulador = o.manipuladores?.[envelope.type];

@@ -1,5 +1,6 @@
 package delivery.pedidos;
 
+import io.opentelemetry.api.trace.Span;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +63,7 @@ public class PedidosController {
         } catch (PedidoServico.LimiteExcedidoException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
+        Span.current().setAttribute("pedido.id", id); // o trace do pedido começa nesta requisição
         String statusUrl = "/api/pedidos/" + id;
         return ResponseEntity.accepted()
                 .header("Location", statusUrl)

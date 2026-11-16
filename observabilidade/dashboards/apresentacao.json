@@ -1,0 +1,1158 @@
+{
+ "uid": "apresentacao",
+ "title": "5Bits Delivery · Apresentação",
+ "tags": [
+  "5bits",
+  "apresentacao"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "5s",
+ "time": {
+  "from": "now-15m",
+  "to": "now"
+ },
+ "editable": true,
+ "graphTooltip": 1,
+ "description": "Tela da apresentação: números, o caminho de cada pedido e o mapa dos serviços.",
+ "panels": [
+  {
+   "id": 5,
+   "type": "text",
+   "title": "",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 4
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "### Como ler esta tela\n**Os números de cima** dizem o que está acontecendo agora (quantas pessoas pediram, quantas unidades restam). **Em \"O caminho do pedido\"** você escolhe um pedido e vê por quais serviços ele passou e quanto cada um demorou. **Lá embaixo** está o desenho da arquitetura funcionando. Cada pedido que alguém faz pelo QR code aparece aqui em poucos segundos."
+   },
+   "transparent": true
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Pessoas que entraram",
+   "description": "Quantas pessoas abriram o link do QR code e entraram (uma sessão por pessoa).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(delivery_sessoes_total{papel=\"cliente\"}) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "purple"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "purple",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "Pedidos feitos",
+   "description": "Quantos pedidos chegaram ao sistema (o cliente recebeu o 202 na hora).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(delivery_pedidos_transicoes_total{status=\"RECEBIDO\"}) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 8,
+   "type": "stat",
+   "title": "Pedidos confirmados",
+   "description": "Pedidos que reservaram a unidade e pagaram com sucesso.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(delivery_pedidos_transicoes_total{status=\"CONFIRMADO\"}) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "green"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 9,
+   "type": "stat",
+   "title": "Sem sucesso",
+   "description": "Acabou o estoque, o pagamento falhou ou demorou demais (o sistema desfez o que tinha feito).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(delivery_pedidos_transicoes_total{status=~\"ESGOTADO|CANCELADO|ESTORNADO\"}) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "red"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 10,
+   "type": "stat",
+   "title": "Unidades restantes",
+   "description": "Quantas unidades da promoção ainda estão livres. Nunca passa de 10 nem fica negativo, mesmo com todo mundo pedindo ao mesmo tempo.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(delivery_estoque_unidades{estado=\"disponivel\"}) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "orange"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "orange",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 11,
+   "type": "stat",
+   "title": "Tempo do pagamento",
+   "description": "Quanto o gateway de pagamento (serviço externo) demora, em média, para responder.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 4,
+    "w": 4,
+    "h": 5
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(delivery_gateway_duracao_ms_sum[$__range]))/sum(increase(delivery_gateway_duracao_ms_count[$__range]))",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "decimals": 0,
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "yellow"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "yellow",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   }
+  },
+  {
+   "id": 12,
+   "type": "timeseries",
+   "title": "Pedidos por minuto",
+   "description": "Quantos pedidos entraram a cada minuto. Sobe quando a turma pede pelo QR code.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 9,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "refId": "A",
+     "legendFormat": "pedidos",
+     "expr": "sum(increase(delivery_pedidos_transicoes_total{status=\"RECEBIDO\"}[1m]))"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 3,
+      "fillOpacity": 18,
+      "showPoints": "never",
+      "lineInterpolation": "smooth"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 13,
+   "type": "timeseries",
+   "title": "Quanto cada serviço demora (média)",
+   "description": "Tempo médio que cada serviço leva para tratar uma mensagem da fila. Quanto mais alto, mais lento.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 9,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "refId": "A",
+     "legendFormat": "{{service}}",
+     "expr": "sum by (service) (increase(traces_spanmetrics_latency_sum{span_kind=\"SPAN_KIND_CONSUMER\"}[2m])) / sum by (service) (increase(traces_spanmetrics_latency_count{span_kind=\"SPAN_KIND_CONSUMER\"}[2m]))"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 3,
+      "fillOpacity": 18,
+      "showPoints": "never",
+      "lineInterpolation": "smooth"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 14,
+   "type": "row",
+   "title": "O caminho do pedido",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 1,
+   "type": "table",
+   "title": "1. Pedidos recentes: clique no número",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "description": "Cada linha é um pedido que passou pelo sistema. Clique no número para ver, ao lado, o caminho dele por cada serviço.",
+   "gridPos": {
+    "x": 0,
+    "y": 17,
+    "w": 7,
+    "h": 13
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "refId": "A",
+     "queryType": "traceql",
+     "tableType": "spans",
+     "limit": 30,
+     "spss": 1,
+     "query": "{ resource.service.name = \"pedidos\" && name = \"POST /api/pedidos\" } | select(span.pedido.id)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "left",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceIdHidden"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceService"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceName"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "spanID"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "name"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "kind"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "duration"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "service.name"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "time"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Hora"
+       },
+       {
+        "id": "unit",
+        "value": "time: HH:mm:ss"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "pedido.id"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Pedido nº"
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "orange"
+        }
+       },
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Ver o caminho deste pedido",
+          "url": "/d/apresentacao/apresentacao?orgId=1&var-traceid=${__data.fields.traceIdHidden}&${__url_time_range}&refresh=5s"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "sortBy": [
+     {
+      "displayName": "Hora",
+      "desc": true
+     }
+    ],
+    "cellHeight": "md"
+   }
+  },
+  {
+   "id": 2,
+   "type": "table",
+   "title": "2. O caminho do pedido escolhido, serviço por serviço",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "description": "O mesmo pedido visto por dentro: cada linha é um serviço trabalhando nele, na ordem em que aconteceu, e quanto tempo cada um demorou.",
+   "gridPos": {
+    "x": 7,
+    "y": 17,
+    "w": 17,
+    "h": 13
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "refId": "A",
+     "queryType": "traceql",
+     "tableType": "spans",
+     "limit": 50,
+     "spss": 50,
+     "query": "{ trace:id = \"${traceid}\" && (kind = consumer || (kind = server && span.pedido.id > 0) || (resource.service.name = \"gateway-pagamento\" && kind = server)) } | select(span:name, resource.service.name, span.pedido.id)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "Clique em um pedido ao lado para ver o caminho dele",
+     "custom": {
+      "align": "left",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceIdHidden"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceService"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "traceName"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "spanID"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "kind"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "pedido.id"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "time"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Hora"
+       },
+       {
+        "id": "unit",
+        "value": "time: HH:mm:ss.SSS"
+       },
+       {
+        "id": "custom.width",
+        "value": 120
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "name"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "O que aconteceu"
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "POST /api/pedidos": {
+            "text": "📝 Pedido recebido (API)",
+            "index": 0
+           },
+           "estoque.reservar process": {
+            "text": "📦 Estoque separa a unidade",
+            "index": 1
+           },
+           "estoque.reservado process": {
+            "text": "🧭 Pedidos recebe a reserva",
+            "index": 2
+           },
+           "estoque.esgotado process": {
+            "text": "😕 Pedidos recebe: esgotado",
+            "index": 3
+           },
+           "pagamento.entrada process": {
+            "text": "💳 Pagamento cobra",
+            "index": 4
+           },
+           "POST": {
+            "text": "🏦 Gateway de pagamento (externo)",
+            "index": 5
+           },
+           "pagamento.aprovado process": {
+            "text": "✅ Pedidos confirma o pagamento",
+            "index": 6
+           },
+           "pagamento.recusado process": {
+            "text": "❌ Pedidos recebe: pagamento recusado",
+            "index": 7
+           },
+           "pedido.confirmado process": {
+            "text": "📦 Estoque dá baixa (venda)",
+            "index": 8
+           },
+           "pedido.cancelado process": {
+            "text": "↩️ Estoque devolve a unidade",
+            "index": 9
+           },
+           "pagamento.estornado process": {
+            "text": "↩️ Pedidos registra o estorno",
+            "index": 10
+           },
+           "entregas.entrada process": {
+            "text": "🛵 Entregas recebe o pedido",
+            "index": 11
+           },
+           "entrega.atribuida process": {
+            "text": "🛵 Pedidos marca EM ENTREGA",
+            "index": 12
+           },
+           "entrega.concluida process": {
+            "text": "🏁 Pedidos marca ENTREGUE",
+            "index": 13
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "service.name"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Quem fez"
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "pedidos": {
+            "text": "Pedidos (Java)",
+            "index": 0
+           },
+           "estoque": {
+            "text": "Estoque (Java)",
+            "index": 1
+           },
+           "pagamento": {
+            "text": "Pagamento (TypeScript)",
+            "index": 2
+           },
+           "gateway-pagamento": {
+            "text": "Gateway externo (simulado)",
+            "index": 3
+           },
+           "entregas": {
+            "text": "Entregas (TypeScript)",
+            "index": 4
+           },
+           "auth": {
+            "text": "Autenticação (TypeScript)",
+            "index": 5
+           }
+          }
+         }
+        ]
+       },
+       {
+        "id": "custom.width",
+        "value": 230
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "duration"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Demorou"
+       },
+       {
+        "id": "unit",
+        "value": "ns"
+       },
+       {
+        "id": "custom.width",
+        "value": 120
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "continuous-GrYlRd"
+        }
+       },
+       {
+        "id": "min",
+        "value": 0
+       },
+       {
+        "id": "max",
+        "value": 1500000000
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "sortBy": [
+     {
+      "displayName": "Hora",
+      "desc": false
+     }
+    ],
+    "cellHeight": "md"
+   }
+  },
+  {
+   "id": 15,
+   "type": "row",
+   "title": "Detalhe técnico do pedido escolhido (clique para abrir)",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 30,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 3,
+     "type": "traces",
+     "title": "Cascata do trace (detalhe técnico: cada chamada, inclusive ao banco)",
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "description": "Para quem quer ver tudo: cada barra é uma chamada (HTTP, banco, fila). O comprimento é o tempo que ela levou.",
+     "gridPos": {
+      "x": 0,
+      "y": 31,
+      "w": 24,
+      "h": 16
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+       },
+       "refId": "A",
+       "queryType": "traceId",
+       "query": "${traceid}"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "type": "row",
+   "title": "A arquitetura funcionando",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 31,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 4,
+   "type": "nodeGraph",
+   "title": "Quem fala com quem (tempo real)",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "description": "O desenho da arquitetura, mas vivo: cada círculo é um serviço ou banco, cada seta é uma chamada. Quanto mais grossa a seta, mais chamadas.",
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 18
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "refId": "A",
+     "queryType": "serviceMap",
+     "serviceMapQuery": ""
+    }
+   ],
+   "options": {
+    "nodes": {
+     "mainStatUnit": "ms",
+     "secondaryStatUnit": "reqps"
+    },
+    "edges": {}
+   }
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "traceid",
+    "type": "textbox",
+    "label": "Trace do pedido",
+    "hide": 2,
+    "query": "0",
+    "current": {
+     "text": "0",
+     "value": "0"
+    },
+    "options": [
+     {
+      "selected": true,
+      "text": "0",
+      "value": "0"
+     }
+    ]
+   }
+  ]
+ },
+ "annotations": {
+  "list": []
+ },
+ "links": [
+  {
+   "title": "Detalhes técnicos (para perguntas)",
+   "type": "link",
+   "url": "/d/delivery-ao-vivo/detalhes-tecnicos",
+   "icon": "dashboard",
+   "targetBlank": false
+  }
+ ]
+}

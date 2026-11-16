@@ -178,13 +178,19 @@
     else mostrarPedir();
   }
 
-  (function iniciar() {
+  (async function iniciar() {
     const u = Auth.usuario();
-    if (u && u.role === 'cliente') {
-      iniciarLogado();
-    } else {
-      if (!codigoDoLink) $('linha-codigo').classList.remove('oculto');
-      tela('entrar');
+    if (u && u.role === 'cliente') return iniciarLogado();
+
+    // Veio pelo QR (o código está no link): entra sozinho como visitante e já mostra o botão de pedir.
+    // Sem o código no link, a pessoa digita o apelido e o código.
+    if (codigoDoLink) {
+      try {
+        await Auth.entrarComoCliente('Visitante ' + (100 + Math.floor(Math.random() * 900)), codigoDoLink);
+        return iniciarLogado();
+      } catch (e) { /* código inválido: cai para o formulário */ }
     }
+    if (!codigoDoLink) $('linha-codigo').classList.remove('oculto');
+    tela('entrar');
   })();
 })();
