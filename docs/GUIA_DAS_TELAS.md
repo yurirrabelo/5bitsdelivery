@@ -55,7 +55,7 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 - **Quanto cada serviço demora (média):** tempo que cada serviço leva para tratar uma mensagem. O pagamento é o mais lento porque chama o gateway.
 
 ### "O caminho do pedido" (o painel principal)
-- **1. Pedidos recentes:** um pedido por linha. **Clique no número.**
+- **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram.
 - **2. O caminho do pedido escolhido:** o mesmo pedido, serviço por serviço, na ordem em que aconteceu e quanto cada um demorou. É a versão "de dentro" da tela do cliente:
 
 | O que aconteceu | Quem fez | O que significa |
@@ -69,12 +69,12 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | 📦 Estoque dá baixa (venda) | Estoque | a unidade reservada vira vendida |
 | 🛵 Entregas recebe o pedido | Entregas | só o pedido do operador (com destino) vira entrega: procura o entregador e avisa o celular. O pedido do QR termina aqui, confirmado |
 
-Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar.
+Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ falhou aqui, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento, o Gateway e o veredito do Pedidos; numa promoção esgotada, o Estoque e o Pedidos.
 
 - **Detalhe técnico do pedido escolhido (fechado):** a cascata completa do trace, com cada chamada (HTTP, banco, fila). Para quem pergunta "e dentro do serviço?".
 
 ### "A arquitetura funcionando" (mapa de serviços)
-O desenho da arquitetura, vivo. Cada círculo é um serviço ou banco, cada seta é uma chamada, e o número dentro é o tempo médio e as chamadas por segundo. **`user`** é quem chama de fora (navegador, simulador, teste de carga). **`pg-…`** são os bancos e **`redis`** é o Redis. As setas entre serviços passam pelo RabbitMQ.
+O desenho da arquitetura, **ao vivo e somando todos os pedidos do período** (não é só o pedido escolhido, por isso o desenho é sempre o mesmo; o que muda são os números e as cores). Cada círculo é um serviço ou banco, cada seta é uma chamada, e o número dentro é o tempo médio e as chamadas por segundo. **`user`** é quem chama de fora (navegador, simulador, teste de carga). **`pg-…`** são os bancos e **`redis`** é o Redis. As setas entre serviços passam pelo RabbitMQ. **Quando algo falha, o anel do serviço onde aconteceu fica vermelho**, na proporção das falhas: poucas falhas entre muitos pedidos dão só uma fatia pequena. Para o vermelho ficar bem visível, olhe um período curto (canto superior direito) logo depois de provocar uma falha.
 
 ---
 

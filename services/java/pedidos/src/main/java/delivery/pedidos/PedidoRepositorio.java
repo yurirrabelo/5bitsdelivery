@@ -1,5 +1,7 @@
 package delivery.pedidos;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -133,7 +135,32 @@ public class PedidoRepositorio {
         if (n == 0) return false;
         registrarHistorico(id, de, para, gatilho, correlationId);
         metricas.transicao(para);
+        marcarResultado(Span.current(), para, motivo);
         return true;
+    }
+
+    /**
+     * Grava no span como o pedido terminou, para o Grafana listar o resultado de cada pedido. Quando não deu certo,
+     * o span também vira erro: é o que pinta de vermelho o ponto da falha no Grafana.
+     */
+    static void marcarResultado(Span span, String para, String motivo) {
+        String resultado = switch (para) {
+            case "CONFIRMADO" -> "sucesso";
+            case "ESGOTADO" -> "esgotado";
+            case "ESTORNADO" -> "estornado";
+            case "CANCELADO" -> "PRAZO_EXPIRADO".equals(motivo) ? "prazo_expirado" : "recusado";
+            default -> null;
+        };
+        if (resultado == null) return;
+        span.setAttribute("pedido.resultado", resultado);
+        String falha = switch (resultado) {
+            case "esgotado" -> "estoque esgotado";
+            case "estornado" -> "pagamento estornado";
+            case "prazo_expirado" -> "pagamento demorou demais";
+            case "recusado" -> "pagamento recusado";
+            default -> null;
+        };
+        if (falha != null) span.setStatus(StatusCode.ERROR, falha);
     }
 
     /** Pedidos com prazo vencido viram CANCELADO numa instrução só. Devolve (id, correlationId, traceparent). */

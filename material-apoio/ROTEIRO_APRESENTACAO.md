@@ -54,7 +54,8 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 5. **O QR em tela cheia, com a URL em texto embaixo** (alguns celulares não leem o QR da tela). Use o **Modo telão** do painel.
 6. **Grafana em tela cheia no telão** com o endereço `http://localhost:3000/d/apresentacao/apresentacao?kiosk`. Mostre o painel do operador e o Grafana em duas abas, e troque entre elas.
 7. **Quem narra o Grafana não é quem opera.** A pessoa 4 mexe nas telas e a pessoa 2 explica o que aparece. Ninguém precisa fazer as duas coisas.
-8. **Plano B pronto e ensaiado** (veja abaixo): se o GPS real falhar, o simulador reproduz a rota do ensaio com o device do colega e a plateia não percebe a diferença.
+8. **Mostre o vermelho de propósito.** Com a turma pedindo, ligue uma taxa de falha no gateway (`GATEWAY_TAXA_FALHA=30` no `.env` e `docker compose up -d gateway-pagamento`). Cerca de 3 em cada 10 pedidos passam a ser recusados: a tabela mostra "Recusado", o caminho do pedido mostra em vermelho onde falhou e o mapa de serviços ganha um anel vermelho no pagamento. Depois volte para `0` e aplique de novo. Ensaie isso: é a parte que mais impressiona.
+9. **Plano B pronto e ensaiado** (veja abaixo): se o GPS real falhar, o simulador reproduz a rota do ensaio com o device do colega e a plateia não percebe a diferença.
 
 ## Antes de começar (30 min antes)
 

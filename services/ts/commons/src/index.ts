@@ -4,6 +4,7 @@ export * from './consumidor';
 export * from './contratos';
 export * from './db';
 export * from './envelope';
+export * from './falha';
 export * from './inbox';
 export * from './logger';
 export * from './metricas';

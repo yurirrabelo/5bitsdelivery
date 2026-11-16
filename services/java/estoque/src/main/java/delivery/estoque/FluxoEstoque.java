@@ -3,6 +3,8 @@ package delivery.estoque;
 import delivery.commons.Envelope;
 import delivery.commons.ManipuladorMensagem;
 import delivery.commons.Outbox;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,6 +64,7 @@ public class FluxoEstoque {
             outbox.publicar("estoque.reservado", e.correlationId(), payload, null);
         } else {
             jdbc.update("DELETE FROM reservas WHERE pedido_id = ?", pedidoId); // não houve reserva
+            Span.current().setStatus(StatusCode.ERROR, "estoque esgotado"); // vermelho no Grafana: foi aqui que acabou
             outbox.publicar("estoque.esgotado", e.correlationId(), payload, null);
         }
     }

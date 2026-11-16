@@ -29,7 +29,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "### Como ler esta tela\n**Os números de cima** dizem o que está acontecendo agora (quantas pessoas pediram, quantas unidades restam). **Em \"O caminho do pedido\"** você escolhe um pedido e vê por quais serviços ele passou e quanto cada um demorou. **Lá embaixo** está o desenho da arquitetura funcionando. Cada pedido que alguém faz pelo QR code aparece aqui em poucos segundos."
+    "content": "### Como ler esta tela\n**Os números de cima** dizem o que está acontecendo agora (quantas pessoas pediram, quantas unidades restam). **Em \"O caminho do pedido\"** você escolhe um pedido e vê por quais serviços ele passou e quanto cada um demorou. **Lá embaixo** está o desenho da arquitetura funcionando, somando todos os pedidos; onde algo falha, fica vermelho. Cada pedido que alguém faz pelo QR code aparece aqui em poucos segundos."
    },
    "transparent": true
   },
@@ -528,11 +528,11 @@
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "Cada linha é um pedido que passou pelo sistema. Clique no número para ver, ao lado, o caminho dele por cada serviço.",
+   "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Clique no número para ver, ao lado, o caminho dele por cada serviço.",
    "gridPos": {
     "x": 0,
     "y": 17,
-    "w": 7,
+    "w": 8,
     "h": 13
    },
    "targets": [
@@ -544,9 +544,74 @@
      "refId": "A",
      "queryType": "traceql",
      "tableType": "spans",
-     "limit": 30,
-     "spss": 1,
-     "query": "{ resource.service.name = \"pedidos\" && name = \"POST /api/pedidos\" } | select(span.pedido.id)"
+     "limit": 60,
+     "spss": 5,
+     "query": "{ span.pedido.resultado =~ \".+\" } | select(span.pedido.id, span.pedido.resultado)"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Start time"
+       }
+      ]
+     }
+    },
+    {
+     "id": "groupBy",
+     "options": {
+      "fields": {
+       "pedido.id": {
+        "aggregations": [],
+        "operation": "groupby"
+       },
+       "traceIdHidden": {
+        "aggregations": [],
+        "operation": "groupby"
+       },
+       "Start time": {
+        "aggregations": [
+         "max"
+        ],
+        "operation": "aggregate"
+       },
+       "pedido.resultado": {
+        "aggregations": [
+         "lastNotNull"
+        ],
+        "operation": "aggregate"
+       }
+      }
+     }
+    },
+    {
+     "id": "organize",
+     "options": {
+      "renameByName": {
+       "Start time (max)": "Hora",
+       "pedido.resultado (lastNotNull)": "Resultado",
+       "pedido.id": "Pedido nº"
+      },
+      "indexByName": {
+       "Start time (max)": 0,
+       "pedido.id": 1,
+       "pedido.resultado (lastNotNull)": 2
+      }
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "Hora",
+        "desc": true
+       }
+      ]
+     }
     }
    ],
    "fieldConfig": {
@@ -574,112 +639,28 @@
      {
       "matcher": {
        "id": "byName",
-       "options": "traceService"
+       "options": "Hora"
       },
       "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "traceName"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "spanID"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "name"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "kind"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "duration"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "service.name"
-      },
-      "properties": [
-       {
-        "id": "custom.hidden",
-        "value": true
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "time"
-      },
-      "properties": [
-       {
-        "id": "displayName",
-        "value": "Hora"
-       },
        {
         "id": "unit",
         "value": "time: HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 80
        }
       ]
      },
      {
       "matcher": {
        "id": "byName",
-       "options": "pedido.id"
+       "options": "Pedido nº"
       },
       "properties": [
        {
-        "id": "displayName",
-        "value": "Pedido nº"
+        "id": "custom.width",
+        "value": 80
        },
        {
         "id": "custom.cellOptions",
@@ -704,17 +685,60 @@
         ]
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Resultado"
+      },
+      "properties": [
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "sucesso": {
+            "text": "✅ Sucesso",
+            "color": "green",
+            "index": 0
+           },
+           "recusado": {
+            "text": "❌ Recusado",
+            "color": "red",
+            "index": 1
+           },
+           "prazo_expirado": {
+            "text": "⏱️ Demorou demais",
+            "color": "orange",
+            "index": 2
+           },
+           "esgotado": {
+            "text": "😕 Esgotado",
+            "color": "yellow",
+            "index": 3
+           },
+           "estornado": {
+            "text": "↩️ Estornado",
+            "color": "purple",
+            "index": 4
+           }
+          }
+         }
+        ]
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       }
+      ]
      }
     ]
    },
    "options": {
     "showHeader": true,
-    "sortBy": [
-     {
-      "displayName": "Hora",
-      "desc": true
-     }
-    ],
     "cellHeight": "md"
    }
   },
@@ -726,11 +750,11 @@
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "O mesmo pedido visto por dentro: cada linha é um serviço trabalhando nele, na ordem em que aconteceu, e quanto tempo cada um demorou.",
+   "description": "O mesmo pedido visto por dentro: cada linha é um serviço trabalhando nele, na ordem em que aconteceu, e quanto tempo cada um demorou. Em vermelho, onde deu errado.",
    "gridPos": {
-    "x": 7,
+    "x": 8,
     "y": 17,
-    "w": 17,
+    "w": 16,
     "h": 13
    },
    "targets": [
@@ -744,7 +768,7 @@
      "tableType": "spans",
      "limit": 50,
      "spss": 50,
-     "query": "{ trace:id = \"${traceid}\" && (kind = consumer || (kind = server && span.pedido.id > 0) || (resource.service.name = \"gateway-pagamento\" && kind = server)) } | select(span:name, resource.service.name, span.pedido.id)"
+     "query": "{ trace:id = \"${traceid}\" && (kind = consumer || (kind = server && span.pedido.id > 0) || (resource.service.name = \"gateway-pagamento\" && kind = server)) } | select(span:name, resource.service.name, span:status, span:statusMessage, span.pedido.id)"
     }
    ],
    "fieldConfig": {
@@ -846,7 +870,7 @@
        },
        {
         "id": "custom.width",
-        "value": 120
+        "value": 110
        }
       ]
      },
@@ -974,7 +998,87 @@
        },
        {
         "id": "custom.width",
-        "value": 230
+        "value": 190
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "status"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Situação"
+       },
+       {
+        "id": "custom.width",
+        "value": 120
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "error": {
+            "text": "❌ falhou aqui",
+            "color": "red",
+            "index": 0
+           },
+           "ok": {
+            "text": "✓",
+            "color": "green",
+            "index": 1
+           },
+           "unset": {
+            "text": "✓",
+            "color": "green",
+            "index": 2
+           }
+          }
+         }
+        ]
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "statusMessage"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "O que deu errado"
+       },
+       {
+        "id": "custom.width",
+        "value": 200
+       },
+       {
+        "id": "noValue",
+        "value": " "
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "red"
+        }
        }
       ]
      },
@@ -994,7 +1098,7 @@
        },
        {
         "id": "custom.width",
-        "value": 120
+        "value": 100
        },
        {
         "id": "custom.cellOptions",
@@ -1052,7 +1156,7 @@
       "type": "tempo",
       "uid": "tempo"
      },
-     "description": "Para quem quer ver tudo: cada barra é uma chamada (HTTP, banco, fila). O comprimento é o tempo que ela levou.",
+     "description": "Para quem quer ver tudo: cada barra é uma chamada (HTTP, banco, fila). O comprimento é o tempo que ela levou. Chamadas com erro aparecem em vermelho.",
      "gridPos": {
       "x": 0,
       "y": 31,
@@ -1089,12 +1193,12 @@
   {
    "id": 4,
    "type": "nodeGraph",
-   "title": "Quem fala com quem (tempo real)",
+   "title": "Quem fala com quem (ao vivo, todos os pedidos): vermelho = onde houve falha",
    "datasource": {
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "O desenho da arquitetura, mas vivo: cada círculo é um serviço ou banco, cada seta é uma chamada. Quanto mais grossa a seta, mais chamadas.",
+   "description": "O desenho da arquitetura, vivo e somando todos os pedidos do período (não é só o pedido escolhido). Cada círculo é um serviço ou banco, cada seta é uma chamada. Quando algo falha (pagamento recusado, estoque esgotado, prazo vencido), o anel do serviço onde aconteceu fica vermelho na proporção das falhas.",
    "gridPos": {
     "x": 0,
     "y": 32,

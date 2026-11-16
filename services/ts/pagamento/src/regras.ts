@@ -1,4 +1,4 @@
-import { Envelope, Logger, Manipulador, criarEnvelope, publicarNaOutbox } from '@delivery/commons';
+import { Envelope, Logger, Manipulador, criarEnvelope, marcarFalha, publicarNaOutbox } from '@delivery/commons';
 import { PoolClient } from 'pg';
 import { Gateway } from './gateway';
 import { duracaoGateway, pagamentos } from './metricas';
@@ -80,6 +80,7 @@ async function gravarRecusa(c: PoolClient, e: Envelope, pedidoId: number, motivo
   await c.query("INSERT INTO pagamentos (pedido_id, status, motivo) VALUES ($1, 'RECUSADO', $2)", [pedidoId, motivo]);
   await responder(c, e, 'pagamento.recusado', { pedidoId, motivo });
   pagamentos.add(1, { resultado: 'recusado' });
+  marcarFalha(motivo === 'PRAZO_EXPIRADO' ? 'pagamento demorou demais' : 'pagamento recusado: gateway falhou');
 }
 
 // a resposta herda o correlationId do comando recebido
