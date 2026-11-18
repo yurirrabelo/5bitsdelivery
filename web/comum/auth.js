@@ -1,7 +1,10 @@
 // Sessão e chamadas autenticadas, compartilhadas pelas três telas.
 // O token fica no localStorage; qualquer resposta 401 encerra a sessão.
+// Cada tela guarda a sua própria sessão: abrir o painel, o app do entregador e a página do cliente no mesmo
+// navegador não derruba um ao outro.
 (function () {
-  const CHAVE = 'delivery.sessao';
+  const TELA = location.pathname.startsWith('/entregador') ? 'entregador' : location.pathname.startsWith('/cliente') ? 'cliente' : 'operador';
+  const CHAVE = 'delivery.sessao.' + TELA;
 
   const Auth = {
     sessao() {

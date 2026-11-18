@@ -30,7 +30,7 @@
   let ws, wsTentativas = 0;
 
   async function iniciar() {
-    $('grafana').href = location.protocol + '//' + location.hostname + ':3000';
+    $('grafana').href = 'http://localhost:3000'; // o Grafana só abre no notebook, mesmo com o painel aberto pelo túnel
 
     const cfg = await (await Auth.api('/api/pedidos/config')).json();
     $('promo-nome').textContent = cfg.promocao.nome;
@@ -91,17 +91,12 @@
   }
 
   // ---------------------------------------------------------------- lista de pedidos e estoque
-  // CQRS: se o serviço "consultas" estiver no ar, a lista vem da visão (DynamoDB, eventualmente consistente);
-  // senão, vem direto do pedidos. Quando a visão não responde, tenta de novo só a cada 30 s.
-  let consultasProximaTentativa = 0;
+  // Por padrão a lista vem do pedidos (Postgres). Bônus CQRS: com ?leitura=consultas na URL ela vem da visão
+  // separada (serviço "consultas", DynamoDB, eventualmente consistente).
+  const LER_CONSULTAS = new URLSearchParams(location.search).get('leitura') === 'consultas';
 
   async function listarPedidos() {
-    if (Date.now() >= consultasProximaTentativa) {
-      const r = await Auth.api('/api/consultas/pedidos');
-      if (r.ok) return r.json();
-      consultasProximaTentativa = Date.now() + 30000;
-    }
-    const r = await Auth.api('/api/pedidos?ativos=true');
+    const r = await Auth.api(LER_CONSULTAS ? '/api/consultas/pedidos' : '/api/pedidos');
     return r.ok ? r.json() : null;
   }
 
@@ -226,6 +221,7 @@
       qr.make();
       $('qr').innerHTML = qr.createImgTag(6, 8);
       $('qr-link').textContent = url;
+      $('link-entregador').textContent = base + '/entregador/';
       try { localStorage.setItem('delivery.urlPublica', campo.value.trim()); } catch (e) { /* sem storage */ }
     };
     campo.addEventListener('input', desenhar);

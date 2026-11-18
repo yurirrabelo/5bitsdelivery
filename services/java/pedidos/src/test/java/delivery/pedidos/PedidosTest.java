@@ -361,7 +361,7 @@ class PedidosTest {
         assertEquals("AGUARDANDO_PAGAMENTO", h.get(1).get("para").asString());
         assertTrue(h.get(1).get("correlationId").asString().length() > 10);
 
-        assertEquals(200, http("GET", "/api/pedidos?ativos=true", null, "X-User-Id", "operador", "X-User-Role", "operador").statusCode());
+        assertEquals(200, http("GET", "/api/pedidos", null, "X-User-Id", "operador", "X-User-Role", "operador").statusCode());
         assertEquals(403, http("GET", "/api/pedidos", null, "X-User-Id", "c-1", "X-User-Role", "cliente").statusCode());
     }
 

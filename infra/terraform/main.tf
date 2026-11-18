@@ -86,16 +86,6 @@ resource "aws_secretsmanager_secret_version" "jwt" {
   secret_string = jsonencode({ segredo = var.jwt_segredo })
 }
 
-resource "aws_secretsmanager_secret" "telegram" {
-  name                    = "delivery/telegram"
-  recovery_window_in_days = 0
-}
-
-resource "aws_secretsmanager_secret_version" "telegram" {
-  secret_id     = aws_secretsmanager_secret.telegram.id
-  secret_string = jsonencode({ botToken = var.telegram_bot_token })
-}
-
 # ---------------------------------------------------------------- S3
 
 resource "aws_s3_bucket" "rotas" {

@@ -90,13 +90,15 @@
   }
 
   // ---------------------------------------------------------------- acompanhar (polling a cada 1 s)
-  // CQRS: a leitura vem da visão (serviço "consultas", eventualmente consistente). Se ela não está no ar ou
-  // ainda não recebeu o pedido (pode atrasar alguns milissegundos), cai para o pedidos, que é sempre correto.
+  // Por padrão lê do pedidos (Postgres). Bônus CQRS: com ?leitura=consultas na URL lê da visão separada (serviço
+  // "consultas", DynamoDB), que é eventualmente consistente: se ela ainda não recebeu o pedido, cai para o pedidos.
+  const LER_CONSULTAS = parametros.get('leitura') === 'consultas';
+
   async function lerPedido(id) {
-    try {
+    if (LER_CONSULTAS) {
       const r = await Auth.api('/api/consultas/pedidos/' + id);
       if (r.ok) return r;
-    } catch (e) { /* visão fora do ar */ }
+    }
     return Auth.api('/api/pedidos/' + id);
   }
 

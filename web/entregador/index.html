@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1220">
   <title>5Bits Delivery · Entregador</title>
-  <link rel="manifest" href="/entregador/manifest.webmanifest">
-  <link rel="icon" href="/entregador/icone-192.png">
-  <link rel="apple-touch-icon" href="/entregador/icone-192.png">
+  <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/comum/estilo.css">
   <link rel="stylesheet" href="entregador.css">
 </head>
@@ -23,6 +22,10 @@
     <main>
       <p class="saudacao">Olá, <b id="quem"></b></p>
 
+      <!-- avisos que aparecem sozinhos -->
+      <div class="faixa nova oculto" id="faixa-nova" role="status">🛵 Nova entrega! Pedido <b id="faixa-numero"></b></div>
+      <div class="faixa pronta oculto" id="faixa-entregue" role="status">✅ Entrega concluída. Bom trabalho!</div>
+
       <!-- 1. o status: o que o sistema pode fazer com você agora -->
       <section class="estado" id="estado" data-status="OFFLINE">
         <p class="estado-rotulo">Você está</p>
@@ -34,43 +37,43 @@
         <p class="erro" id="status-erro" role="alert"></p>
       </section>
 
-      <!-- 2. a entrega -->
-      <section class="entrega" id="cartao-entrega">
+      <!-- 2. o GPS do celular (liga sozinho quando você fica Disponível) -->
+      <section class="gps" id="gps" data-estado="desligado">
+        <span class="gps-ponto" aria-hidden="true"></span>
+        <div>
+          <p class="gps-titulo" id="gps-titulo">GPS desligado</p>
+          <p class="dica" id="gps-detalhe">Toque em <b>Disponível</b> e permita a localização.</p>
+          <button class="secundario pequeno oculto" id="gps-tentar">Tentar de novo</button>
+        </div>
+      </section>
+
+      <!-- 3. a entrega -->
+      <section class="entrega">
         <div id="sem-entrega" class="vazio">
           <span class="vazio-icone">🛵</span>
           <p>Nenhuma entrega agora.</p>
-          <p class="dica">Fique <b>Disponível</b> e o pedido chega aqui e no Telegram.</p>
+          <p class="dica">Fique <b>Disponível</b> com esta página aberta: o pedido aparece aqui.</p>
         </div>
 
         <div id="com-entrega" class="oculto">
           <p class="entrega-etiqueta">Entrega em andamento</p>
           <p class="entrega-pedido">Pedido <b id="entrega-pedido"></b></p>
           <p class="distancia"><span id="entrega-distancia">–</span><small>até o destino</small></p>
-          <p class="dica">Destino: <span id="entrega-destino"></span></p>
-          <a class="botao grande" id="abrir-rota" target="_blank" rel="noopener">🗺️ Abrir rota no Google Maps</a>
+          <div id="mapa" class="mapa" aria-label="Mapa com você e o destino"></div>
           <button id="confirmar" class="grande confirmar">✅ Confirmar entrega</button>
+          <p class="dica">Ao chegar no destino a entrega termina sozinha. O botão é para o caso de o GPS não pegar.</p>
           <p class="erro" id="entrega-erro" role="alert"></p>
         </div>
       </section>
 
-      <!-- 3. localização -->
-      <section class="cartao">
-        <label class="troca">
-          <input type="checkbox" id="enviar-local">
-          <span class="chave-visual" aria-hidden="true"></span>
-          <span>Enviar localização pelo app</span>
-        </label>
-        <p class="dica" id="local-info">A fonte principal é o Traccar Client. Use uma fonte por vez. Este modo só funciona com o app aberto.</p>
-      </section>
-
-      <p class="aviso">⚠️ Não mexa no celular pilotando. Pare em local seguro para ler o pedido.</p>
+      <p class="aviso">⚠️ Mantenha esta página aberta e a tela ligada: é ela que envia o GPS. Não mexa no celular pilotando.</p>
       <div class="acoes-rodape">
-        <button class="secundario" id="instalar" hidden>Instalar app</button>
         <button class="secundario" id="sair">Sair</button>
       </div>
     </main>
   </div>
 
+  <script src="/vendor/leaflet/leaflet.js"></script>
   <script src="/comum/auth.js"></script>
   <script src="app.js"></script>
 </body>

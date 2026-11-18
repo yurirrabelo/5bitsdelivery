@@ -39,6 +39,8 @@ docker compose run --rm infra 2>&1 | grep -E "Apply complete|Error"
 echo
 echo "=== Os consumidores perderam as filas apagadas: reinicia os serviços para reassinar (as conexões voltam sozinhas, as assinaturas não)"
 docker compose restart pedidos estoque pagamento entregas >/dev/null 2>&1
+# o serviço do CQRS (profile bonus), se estiver no ar, também perdeu a fila dele
+[ -n "$(docker compose --profile bonus ps -q consultas 2>/dev/null)" ] && docker compose --profile bonus restart consultas >/dev/null 2>&1
 echo "   esperando os consumidores voltarem (até 90 s)"
 esperado=$(( 3 + $(var PAGAMENTO_REPLICAS) ))   # pedidos, estoque, entregas e as réplicas do pagamento
 for i in $(seq 1 45); do

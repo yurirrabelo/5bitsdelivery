@@ -44,8 +44,3 @@ variable "jwt_segredo" {
   type      = string
   sensitive = true
 }
-variable "telegram_bot_token" {
-  type      = string
-  default   = ""
-  sensitive = true
-}

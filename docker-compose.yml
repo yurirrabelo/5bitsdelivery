@@ -1,6 +1,7 @@
 name: delivery-tracker
 
-# Fase 1: infraestrutura. Os serviços de aplicação entram nas fases seguintes.
+# O sistema inteiro sobe com:  docker compose up -d --build
+# Perfis opcionais: tunnel (link https para o celular), sim (simulador), carga (k6), bonus (consultas e autoscaler).
 
 x-postgres: &postgres
   image: postgres:16.16-alpine
@@ -190,28 +191,21 @@ services:
       <<: *app-env
       OTEL_SERVICE_NAME: entregas
       SEGREDO_DB: delivery/db/entregas
-      SEGREDO_TELEGRAM: delivery/telegram
       REDIS_URL: redis://redis:6379
       FILA_ENTREGAS: ${FILA_ENTREGAS}
       GEOFENCE_RAIO_M: ${GEOFENCE_RAIO_M}
-      NOTIFICACAO_PROVIDER: ${NOTIFICACAO_PROVIDER}
-      NTFY_TOPICO: ${NTFY_TOPICO}
       S3_BUCKET_ROTAS: ${S3_BUCKET_ROTAS}
       ENTREGADOR1_NOME: ${ENTREGADOR1_NOME}
-      ENTREGADOR1_DEVICE_ID: ${ENTREGADOR1_DEVICE_ID}
-      ENTREGADOR1_TELEGRAM_CHAT_ID: ${ENTREGADOR1_TELEGRAM_CHAT_ID:-}
       ENTREGADOR2_NOME: ${ENTREGADOR2_NOME}
-      ENTREGADOR2_DEVICE_ID: ${ENTREGADOR2_DEVICE_ID}
-      ENTREGADOR2_TELEGRAM_CHAT_ID: ${ENTREGADOR2_TELEGRAM_CHAT_ID:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  # Entregador simulado: envia posições pelo mesmo caminho do Traccar (profile sim)
+  # Entregador simulado: envia o GPS pela mesma API que o navegador do celular usa (profile sim)
   #   docker compose --profile sim run --rm simulador smoke
-  #   docker compose --profile sim run --rm simulador rota --arquivo /rotas/exemplo.geojson --device $ENTREGADOR2_DEVICE_ID
+  #   docker compose --profile sim run --rm simulador rota --arquivo /rotas/exemplo.geojson --entregador 2
   simulador:
     profiles: ["sim"]
     build:
@@ -224,11 +218,13 @@ services:
     volumes:
       - ./simulador/rotas:/rotas:ro
     environment:
-      GPS_URL: http://nginx/gps
       API_URL: http://nginx
       OPERADOR_USUARIO: ${OPERADOR_USUARIO}
       OPERADOR_SENHA: ${OPERADOR_SENHA}
-      ENTREGADOR2_DEVICE_ID: ${ENTREGADOR2_DEVICE_ID}
+      ENTREGADOR1_USUARIO: ${ENTREGADOR1_USUARIO}
+      ENTREGADOR1_SENHA: ${ENTREGADOR1_SENHA}
+      ENTREGADOR2_USUARIO: ${ENTREGADOR2_USUARIO}
+      ENTREGADOR2_SENHA: ${ENTREGADOR2_SENHA}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -409,7 +405,6 @@ services:
       TF_VAR_fila_consultas: ${FILA_CONSULTAS:-consultas.entrada}
       INFRA_ACAO: ${INFRA_ACAO:-apply}
       TF_VAR_jwt_segredo: ${JWT_SEGREDO}
-      TF_VAR_telegram_bot_token: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
       - ./infra/terraform:/terraform:ro
       - ./infra/entrypoint.sh:/entrypoint.sh:ro

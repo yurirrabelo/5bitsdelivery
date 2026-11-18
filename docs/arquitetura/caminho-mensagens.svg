@@ -71,7 +71,7 @@
 <text x="818" y="719" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">despacha, se o pedido tem destino</text>
 <path d="M1128,784 L402,784" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="776" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">6 · entrega.atribuida</text>
-<text x="818" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">entregador avisado no Telegram</text>
+<text x="818" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">a página do entregador avisa o celular</text>
 <path d="M1128,840 L402,840" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="832" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">7 · entrega.concluida</text>
 <text x="818" y="832" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">chegou ao destino (geofence)</text>

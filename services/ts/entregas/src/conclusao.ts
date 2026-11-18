@@ -4,7 +4,7 @@ import { Deps } from './despacho';
 type AposCommit = (acao: () => void) => void;
 
 // Conclui a entrega (geofence ou botão). UPDATE condicional: só conclui uma vez, só se estiver ATRIBUIDA.
-// O entregador volta a ficar DISPONIVEL e a notificação "entregue" entra na mesma transação do evento.
+// O entregador volta a ficar DISPONIVEL na mesma transação que grava o evento entrega.concluida.
 export async function concluirEntrega(
   c: PoolClient,
   pedidoId: number,
@@ -19,11 +19,6 @@ export async function concluirEntrega(
   if (!r.rowCount) return false;
   const { entregador_id: entregadorId, correlation_id: correlationId } = r.rows[0];
   await c.query("UPDATE entregadores SET status = 'DISPONIVEL' WHERE id = $1 AND status = 'OCUPADO'", [entregadorId]);
-  await c.query('INSERT INTO notificacoes (entregador_id, pedido_id, texto) VALUES ($1, $2, $3)', [
-    entregadorId,
-    pedidoId,
-    `✅ Pedido #${pedidoId} entregue.`,
-  ]);
   await publicarNaOutbox(c, criarEnvelope('entrega.concluida', correlationId, { pedidoId, entregadorId, modo }));
   deps.log.info({ pedidoId, entregadorId, modo }, 'entrega concluída');
   aposCommit(() => deps.hub.transmitir({ type: 'entrega', evento: 'concluida', pedidoId, entregadorId }));

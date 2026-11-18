@@ -2,8 +2,9 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { Ponto, extrairLinha, passoM, percorrer, reta } from './rota';
 
-// Simulador de entregador. Envia posições para o mesmo caminho do Traccar (GET /gps).
-//   rota  --arquivo <geojson|s3://bucket/chave> --device <id> --velocidade <km/h> --intervalo <s>
+// Simulador de entregador: faz o mesmo que o navegador do celular. Entra com o usuário e a senha do entregador
+// e envia as posições para POST /api/entregas/posicoes.
+//   rota  --arquivo <geojson|s3://bucket/chave> [--entregador 1|2] [--velocidade 30] [--intervalo 3]
 //   smoke [--velocidade 120] [--intervalo 1]      fluxo completo com o entregador simulado (entregador 2)
 
 const env = (n: string, p?: string) => process.env[n] ?? p ?? (() => { throw new Error(`variável ${n} não definida`); })();
@@ -26,21 +27,35 @@ async function carregarRota(arquivo: string): Promise<Ponto[]> {
   return extrairLinha(JSON.parse(readFileSync(arquivo, 'utf8')));
 }
 
-// speed do /gps é em NÓS (como o Traccar envia)
-async function enviarPosicao(device: string, p: Ponto, kmh: number): Promise<void> {
-  const q = new URLSearchParams({
-    id: device, lat: String(p[1]), lon: String(p[0]), timestamp: String(Math.floor(Date.now() / 1000)),
-    speed: String(kmh / 1.852), accuracy: '5',
+async function entrar(usuario: string, senha: string): Promise<string> {
+  const r = await fetch(`${env('API_URL')}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: usuario, password: senha }),
   });
-  const r = await fetch(`${env('GPS_URL')}?${q}`);
-  if (!r.ok) throw new Error(`/gps respondeu ${r.status}`);
+  const token = ((await r.json().catch(() => ({}))) as { token?: string }).token;
+  if (!token) throw new Error(`não consegui entrar como "${usuario}" (login respondeu ${r.status})`);
+  return token;
 }
 
-async function andar(linha: Ponto[], device: string, kmh: number, intervaloS: number): Promise<void> {
+// Entra como o entregador 1 (o do celular) ou 2 (o simulado), com o usuário e a senha do .env
+const entrarComoEntregador = (n: string) => entrar(env(`ENTREGADOR${n}_USUARIO`), env(`ENTREGADOR${n}_SENHA`));
+
+// A velocidade vai em m/s, como a Geolocation API do navegador
+async function enviarPosicao(token: string, p: Ponto, kmh: number): Promise<void> {
+  const r = await fetch(`${env('API_URL')}/api/entregas/posicoes`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat: p[1], lon: p[0], precisao: 5, velocidade: kmh / 3.6 }),
+  });
+  if (!r.ok) throw new Error(`/api/entregas/posicoes respondeu ${r.status}`);
+}
+
+async function andar(linha: Ponto[], token: string, kmh: number, intervaloS: number): Promise<void> {
   const pontos = percorrer(linha, passoM(kmh, intervaloS));
-  console.log(`Enviando ${pontos.length} posições como "${device}" a ${kmh} km/h (uma a cada ${intervaloS} s)`);
+  console.log(`Enviando ${pontos.length} posições a ${kmh} km/h (uma a cada ${intervaloS} s)`);
   for (const [i, p] of pontos.entries()) {
-    await enviarPosicao(device, p, kmh);
+    await enviarPosicao(token, p, kmh);
     console.log(`  ${i + 1}/${pontos.length}  ${p[1].toFixed(5)}, ${p[0].toFixed(5)}`);
     if (i < pontos.length - 1) await dormir(intervaloS * 1000);
   }
@@ -78,13 +93,8 @@ async function smoke(a: Record<string, string>): Promise<boolean> {
     if (!bom) ok = false;
   };
 
-  const login = await fetch(`${env('API_URL')}/api/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: env('OPERADOR_USUARIO'), password: env('OPERADOR_SENHA') }),
-  });
-  const token = ((await login.json()) as any).token as string;
+  const token = await entrar(env('OPERADOR_USUARIO'), env('OPERADOR_SENHA'));
   verificar('login do operador', !!token);
-  if (!token) return false;
 
   const cfg = (await api(token, 'GET', '/api/pedidos/config')).json;
   const origem: Ponto = [cfg.origem.lon, cfg.origem.lat];
@@ -102,8 +112,8 @@ async function smoke(a: Record<string, string>): Promise<boolean> {
   verificar('pedido chegou a EM_ENTREGA', emEntrega === 'EM_ENTREGA');
   if (emEntrega !== 'EM_ENTREGA') return false;
 
-  console.log('3. o entregador "dirige" até o destino (mesmo caminho do Traccar: /gps)');
-  await andar(reta(origem, destino), env('ENTREGADOR2_DEVICE_ID'), kmh, intervalo);
+  console.log('3. o entregador "dirige" até o destino (envia o GPS como o navegador do celular)');
+  await andar(reta(origem, destino), await entrarComoEntregador('2'), kmh, intervalo);
 
   console.log('4. espera a conclusão pelo geofence');
   const entregue = await esperarStatus(token, id, 'ENTREGUE', 30);
@@ -129,8 +139,9 @@ async function main() {
   const [comando, ...resto] = process.argv.slice(2);
   const a = argumentos(resto);
   if (comando === 'rota') {
-    if (!a.arquivo || !a.device) throw new Error('uso: rota --arquivo <geojson|s3://bucket/chave> --device <id> [--velocidade 30] [--intervalo 3]');
-    await andar(await carregarRota(a.arquivo), a.device, Number(a.velocidade ?? 30), Number(a.intervalo ?? 3));
+    if (!a.arquivo) throw new Error('uso: rota --arquivo <geojson|s3://bucket/chave> [--entregador 1|2] [--velocidade 30] [--intervalo 3]');
+    const token = await entrarComoEntregador(a.entregador ?? '2');
+    await andar(await carregarRota(a.arquivo), token, Number(a.velocidade ?? 30), Number(a.intervalo ?? 3));
   } else if (comando === 'smoke') {
     const ok = await smoke(a);
     console.log(ok ? '\nSMOKE: PASSOU' : '\nSMOKE: FALHOU');

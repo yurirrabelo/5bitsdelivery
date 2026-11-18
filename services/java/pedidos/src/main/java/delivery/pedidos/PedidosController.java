@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -89,12 +88,11 @@ public class PedidosController {
         return repo.historico(id);
     }
 
-    /** Últimos pedidos, com número e status (só operador). O parâmetro ativos é aceito por compatibilidade. */
+    /** Últimos pedidos, com número e status (só operador). */
     @GetMapping("/api/pedidos")
     public List<Map<String, Object>> listar(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-User-Role", required = false) String role,
-            @RequestParam(value = "ativos", required = false) Boolean ativos) {
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
         exigirLogin(userId, role);
         if (!"operador".equals(role)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "apenas operador");
         return repo.ultimos(50).stream().map(this::json).toList();

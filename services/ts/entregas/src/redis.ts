@@ -10,6 +10,7 @@ import { Hub } from './hub';
 export const STREAM = 'posicoes';
 const GRUPO = 'processador';
 const MAXLEN = 10000;
+const PRECISAO_MAX_GEOFENCE_M = 100;
 
 const gpsTotal = metrics.getMeter('delivery.entregas').createCounter('delivery_gps_posicoes_total', {
   description: 'Posições de GPS processadas',
@@ -24,7 +25,7 @@ export interface PosicaoEntregador {
   precisao: number | null;
 }
 
-// Ingestão (alta frequência): o /gps só normaliza e faz XADD; o processamento é assíncrono (grupo "processador")
+// Ingestão (alta frequência): a API só valida e faz XADD; o processamento é assíncrono (grupo "processador")
 export class Posicoes {
   constructor(readonly redis: Redis) {}
 
@@ -107,17 +108,13 @@ export async function tratarPosicao(o: Pick<OpcoesProcessador, 'posicoes' | 'poo
   const entrega = ativa.rows[0] as { pedido_id: string; destino_lat: number; destino_lon: number } | undefined;
   const pedidoId = entrega ? Number(entrega.pedido_id) : null;
 
-  // o Traccar reenvia posições antigas quando a rede volta: a "última" só avança no tempo
-  const atual = await o.posicoes.ultima(p.entregadorId);
-  if (!atual || p.ts >= atual.ts) {
-    await o.posicoes.redis
-      .multi()
-      .geoadd('entregadores:geo', p.lon, p.lat, String(p.entregadorId))
-      .hset(`entregador:${p.entregadorId}:ultima`, {
-        lat: p.lat, lon: p.lon, ts: p.ts, velocidadeKmh: p.velocidadeKmh ?? '', pedidoId: pedidoId ?? '',
-      })
-      .exec();
-  }
+  await o.posicoes.redis
+    .multi()
+    .geoadd('entregadores:geo', p.lon, p.lat, String(p.entregadorId))
+    .hset(`entregador:${p.entregadorId}:ultima`, {
+      lat: p.lat, lon: p.lon, ts: p.ts, velocidadeKmh: p.velocidadeKmh ?? '', pedidoId: pedidoId ?? '',
+    })
+    .exec();
   await o.pool.query(
     'INSERT INTO posicoes (entregador_id, pedido_id, lat, lon, velocidade_kmh, precisao, ts) VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0))',
     [p.entregadorId, pedidoId, p.lat, p.lon, p.velocidadeKmh, p.precisao, p.ts],
@@ -127,7 +124,9 @@ export async function tratarPosicao(o: Pick<OpcoesProcessador, 'posicoes' | 'poo
     type: 'posicao', entregadorId: p.entregadorId, lat: p.lat, lon: p.lon, ts: p.ts, velocidadeKmh: p.velocidadeKmh, pedidoId,
   });
 
-  if (entrega && pedidoId !== null && dentroDoRaio(p.lat, p.lon, entrega.destino_lat, entrega.destino_lon, o.geofenceM)) {
+  // GPS ainda procurando satélites (precisão ruim) não pode "chegar" ao destino por engano
+  const precisaoBoa = p.precisao === null || p.precisao <= PRECISAO_MAX_GEOFENCE_M;
+  if (entrega && pedidoId !== null && precisaoBoa && dentroDoRaio(p.lat, p.lon, entrega.destino_lat, entrega.destino_lon, o.geofenceM)) {
     const depois: (() => void)[] = [];
     await transacao(o.pool, (c) => concluirEntrega(c, pedidoId, 'geofence', o.deps, (a) => depois.push(a)));
     depois.forEach((a) => a());

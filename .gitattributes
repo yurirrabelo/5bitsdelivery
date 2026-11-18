@@ -6,3 +6,5 @@
 *.yaml text eol=lf
 enabled_plugins text eol=lf
 *.png binary
+Dockerfile text eol=lf
+.env.example text eol=lf

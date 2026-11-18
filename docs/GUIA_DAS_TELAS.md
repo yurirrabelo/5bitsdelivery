@@ -11,8 +11,8 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 | É de verdade | É simulado (e por quê) |
 |---|---|
 | Os 6 serviços (pedidos, estoque, pagamento, entregas, auth, gateway), em Java e TypeScript | O **gateway de pagamento**: é um serviço nosso que faz o papel de uma operadora externa. Dá para configurar falha e atraso (é assim que se provocam as falhas do professor) |
-| RabbitMQ, os 4 bancos Postgres e o Redis | A **nuvem** (MiniStack): imita S3, Secrets Manager e DynamoDB da AWS, criados por Terraform |
-| O GPS do celular (Traccar) e as rotas de verdade | O **entregador simulado** (`entregador2`), que "dirige" sozinho, usado no teste automático |
+| RabbitMQ, os 4 bancos Postgres e o Redis | A **nuvem** (MiniStack): imita o Secrets Manager e o S3 da AWS (e o DynamoDB, no bônus), criados por Terraform |
+| O GPS do celular: o navegador do entregador envia a posição real | O **entregador simulado** (`entregador2`), que "dirige" sozinho, usado no teste automático e como plano B |
 | Os traces, métricas e logs: tudo que aparece no Grafana é medido, não inventado | |
 
 **O que um notebook só não mostra:** latência de rede *entre* máquinas (aqui é quase zero). Os tempos que você vê no Grafana são o custo real de cada serviço trabalhar, sem a rede no meio. Em compensação, a **latência do GPS e do celular é real** (4G + túnel).
@@ -23,14 +23,12 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 | Endereço | Quem usa | Para que serve |
 |---|---|---|
-| **http://localhost:8080** (Painel do operador) | o operador, no notebook, e o telão | Mapa ao vivo com a loja, o entregador 🛵 e o destino. Criar pedido (clique no mapa → escolha o entregador → **Criar pedido**). Lista de pedidos com o status de cada um. QR code para a plateia. **Modo telão** esconde os formulários. |
+| **http://localhost:8080** (Painel do operador) | o operador, no notebook, e o telão | Mapa ao vivo com a loja, o entregador 🛵 e o destino. Criar pedido (clique no mapa → escolha o entregador → **Criar pedido**). Lista de pedidos com o status de cada um. QR code para a plateia e o link do entregador para abrir no celular. **Modo telão** esconde os formulários. |
 | **/cliente/?codigo=promo** (Cliente) | a plateia, pelo QR code | Um botão só: **Quero um pedido!**. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → confirmado (ou o motivo da falha). |
-| **/entregador/** (Entregador) | o colega, no celular | Botões **Disponível** / **Offline**. Quando há pedido: distância até o destino, **Abrir rota no Google Maps** e **Confirmar entrega**. O GPS vem do Traccar, não desta tela. |
+| **/entregador/** (Entregador) | o colega, no celular (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Quando chega um pedido, a tela avisa (faixa, vibração e som) e mostra o mapa com o destino, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
 | **http://localhost:3000** (Grafana) | o telão e quem apresenta | A tela **Apresentação** (números, caminho de cada pedido, mapa dos serviços) e a **Detalhes técnicos** (para perguntas). Sem login. |
 | http://localhost:15672 (RabbitMQ) | ninguém, em condições normais | **Não precisa abrir.** O Grafana já mostra as filas, as DLQs e os traces. Só serve para mostrar uma mensagem parada numa DLQ com as próprias mãos (`admin` / `admin`). |
 | http://localhost:4566 (MiniStack) | ninguém | Não é uma tela: é a API da "nuvem" simulada. |
-
-O **Traccar Client** é um app do celular (não é site): manda o GPS para `/gps`.
 
 ---
 
@@ -109,7 +107,7 @@ Abre pelo botão no topo da Apresentação. É para quando alguém pergunta algo
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" (e "Estoque da promoção" em Detalhes técnicos) |
 | que o sistema se recupera de falhas | os scripts F1–F8 com "Detalhes técnicos" aberto |
-| o GPS | Painel do operador (marcador e "última posição há X s") |
+| o GPS | Painel do operador (marcador e "última posição há X s") e a página do entregador (cartão do GPS) |
 
 **Por que um pedido não aparece na tabela?** Espere uns 20 segundos e confira o período no canto superior direito.
 

@@ -1,9 +1,7 @@
 CREATE TABLE IF NOT EXISTS entregadores (
   id               INT  PRIMARY KEY,
   nome             TEXT NOT NULL,
-  status           TEXT NOT NULL DEFAULT 'DISPONIVEL' CHECK (status IN ('DISPONIVEL', 'OCUPADO', 'OFFLINE')),
-  telegram_chat_id TEXT,
-  device_id        TEXT NOT NULL UNIQUE
+  status           TEXT NOT NULL DEFAULT 'DISPONIVEL' CHECK (status IN ('DISPONIVEL', 'OCUPADO', 'OFFLINE'))
 );
 
 CREATE TABLE IF NOT EXISTS entregas (
@@ -34,17 +32,3 @@ CREATE TABLE IF NOT EXISTS posicoes (
   ts             TIMESTAMPTZ      NOT NULL
 );
 CREATE INDEX IF NOT EXISTS posicoes_pedido ON posicoes (pedido_id, ts) WHERE pedido_id IS NOT NULL;
-
--- mesmo padrão da outbox: gravada na transação do evento e enviada por um laço com nova tentativa
-CREATE TABLE IF NOT EXISTS notificacoes (
-  id                BIGSERIAL   PRIMARY KEY,
-  entregador_id     INT         NOT NULL REFERENCES entregadores (id),
-  pedido_id         BIGINT      NOT NULL,
-  texto             TEXT        NOT NULL,
-  status            TEXT        NOT NULL DEFAULT 'PENDENTE' CHECK (status IN ('PENDENTE', 'ENVIADA')),
-  tentativas        INT         NOT NULL DEFAULT 0,
-  proxima_tentativa TIMESTAMPTZ NOT NULL DEFAULT now(),
-  criada_em         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  enviada_em        TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS notificacoes_pendentes ON notificacoes (id) WHERE status = 'PENDENTE';

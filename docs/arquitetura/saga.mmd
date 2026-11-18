@@ -18,9 +18,9 @@ sequenceDiagram
     P--)E: pedido.confirmado
     P--)ENT: pedido.confirmado
     ENT--)P: entrega.atribuida
-    ENT->>M: Telegram com a rota
+    ENT-->>M: a página do entregador mostra o pedido
     loop a cada 3 s
-        M->>ENT: GPS (Traccar)
+        M->>ENT: GPS do navegador
     end
     ENT--)P: entrega.concluida
     C->>P: GET /api/pedidos/{id}

@@ -9,7 +9,6 @@ titulo "F6b - MiniStack fora" "S3 indisponível na hora de exportar a rota: fica
 login_operador
 limpar_entregas_de_teste
 repor_estoque
-DEVICE=$(var ENTREGADOR2_DEVICE_ID)
 # último ponto de simulador/rotas/exemplo.geojson
 LAT=-26.9148; LON=-49.0610
 
@@ -27,7 +26,7 @@ esperar_status "$id" EM_ENTREGA 60
 verificar "pedido em entrega com o MiniStack fora" EM_ENTREGA "$(status_pedido "$id")"
 
 echo "Passo 3: o simulador percorre a rota de exemplo até o destino"
-docker compose --profile sim run --rm simulador rota --arquivo /rotas/exemplo.geojson --device "$DEVICE" --velocidade 150 --intervalo 1 2>&1 | tail -2
+docker compose --profile sim run --rm --build simulador rota --arquivo /rotas/exemplo.geojson --entregador 2 --velocidade 150 --intervalo 1 2>&1 | tail -2
 esperar_status "$id" ENTREGUE 30
 verificar "pedido ENTREGUE" ENTREGUE "$(status_pedido "$id")"
 sleep 14   # passa pelo menos um ciclo do laço de exportação (10 s)
@@ -44,6 +43,6 @@ verificar "rota exportada depois que o MiniStack voltou" t "$(sql entregas "SELE
 verificar "arquivo no S3 (GET rotas/pedido-$id.geojson)" 200 "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:4566/$(var S3_BUCKET_ROTAS)/rotas/pedido-$id.geojson")"
 segredos=$(curl -s -X POST http://127.0.0.1:4566/ -H 'Content-Type: application/x-amz-json-1.1' -H 'X-Amz-Target: secretsmanager.ListSecrets' \
   -H "Authorization: AWS4-HMAC-SHA256 Credential=$(var AWS_ACCESS_KEY_ID)/20260101/$(var AWS_REGION)/secretsmanager/aws4_request, SignedHeaders=host, Signature=x" -d '{}' | grep -o '"Name"' | wc -l | tr -d ' ')
-verificar "segredos continuam lá (PERSIST_STATE=1)" 7 "$segredos"
+verificar "segredos continuam lá (PERSIST_STATE=1)" 6 "$segredos"
 
 finalizar F6b

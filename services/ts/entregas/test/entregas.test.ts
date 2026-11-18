@@ -5,9 +5,8 @@ import pino from 'pino';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { concluirEntrega } from '../src/conclusao';
-import { Deps, Ultima, aoConfirmarPedido, despacharPendentes, linkMapas } from '../src/despacho';
+import { Deps, Ultima, aoConfirmarPedido, despacharPendentes } from '../src/despacho';
 import { Hub } from '../src/hub';
-import { Notificador, enviarPendentes } from '../src/notificacoes';
 import { Posicoes, tratarPosicao } from '../src/redis';
 import { exportarPendentes, montarRota } from '../src/rota';
 
@@ -36,9 +35,9 @@ beforeAll(async () => {
 afterAll(() => pool.end());
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE entregas, posicoes, notificacoes, outbox, mensagens_processadas');
+  await pool.query('TRUNCATE entregas, posicoes, outbox, mensagens_processadas');
   await pool.query('DELETE FROM entregadores');
-  await pool.query("INSERT INTO entregadores (id, nome, device_id) VALUES (1, 'Real', 'dev-1'), (2, 'Simulado', 'dev-2')");
+  await pool.query("INSERT INTO entregadores (id, nome) VALUES (1, 'Real'), (2, 'Simulado')");
   hub = new HubFalso();
   ultimas = new Map();
   deps = { pool, hub, log, ultimaPosicao: async (id) => ultimas.get(id) ?? null };
@@ -65,7 +64,6 @@ async function receberConfirmado(e: Envelope) {
 const entrega = async (pedidoId: number) => (await pool.query('SELECT * FROM entregas WHERE pedido_id = $1', [pedidoId])).rows[0];
 const statusEntregador = async (id: number) => (await pool.query('SELECT status FROM entregadores WHERE id = $1', [id])).rows[0].status;
 const saidas = async () => (await pool.query('SELECT type, payload FROM outbox ORDER BY id')).rows.map((r) => ({ type: r.type, payload: r.payload.payload }));
-const textos = async () => (await pool.query('SELECT texto FROM notificacoes ORDER BY id')).rows.map((r) => r.texto as string);
 
 // ---------------------------------------------------------------- despacho
 describe('despacho', () => {
@@ -85,12 +83,6 @@ describe('despacho', () => {
     expect(await statusEntregador(1)).toBe('DISPONIVEL');
     expect(await saidas()).toEqual([{ type: 'entrega.atribuida', payload: { pedidoId: 10, entregadorId: 2, entregadorNome: 'Simulado' } }]);
     expect(hub.eventos).toEqual([{ type: 'entrega', evento: 'atribuida', pedidoId: 10, entregadorId: 2 }]);
-  });
-
-  it('a notificação (link do Google Maps) é gravada na mesma transação da atribuição', async () => {
-    await receberConfirmado(confirmado(11));
-    expect(await textos()).toEqual([`🛵 Pedido #11: ${linkMapas(DESTINO.lat, DESTINO.lon)}`]);
-    expect((await textos())[0]).toContain('https://www.google.com/maps/dir/?api=1&destination=-26.9,-49.05');
   });
 
   it('entregador sem posição conhecida continua elegível (menor id)', async () => {
@@ -161,7 +153,7 @@ describe('despacho', () => {
 describe('conclusão da entrega', () => {
   beforeEach(async () => {
     await receberConfirmado(confirmado(40, { preferido: 1 }));
-    await pool.query('TRUNCATE outbox, notificacoes');
+    await pool.query('TRUNCATE outbox');
     hub.eventos = [];
   });
 
@@ -172,12 +164,11 @@ describe('conclusão da entrega', () => {
     return ok;
   };
 
-  it('conclui, libera o entregador, avisa e publica entrega.concluida', async () => {
+  it('conclui, libera o entregador e publica entrega.concluida', async () => {
     expect(await concluir('geofence')).toBe(true);
     expect((await entrega(40)).status).toBe('CONCLUIDA');
     expect(await statusEntregador(1)).toBe('DISPONIVEL');
     expect(await saidas()).toEqual([{ type: 'entrega.concluida', payload: { pedidoId: 40, entregadorId: 1, modo: 'geofence' } }]);
-    expect(await textos()).toEqual(['✅ Pedido #40 entregue.']);
     expect(hub.eventos).toEqual([{ type: 'entrega', evento: 'concluida', pedidoId: 40, entregadorId: 1 }]);
   });
 
@@ -222,48 +213,17 @@ describe('processamento das posições', () => {
     expect(await statusEntregador(1)).toBe('DISPONIVEL');
   });
 
+  it('GPS com precisão ruim (ainda procurando satélites) perto do destino NÃO conclui a entrega', async () => {
+    await tratarPosicao(base(), { entregadorId: 1, lat: DESTINO.lat + 10 * metro, lon: DESTINO.lon, ts: Date.now(), velocidadeKmh: null, precisao: 800 });
+    expect((await entrega(50)).status).toBe('ATRIBUIDA');
+    await tratarPosicao(base(), { entregadorId: 1, lat: DESTINO.lat + 10 * metro, lon: DESTINO.lon, ts: Date.now(), velocidadeKmh: null, precisao: 12 });
+    expect((await entrega(50)).status).toBe('CONCLUIDA');
+  });
+
   it('posição de um entregador sem entrega ativa só atualiza o mapa', async () => {
     await tratarPosicao(base(), { entregadorId: 2, lat: DESTINO.lat, lon: DESTINO.lon, ts: Date.now(), velocidadeKmh: null, precisao: null });
     expect((await entrega(50)).status).toBe('ATRIBUIDA');
     expect((await pool.query('SELECT pedido_id FROM posicoes')).rows[0].pedido_id).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------- notificações
-describe('notificações (mesmo padrão da outbox)', () => {
-  class Falso implements Notificador {
-    enviadas: string[] = [];
-    falhar = false;
-    async enviar(_chat: string | null, texto: string) {
-      if (this.falhar) throw new Error('telegram fora do ar');
-      this.enviadas.push(texto);
-    }
-  }
-
-  beforeEach(async () => {
-    await pool.query("INSERT INTO notificacoes (entregador_id, pedido_id, texto) VALUES (1, 60, 'oi')");
-  });
-
-  it('envia e marca como ENVIADA', async () => {
-    const n = new Falso();
-    expect(await enviarPendentes(pool, n, log)).toBe(1);
-    expect(n.enviadas).toEqual(['oi']);
-    expect((await pool.query('SELECT status FROM notificacoes')).rows[0].status).toBe('ENVIADA');
-    expect(await enviarPendentes(pool, n, log)).toBe(0);
-  });
-
-  it('falha: continua PENDENTE, conta a tentativa e adia; depois envia (não se perde)', async () => {
-    const n = new Falso();
-    n.falhar = true;
-    expect(await enviarPendentes(pool, n, log)).toBe(0);
-    const r = await pool.query("SELECT status, tentativas, proxima_tentativa > now() AS adiada FROM notificacoes");
-    expect(r.rows[0]).toMatchObject({ status: 'PENDENTE', tentativas: 1, adiada: true });
-    expect(await enviarPendentes(pool, n, log)).toBe(0); // ainda dentro da espera
-
-    n.falhar = false;
-    await pool.query('UPDATE notificacoes SET proxima_tentativa = now()');
-    expect(await enviarPendentes(pool, n, log)).toBe(1);
-    expect(n.enviadas).toEqual(['oi']);
   });
 });
 

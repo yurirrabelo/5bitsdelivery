@@ -68,17 +68,34 @@ body.tema-entregador {
 #com-entrega .dica { margin: 0 0 4px; }
 
 .tema-entregador .grande { width: 100%; min-height: 62px; font-size: 1.1rem; display: grid; place-items: center; text-align: center; border-radius: 18px; text-decoration: none; font-weight: 700; }
-a.botao { background: #1d4ed8; color: #fff; }
 button.confirmar { background: #22c55e; color: #052e13; }
 
-/* ---------- interruptor da localização ---------- */
-.troca { display: flex; align-items: center; gap: 14px; font-size: 1.05rem; font-weight: 600; color: var(--texto); cursor: pointer; }
-.troca input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.chave-visual { flex: none; width: 56px; height: 32px; border-radius: 999px; background: #334155; position: relative; transition: background .2s; }
-.chave-visual::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
-.troca input:checked + .chave-visual { background: var(--acao); }
-.troca input:checked + .chave-visual::after { transform: translateX(24px); }
-.troca input:focus-visible + .chave-visual { outline: 3px solid var(--foco); outline-offset: 2px; }
+/* ---------- o GPS do celular ---------- */
+.gps { --cor: var(--offline); display: flex; align-items: flex-start; gap: 14px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px; padding: 14px 16px; }
+.gps[data-estado="ok"] { --cor: var(--disponivel); }
+.gps[data-estado="procurando"] { --cor: var(--ocupado); }
+.gps[data-estado="erro"] { --cor: var(--erro); }
+.gps-ponto { flex: none; width: 14px; height: 14px; margin-top: 5px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 0 5px color-mix(in srgb, var(--cor) 25%, transparent); }
+.gps[data-estado="ok"] .gps-ponto { animation: pulsa 1.6s ease-in-out infinite; }
+.gps-titulo { margin: 0; font-weight: 700; color: var(--cor); }
+.gps .dica { margin: 2px 0 0; }
+button.pequeno { padding: 8px 14px; margin-top: 8px; font-size: .9rem; }
+@keyframes pulsa { 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--cor) 5%, transparent); } }
+
+/* ---------- avisos que aparecem sozinhos ---------- */
+.faixa { margin: 0; padding: 16px; border-radius: 18px; font-size: 1.15rem; font-weight: 700; text-align: center; }
+.faixa.nova { background: #f59e0b; color: #1f1300; animation: chama .9s ease-in-out 6; }
+.faixa.nova b { font-size: 1.5rem; }
+.faixa.pronta { background: #166534; color: #dcfce7; }
+@keyframes chama { 50% { transform: scale(1.04); } }
+
+/* ---------- ordem das caixas: com uma entrega em andamento, ela vem primeiro (distância, mapa e confirmar) ---------- */
+.saudacao { order: -4; }
+.faixa { order: -3; }
+.tem-entrega .entrega { order: -2; }
+
+/* ---------- o mapa da entrega ---------- */
+.mapa { height: 240px; border-radius: 14px; overflow: hidden; border: 1px solid var(--borda); }
 
 .aviso { margin: 4px 0 0; padding: 12px 14px; border-radius: 14px; background: #3b2a06; color: #fde68a; font-size: .9rem; font-weight: 500; }
 .acoes-rodape { display: flex; gap: 10px; justify-content: flex-end; }

@@ -1,11 +1,10 @@
-import { criarApp, env, envInt, iniciarConsumidor, iniciarInfra, lerSegredo, registrarSaude } from '@delivery/commons';
+import { criarApp, env, envInt, iniciarConsumidor, iniciarInfra, registrarSaude } from '@delivery/commons';
 import Redis from 'ioredis';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { registrarRotasEntregas } from './app';
 import { Deps, aoConfirmarPedido, despacharPendentes } from './despacho';
 import { Hub } from './hub';
-import { Notificador, NotificadorLog, NotificadorNtfy, NotificadorTelegram, enviarPendentes } from './notificacoes';
 import { Posicoes, iniciarProcessador } from './redis';
 import { criarS3, exportarPendentes } from './rota';
 
@@ -23,11 +22,10 @@ async function main() {
 
   // Entregadores a partir do .env (upsert; o status de quem já existe não é mexido)
   for (const n of [1, 2]) {
-    await pool.query(
-      `INSERT INTO entregadores (id, nome, device_id, telegram_chat_id) VALUES ($1, $2, $3, NULLIF($4, ''))
-       ON CONFLICT (id) DO UPDATE SET nome = EXCLUDED.nome, device_id = EXCLUDED.device_id, telegram_chat_id = EXCLUDED.telegram_chat_id`,
-      [n, env(`ENTREGADOR${n}_NOME`), env(`ENTREGADOR${n}_DEVICE_ID`), process.env[`ENTREGADOR${n}_TELEGRAM_CHAT_ID`] ?? ''],
-    );
+    await pool.query('INSERT INTO entregadores (id, nome) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET nome = EXCLUDED.nome', [
+      n,
+      env(`ENTREGADOR${n}_NOME`),
+    ]);
   }
 
   const redisUrl = env('REDIS_URL');
@@ -44,20 +42,8 @@ async function main() {
     manipuladores: { 'pedido.confirmado': aoConfirmarPedido(deps) },
   });
 
-  // Notificações: log (padrão), telegram ou ntfy
-  let notificador: Notificador = new NotificadorLog(log);
-  const provider = env('NOTIFICACAO_PROVIDER', 'log');
-  if (provider === 'telegram') {
-    const { botToken } = await lerSegredo<{ botToken: string }>(env('SEGREDO_TELEGRAM'), log);
-    if (botToken) notificador = new NotificadorTelegram(botToken);
-    else log.warn('NOTIFICACAO_PROVIDER=telegram, mas o token está vazio; usando o log');
-  } else if (provider === 'ntfy') {
-    notificador = new NotificadorNtfy(env('NTFY_TOPICO'));
-  }
-
   const s3 = criarS3(env('AWS_ENDPOINT_URL'), env('AWS_REGION'));
   periodico('despacho', envInt('DESPACHO_INTERVALO_MS', 5000), () => despacharPendentes(deps), log);
-  periodico('notificacoes', 2000, () => enviarPendentes(pool, notificador, log), log);
   periodico('rotas', 10000, () => exportarPendentes(pool, s3, env('S3_BUCKET_ROTAS'), log), log);
 
   let encerrando = false;

@@ -17,8 +17,6 @@ export interface Deps {
 
 type AposCommit = (acao: () => void) => void;
 
-export const linkMapas = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
-
 export interface DadosEntrega {
   destino: { lat: number; lon: number } | null;
   entregadorPreferidoId: number | null;
@@ -82,11 +80,6 @@ export async function tentarDespachar(c: PoolClient, pedidoId: number, deps: Dep
     if (!claim.rowCount) continue;
     const { nome } = claim.rows[0];
     await c.query("UPDATE entregas SET status = 'ATRIBUIDA', entregador_id = $1 WHERE pedido_id = $2", [id, pedidoId]);
-    await c.query('INSERT INTO notificacoes (entregador_id, pedido_id, texto) VALUES ($1, $2, $3)', [
-      id,
-      pedidoId,
-      `🛵 Pedido #${pedidoId}: ${linkMapas(entrega.destino_lat, entrega.destino_lon)}`,
-    ]);
     await publicarNaOutbox(c, criarEnvelope('entrega.atribuida', entrega.correlation_id, { pedidoId, entregadorId: id, entregadorNome: nome }));
     deps.log.info({ pedidoId, entregadorId: id }, 'entrega atribuída');
     aposCommit(() => deps.hub.transmitir({ type: 'entrega', evento: 'atribuida', pedidoId, entregadorId: id }));
