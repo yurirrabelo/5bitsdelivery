@@ -8,7 +8,7 @@ const cfg: ConfigAuth = {
   eventoCodigo: 'codigo-do-evento',
   usuarios: [
     criarUsuario('operador', 'Operador', 'operador', null, 'senha-op'),
-    criarUsuario('entregador1', 'Entregador Real', 'entregador', 1, 'senha-ent'),
+    criarUsuario('entregador1', 'Entregador 1', 'entregador', 1, 'senha-ent'),
   ],
 };
 

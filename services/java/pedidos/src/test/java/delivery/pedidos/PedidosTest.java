@@ -353,6 +353,28 @@ class PedidosTest {
     }
 
     @Test
+    void clienteComEnderecoGeraUmPedidoDeEntregaSemEscolherEntregador() throws Exception {
+        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"destino\":{\"lat\":-26.9,\"lon\":-49.05},\"entregadorPreferidoId\":2}",
+                "X-User-Id", "c-gps", "X-User-Role", "cliente");
+        assertEquals(202, r.statusCode());
+        Pedido p = repo.buscar(Json.MAPPER.readTree(r.body()).get("id").asLong()).orElseThrow();
+        assertTrue(p.temDestino());
+        assertEquals(-26.9, p.destinoLat());
+        assertEquals(null, p.entregadorPreferidoId()); // quem escolhe é o entregador, ao aceitar
+
+        // o cliente enxerga o endereço do próprio pedido
+        JsonNode j = Json.MAPPER.readTree(http("GET", "/api/pedidos/" + p.id(), null, "X-User-Id", "c-gps", "X-User-Role", "cliente").body());
+        assertEquals(-26.9, j.get("destino").get("lat").asDouble());
+    }
+
+    @Test
+    void clienteComEnderecoInvalidoRecebe400() throws Exception {
+        assertEquals(400, http("POST", "/api/pedidos", "{\"destino\":{\"lat\":95,\"lon\":0}}", "X-User-Id", "c-a", "X-User-Role", "cliente").statusCode());
+        assertEquals(400, http("POST", "/api/pedidos", "{\"destino\":{\"lat\":-26.9}}", "X-User-Id", "c-b", "X-User-Role", "cliente").statusCode());
+        assertEquals(202, http("POST", "/api/pedidos", "{}", "X-User-Id", "c-c", "X-User-Role", "cliente").statusCode()); // sem endereço continua valendo
+    }
+
+    @Test
     void historicoELista() throws Exception {
         long id = novoPedido("operador", false, true);
         receber("estoque.reservado", id);

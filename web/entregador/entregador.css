@@ -92,7 +92,18 @@ button.pequeno { padding: 8px 14px; margin-top: 8px; font-size: .9rem; }
 /* ---------- ordem das caixas: com uma entrega em andamento, ela vem primeiro (distância, mapa e confirmar) ---------- */
 .saudacao { order: -4; }
 .faixa { order: -3; }
-.tem-entrega .entrega { order: -2; }
+.tem-entrega .entrega, .tem-ofertas .ofertas { order: -2; }
+.tem-ofertas .entrega { display: none; } /* com pedidos para aceitar, a caixa "Nenhum pedido agora" some */
+
+/* ---------- os pedidos esperando um entregador ---------- */
+.ofertas { background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px; padding: 16px; display: grid; gap: 10px; }
+.ofertas .dica { margin: 0; }
+#lista-ofertas { display: grid; gap: 10px; }
+.oferta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-radius: 16px; background: #0f172a; border: 1px solid var(--borda); }
+.oferta-info { display: grid; gap: 2px; }
+.oferta-info b { font-size: 1.35rem; letter-spacing: -.02em; }
+.oferta-info span { color: var(--suave); font-size: .9rem; }
+.oferta button { min-width: 116px; padding: 16px 12px; font-size: 1.1rem; font-weight: 800; }
 
 /* ---------- o mapa da entrega ---------- */
 .mapa { height: 240px; border-radius: 14px; overflow: hidden; border: 1px solid var(--borda); }

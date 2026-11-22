@@ -1,5 +1,6 @@
 // Página do entregador. O celular abre o link, entra e fica "Disponível": o navegador passa a enviar o GPS real
-// (Geolocation API) a cada ~3 s, o pedido aparece aqui e a entrega termina sozinha ao chegar no destino.
+// (Geolocation API) a cada ~3 s, os pedidos dos clientes aparecem aqui para ele ACEITAR e a entrega termina sozinha
+// ao chegar no destino.
 // Não precisa instalar nada. O GPS só funciona em https:// (o túnel) ou em localhost.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -29,7 +30,8 @@
 
   // ---------------------------------------------------------------- status e entrega atual
   let atual = null; // última resposta de GET /api/entregas/me
-  let pedidoVisto; // entrega que já mostramos (undefined = ainda não olhou)
+  let pedidoVisto; // entrega em andamento da última leitura (undefined = ainda não olhou)
+  let ofertasVistas; // pedidos que já apareceram na lista (undefined = ainda não olhou)
 
   function iniciar() {
     $('btn-disponivel').addEventListener('click', () => { liberarSom(); mudarStatus('DISPONIVEL'); });
@@ -63,22 +65,85 @@
     else ligarGps();
 
     const e = atual.entrega;
+    const ofertas = atual.ofertas || [];
     $('app').classList.toggle('tem-entrega', !!e);
-    $('sem-entrega').classList.toggle('oculto', !!e);
+    $('app').classList.toggle('tem-ofertas', !e && ofertas.length > 0);
+    $('sem-entrega').classList.toggle('oculto', !!e || ofertas.length > 0);
     $('com-entrega').classList.toggle('oculto', !e);
+    $('sem-entrega-dica').textContent = st === 'OFFLINE'
+      ? 'Você está offline. Toque em Disponível para receber pedidos.'
+      : 'Fique Disponível com esta página aberta: quando um cliente pedir, o pedido aparece aqui para você aceitar.';
+    desenharOfertas(ofertas);
     if (e) {
       $('entrega-pedido').textContent = '#' + e.pedidoId;
       mostrarMapa(e);
       atualizarDistanciaEMapa();
     }
 
-    // nova entrega (ou entrega que acabou) desde a última leitura
+    // pedido novo na lista (avisa) e entrega que acabou (parabeniza)
+    const ids = ofertas.map((o) => o.pedidoId);
+    const novo = ids.find((id) => ofertasVistas !== undefined && !ofertasVistas.has(id));
+    if (novo !== undefined) avisarNovoPedido(novo);
+    ofertasVistas = new Set(ids);
     const agora = e ? e.pedidoId : null;
-    if (pedidoVisto !== undefined && agora !== pedidoVisto) {
-      if (agora !== null) avisarNovaEntrega(agora);
-      else mostrarFaixa('faixa-entregue', 8000);
-    }
+    if (pedidoVisto !== undefined && pedidoVisto !== null && agora === null) mostrarFaixa('faixa-entregue', 8000);
     pedidoVisto = agora;
+  }
+
+  // ---------------------------------------------------------------- pedidos para aceitar
+  let assinaturaOfertas = '';
+  const distanciasOferta = new Map(); // pedidoId -> o <span> com a distância
+
+  function textoDistancia(o) {
+    if (!posicao) return 'distância: esperando o GPS';
+    const m = Math.round(distanciaM(posicao.lat, posicao.lon, o.destino.lat, o.destino.lon));
+    return (m >= 1000 ? (m / 1000).toFixed(1) + ' km' : m + ' m') + ' de você';
+  }
+
+  function desenharOfertas(ofertas) {
+    $('ofertas').classList.toggle('oculto', !!(atual && atual.entrega) || ofertas.length === 0);
+    const assinatura = ofertas.map((o) => o.pedidoId).join(',');
+    if (assinatura !== assinaturaOfertas) { // só refaz a lista quando os pedidos mudam (senão o toque no botão se perde)
+      assinaturaOfertas = assinatura;
+      distanciasOferta.clear();
+      const lista = $('lista-ofertas');
+      lista.textContent = '';
+      for (const o of ofertas) {
+        const cartao = document.createElement('div');
+        cartao.className = 'oferta';
+        const info = document.createElement('div');
+        info.className = 'oferta-info';
+        const numero = document.createElement('b');
+        numero.textContent = 'Pedido #' + o.pedidoId;
+        const distancia = document.createElement('span');
+        info.append(numero, distancia);
+        const botao = document.createElement('button');
+        botao.textContent = 'Aceitar';
+        botao.addEventListener('click', () => aceitar(o.pedidoId, botao));
+        cartao.append(info, botao);
+        lista.appendChild(cartao);
+        distanciasOferta.set(o.pedidoId, distancia);
+      }
+    }
+    for (const o of ofertas) { // a distância anda junto com o GPS
+      const el = distanciasOferta.get(o.pedidoId);
+      if (el) el.textContent = textoDistancia(o);
+    }
+  }
+
+  async function aceitar(pedidoId, botao) {
+    $('oferta-erro').textContent = '';
+    botao.disabled = true;
+    try {
+      const r = await Auth.api('/api/entregas/' + pedidoId + '/aceitar', { method: 'POST' });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        $('oferta-erro').textContent = j.erro || 'Não consegui aceitar (' + r.status + ').';
+      }
+    } catch (e) {
+      $('oferta-erro').textContent = 'Sem conexão. Tente de novo.';
+    }
+    atualizar();
   }
 
   async function mudarStatus(status) {
@@ -121,7 +186,7 @@
     }
   }
 
-  function avisarNovaEntrega(pedidoId) {
+  function avisarNovoPedido(pedidoId) {
     $('faixa-numero').textContent = '#' + pedidoId;
     mostrarFaixa('faixa-nova', 12000);
     if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
@@ -178,6 +243,7 @@
     posicao = { lat: pos.coords.latitude, lon: pos.coords.longitude, precisao: pos.coords.accuracy, velocidade: pos.coords.speed, quando: Date.now() };
     mostrarEstadoGps();
     atualizarDistanciaEMapa();
+    if (atual) desenharOfertas(atual.ofertas || []); // a distância de cada pedido anda com o GPS
   }
 
   function aoFalharGps(err) {

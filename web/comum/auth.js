@@ -1,18 +1,23 @@
 // Sessão e chamadas autenticadas, compartilhadas pelas três telas.
 // O token fica no localStorage; qualquer resposta 401 encerra a sessão.
-// Cada tela guarda a sua própria sessão: abrir o painel, o app do entregador e a página do cliente no mesmo
-// navegador não derruba um ao outro.
+// A sessão é guardada por papel (operador, entregador, cliente): abrir o painel, o app do entregador e a página
+// do cliente no mesmo navegador não derruba um ao outro. Quem entra na tela de outro papel é levado para a tela certa.
 (function () {
   const TELA = location.pathname.startsWith('/entregador') ? 'entregador' : location.pathname.startsWith('/cliente') ? 'cliente' : 'operador';
-  const CHAVE = 'delivery.sessao.' + TELA;
+  const chave = (papel) => 'delivery.sessao.' + papel;
+  const CHAVE = chave(TELA); // a sessão que esta tela usa
+  const PAGINA = { operador: '/painel/', entregador: '/entregador/', cliente: '/cliente/' }; // a tela de cada papel
 
   const Auth = {
-    sessao() {
+    sessaoDe(papel) {
       try {
-        return JSON.parse(localStorage.getItem(CHAVE));
+        return JSON.parse(localStorage.getItem(chave(papel)));
       } catch (e) {
         return null;
       }
+    },
+    sessao() {
+      return this.sessaoDe(TELA);
     },
     token() {
       const s = this.sessao();
@@ -23,7 +28,7 @@
       return s ? s.usuario : null;
     },
     salvar(token, usuario) {
-      localStorage.setItem(CHAVE, JSON.stringify({ token, usuario }));
+      localStorage.setItem(chave(usuario.role), JSON.stringify({ token, usuario }));
     },
     sair() {
       localStorage.removeItem(CHAVE);
@@ -92,10 +97,8 @@
         erro.textContent = '';
         try {
           const u = await Auth.login(form.u.value.trim(), form.p.value);
-          if (!papeisPermitidos.includes(u.role)) {
-            localStorage.removeItem(CHAVE);
-            throw new Error('Este usuário não tem acesso a esta tela.');
-          }
+          // entrou na tela de outro papel (ex.: entregador na tela do operador): leva para a tela dele
+          if (!papeisPermitidos.includes(u.role)) return location.replace(PAGINA[u.role]);
           aoEntrar(u);
         } catch (e) {
           erro.textContent = e.message; // textContent: nunca interpreta HTML

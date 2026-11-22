@@ -13,15 +13,16 @@ repor_estoque
 LAT=-26.9148; LON=-49.0610
 
 esperar_ate "[ \"\$(sql entregas \"SELECT status FROM entregadores WHERE id = 2\")\" = DISPONIVEL ]" 30
-verificar "entregador simulado disponível" DISPONIVEL "$(sql entregas "SELECT status FROM entregadores WHERE id = 2")"
+verificar "entregador 2 disponível" DISPONIVEL "$(sql entregas "SELECT status FROM entregadores WHERE id = 2")"
 
 echo "Passo 1: para o MiniStack"
 docker compose stop ministack >/dev/null 2>&1
 
-echo "Passo 2: cria o pedido e espera o despacho (o sistema segue funcionando sem o MiniStack)"
+echo "Passo 2: cria o pedido, o entregador 2 aceita (o sistema segue funcionando sem o MiniStack)"
 r=$(api POST /api/pedidos "{\"destino\":{\"lat\":$LAT,\"lon\":$LON,\"endereco\":\"Fim da rota de exemplo\"},\"entregadorPreferidoId\":2}")
 id=$(campo "$r" id)
 echo "         pedido #$id"
+verificar "o entregador 2 aceitou o pedido" 200 "$(aceitar_entrega 2 "$id")"
 esperar_status "$id" EM_ENTREGA 60
 verificar "pedido em entrega com o MiniStack fora" EM_ENTREGA "$(status_pedido "$id")"
 

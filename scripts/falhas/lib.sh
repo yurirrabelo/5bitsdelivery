@@ -36,6 +36,17 @@ api() { # api METODO caminho [corpo]
   fi
 }
 
+# O entregador aceita um pedido (como no celular): espera o pedido aparecer na lista dele e toca em Aceitar.
+token_entregador() { # token_entregador 1|2
+  campo "$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+    -d "{\"username\":\"$(var ENTREGADOR${1}_USUARIO)\",\"password\":\"$(var ENTREGADOR${1}_SENHA)\"}")" token
+}
+aceitar_entrega() { # aceitar_entrega entregador pedido  -> escreve o HTTP do aceite (200 = aceito)
+  local t; t=$(token_entregador "$1")
+  esperar_ate "curl -s '$BASE/api/entregas/me' -H 'Authorization: Bearer $t' | grep -q '\"pedidoId\":$2'" 40 || { echo 0; return; }
+  curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/entregas/$2/aceitar" -H "Authorization: Bearer $t"
+}
+
 criar_pedido() { # cria um pedido do operador (com destino) e escreve o id
   local r
   r=$(api POST /api/pedidos '{"destino":{"lat":-26.9100,"lon":-49.0700,"endereco":"Destino do teste"}}')

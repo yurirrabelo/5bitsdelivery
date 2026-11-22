@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { registrarRotasEntregas } from './app';
-import { Deps, aoConfirmarPedido, despacharPendentes } from './despacho';
+import { Deps, aoConfirmarPedido } from './ofertas';
 import { Hub } from './hub';
 import { Posicoes, iniciarProcessador } from './redis';
 import { criarS3, exportarPendentes } from './rota';
@@ -35,7 +35,7 @@ async function main() {
   redisBloqueante.on('error', () => undefined);
   const posicoes = new Posicoes(redis);
   const hub = new Hub();
-  const deps: Deps = { pool, hub, log, ultimaPosicao: (id) => posicoes.ultima(id).catch(() => null) };
+  const deps: Deps = { pool, hub, log };
 
   iniciarConsumidor({
     broker, pool, fila: env('FILA_ENTREGAS'), validador, log, estado,
@@ -43,7 +43,6 @@ async function main() {
   });
 
   const s3 = criarS3(env('AWS_ENDPOINT_URL'), env('AWS_REGION'));
-  periodico('despacho', envInt('DESPACHO_INTERVALO_MS', 5000), () => despacharPendentes(deps), log);
   periodico('rotas', 10000, () => exportarPendentes(pool, s3, env('S3_BUCKET_ROTAS'), log), log);
 
   let encerrando = false;

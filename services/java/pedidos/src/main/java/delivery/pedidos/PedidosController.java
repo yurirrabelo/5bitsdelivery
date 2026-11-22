@@ -50,12 +50,14 @@ public class PedidosController {
         try {
             if ("operador".equals(role)) {
                 PedidoServico.Destino d = corpo == null ? null : corpo.destino();
-                if (d == null || d.lat() == null || d.lon() == null || Math.abs(d.lat()) > 90 || Math.abs(d.lon()) > 180) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "destino {lat, lon} obrigatório");
-                }
+                validarDestino(d);
                 id = servico.criar(userId, false, d, corpo.entregadorPreferidoId());
             } else if ("cliente".equals(role)) {
-                id = servico.criar(userId, true, null, null);
+                // O cliente manda onde quer receber (o GPS do celular dele). Com endereço o pedido vira uma entrega que um
+                // entregador aceita; sem endereço, termina em CONFIRMADO. O cliente nunca escolhe o entregador.
+                PedidoServico.Destino d = corpo == null ? null : corpo.destino();
+                if (d != null) validarDestino(d);
+                id = servico.criar(userId, true, d, null);
             } else {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "papel sem permissão para criar pedido");
             }
@@ -96,6 +98,12 @@ public class PedidosController {
         exigirLogin(userId, role);
         if (!"operador".equals(role)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "apenas operador");
         return repo.ultimos(50).stream().map(this::json).toList();
+    }
+
+    private static void validarDestino(PedidoServico.Destino d) {
+        if (d == null || d.lat() == null || d.lon() == null || Math.abs(d.lat()) > 90 || Math.abs(d.lon()) > 180) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "destino {lat, lon} obrigatório e válido");
+        }
     }
 
     private static void exigirLogin(String userId, String role) {

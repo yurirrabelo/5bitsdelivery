@@ -1,4 +1,5 @@
-// Painel do operador: mapa ao vivo (WebSocket), criação de pedidos, lista, estoque e QR code.
+// Painel do operador: a central da loja. Acompanha ao vivo os pedidos dos clientes, os entregadores no mapa e o
+// estoque da promoção, e mostra o QR para a plateia pedir. (Criar um pedido pelo mapa é uma ferramenta de apoio.)
 // Todo texto vindo do servidor entra na tela por textContent ou escapado (Auth.escapar).
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -16,13 +17,16 @@
   else {
     $('login').classList.remove('oculto');
     Auth.montarLogin($('login'), ['operador'], mostrarApp, {
-      icone: '🎛️', titulo: 'Painel do operador', subtitulo: 'Crie pedidos, acompanhe o mapa ao vivo e controle a promoção.',
+      icone: '🎛️', titulo: 'Painel do operador', subtitulo: 'Acompanhe os pedidos, os entregadores e a promoção ao vivo.',
       botao: 'Entrar no painel', rotuloUsuario: 'Usuário do operador',
     });
   }
 
   // ---------------------------------------------------------------- estado
   let mapa, loja, destinoEscolhido, marcadorDestino;
+  let modoCriar = false; // "Pedido pelo mapa" ligado: o clique no mapa escolhe o destino
+  let listaEntregadores = []; // da API: id, nome, status, ultimaPosicao
+  const gpsEm = {}; // id do entregador -> quando chegou o último GPS (ms)
   const entregadores = {}; // id -> {marcador, nome}
   const rastros = {}; // pedidoId -> {linha, pontos}
   const destinos = {}; // pedidoId -> marcador do destino
@@ -42,17 +46,26 @@
     }).addTo(mapa);
     loja = L.marker([cfg.origem.lat, cfg.origem.lon]).addTo(mapa).bindTooltip(cfg.origem.nome, { permanent: true, direction: 'top', className: 'rotulo' });
 
-    // clique no mapa define o destino do próximo pedido
+    // abas da lateral: Pedidos | QR da plateia
+    document.querySelectorAll('.aba').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.aba').forEach((x) => x.classList.toggle('ativa', x === b));
+      document.querySelectorAll('.painel-aba').forEach((p) => p.classList.toggle('ativa', p.id === 'aba-' + b.dataset.aba));
+    }));
+
+    // "Pedido pelo mapa": só com o formulário aberto o clique no mapa escolhe o destino
+    $('abrir-criar').addEventListener('click', () => ligarModoCriar(!modoCriar));
+    $('cancelar-criar').addEventListener('click', () => ligarModoCriar(false));
     mapa.on('click', (e) => {
+      if (!modoCriar) return;
       destinoEscolhido = e.latlng;
       if (marcadorDestino) marcadorDestino.setLatLng(e.latlng);
       else marcadorDestino = L.marker(e.latlng, { opacity: 0.7 }).addTo(mapa);
       $('destino-info').textContent = 'Destino: ' + e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
       $('criar').disabled = false;
     });
-
     $('criar').addEventListener('click', criarPedido);
-    // modo telão: esconde os formulários e deixa só o que a turma precisa ver
+
+    // modo telão: esconde as ferramentas e deixa só o que a turma precisa ver (mapa, pedidos e QR)
     $('telao').addEventListener('click', () => {
       const ligado = document.body.classList.toggle('telao');
       $('telao').textContent = ligado ? '↩️ Sair do modo telão' : '📺 Modo telão';
@@ -63,10 +76,24 @@
     conectarWs();
     atualizarLista();
     setInterval(atualizarLista, 2000); // pedidos e estoque: polling a cada 2 s
-    setInterval(atualizarBarra, 1000);
+    setInterval(atualizarEntregadores, 4000); // quem ficou Disponível ou Offline
+    setInterval(() => { atualizarBarra(); desenharEntregadores(); }, 1000);
   }
 
-  // ---------------------------------------------------------------- criar pedido
+  // ---------------------------------------------------------------- pedido pelo mapa (ferramenta de apoio)
+  function ligarModoCriar(ligado) {
+    modoCriar = ligado;
+    $('form-criar').classList.toggle('oculto', !ligado);
+    $('abrir-criar').textContent = ligado ? '✕ Fechar' : '＋ Pedido pelo mapa';
+    if (!ligado) {
+      if (marcadorDestino) { mapa.removeLayer(marcadorDestino); marcadorDestino = null; }
+      destinoEscolhido = null;
+      $('criar').disabled = true;
+      $('destino-info').textContent = 'Clique no mapa para escolher o destino.';
+      $('criar-erro').textContent = '';
+    }
+  }
+
   async function criarPedido() {
     const erro = $('criar-erro');
     erro.textContent = '';
@@ -79,10 +106,8 @@
       const r = await Auth.api('/api/pedidos', { method: 'POST', body: corpo });
       if (r.status !== 202) throw new Error('Não consegui criar o pedido (' + r.status + ').');
       const j = await r.json();
-      erro.textContent = '';
-      $('destino-info').textContent = 'Pedido #' + j.id + ' criado. Clique no mapa para o próximo.';
-      if (marcadorDestino) { mapa.removeLayer(marcadorDestino); marcadorDestino = null; }
-      destinoEscolhido = null;
+      ligarModoCriar(false);
+      $('destino-info').textContent = 'Pedido #' + j.id + ' criado.';
       atualizarLista();
     } catch (e) {
       erro.textContent = e.message;
@@ -108,19 +133,45 @@
     } catch (e) { /* servidor fora: tenta no próximo ciclo */ }
   }
 
+  // O que cada status quer dizer, em palavras de quem opera (e a cor do selo)
+  function situacao(p) {
+    switch (p.status) {
+      case 'RECEBIDO': return ['Recebido', 'RECEBIDO'];
+      case 'AGUARDANDO_PAGAMENTO': return ['Pagando', 'AGUARDANDO_PAGAMENTO'];
+      case 'CONFIRMADO': return p.destino ? ['Aguardando entregador', 'AGUARDANDO_ENTREGADOR'] : ['Confirmado', 'CONFIRMADO'];
+      case 'EM_ENTREGA': return ['Em entrega', 'EM_ENTREGA'];
+      case 'ENTREGUE': return ['Entregue', 'ENTREGUE'];
+      case 'ESGOTADO': return ['Esgotado', 'ESGOTADO'];
+      case 'CANCELADO': return [p.motivo === 'PRAZO_EXPIRADO' ? 'Cancelado (demorou)' : 'Cancelado (pagamento)', 'CANCELADO'];
+      case 'ESTORNADO': return ['Estornado', 'ESTORNADO'];
+      default: return [p.status, p.status];
+    }
+  }
+
+  function nomeDoEntregador(id) {
+    if (!id) return '–';
+    const e = listaEntregadores.find((x) => x.id === id);
+    return e ? e.nome : '#' + id;
+  }
+
   function renderPedidos(lista) {
     const tbody = $('pedidos');
-    // telão: só o número e o status de cada pedido, nunca o apelido de quem pediu
-    tbody.innerHTML = lista.slice(0, 15).map((p) =>
-      '<tr><td>#' + Auth.escapar(p.id) + '</td><td><span class="badge ' + Auth.escapar(p.status) + '">' + Auth.escapar(p.status.replace('_', ' ')) +
-      '</span></td><td>' + (p.entregadorId ? Auth.escapar(p.entregadorId) : '–') + '</td></tr>').join('');
+    // telão: só o número e a situação de cada pedido, nunca o apelido de quem pediu
+    tbody.innerHTML = lista.slice(0, 15).map((p) => {
+      const [texto, classe] = situacao(p);
+      return '<tr><td>#' + Auth.escapar(p.id) + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
+        '</span></td><td>' + Auth.escapar(nomeDoEntregador(p.entregadorId)) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="vazio">Nenhum pedido ainda.</td></tr>';
 
     // destinos dos pedidos que ainda têm entrega pela frente
     for (const p of lista) {
       const ativo = p.destino && (p.status === 'CONFIRMADO' || p.status === 'EM_ENTREGA');
+      const rotulo = '#' + p.id + ' · ' + situacao(p)[0];
       if (ativo && !destinos[p.id]) {
         destinos[p.id] = L.circleMarker([p.destino.lat, p.destino.lon], { radius: 8, color: '#e8590c', fillOpacity: 0.3 })
-          .addTo(mapa).bindTooltip('#' + p.id, { className: 'rotulo' });
+          .addTo(mapa).bindTooltip(rotulo, { className: 'rotulo' });
+      } else if (ativo) {
+        destinos[p.id].setTooltipContent(rotulo);
       } else if (!ativo && destinos[p.id]) {
         mapa.removeLayer(destinos[p.id]);
         delete destinos[p.id];
@@ -137,13 +188,29 @@
   async function atualizarEntregadores() {
     const r = await Auth.api('/api/entregas/entregadores');
     if (!r.ok) return;
-    const lista = await r.json();
+    listaEntregadores = await r.json();
     const sel = $('entregador');
     const atual = sel.value;
-    sel.innerHTML = '<option value="">Qualquer (o mais próximo)</option>' +
-      lista.map((e) => '<option value="' + Auth.escapar(e.id) + '">' + Auth.escapar(e.nome) + ' (' + Auth.escapar(e.status.toLowerCase()) + ')</option>').join('');
+    sel.innerHTML = '<option value="">Qualquer entregador</option>' +
+      listaEntregadores.map((e) => '<option value="' + Auth.escapar(e.id) + '">' + Auth.escapar(e.nome) + '</option>').join('');
     sel.value = atual;
-    lista.forEach((e) => { if (e.ultimaPosicao) moverEntregador(e.id, e.nome, e.ultimaPosicao.lat, e.ultimaPosicao.lon, null); });
+    listaEntregadores.forEach((e) => {
+      if (!e.ultimaPosicao) return;
+      gpsEm[e.id] = Math.max(gpsEm[e.id] || 0, e.ultimaPosicao.ts);
+      moverEntregador(e.id, e.nome, e.ultimaPosicao.lat, e.ultimaPosicao.lon, null);
+    });
+    desenharEntregadores();
+  }
+
+  // Quem são os entregadores, em que situação estão e há quanto tempo o GPS de cada um chegou
+  function desenharEntregadores() {
+    const rotulos = { DISPONIVEL: 'Disponível', OCUPADO: 'Em entrega', OFFLINE: 'Offline' };
+    $('entregadores-lista').innerHTML = listaEntregadores.map((e) => {
+      const idade = gpsEm[e.id] ? Math.round((Date.now() - gpsEm[e.id]) / 1000) : null;
+      const gps = idade === null ? 'sem GPS' : idade < 120 ? 'GPS há ' + idade + ' s' : 'GPS parado há ' + Math.round(idade / 60) + ' min';
+      return '<li><span class="bolinha ' + Auth.escapar(e.status) + '"></span><b>' + Auth.escapar(e.nome) + '</b>' +
+        '<span class="sit">' + Auth.escapar(rotulos[e.status] || e.status) + '</span><small>' + gps + '</small></li>';
+    }).join('') || '<li class="vazio">Nenhum entregador cadastrado.</li>';
   }
 
   function moverEntregador(id, nome, lat, lon, pedidoId) {
@@ -186,6 +253,7 @@
         m.entregasAtivas.forEach((a) => carregarRastro(a.pedidoId));
       } else if (m.type === 'posicao') {
         ultimaPosicaoEm = Date.now();
+        gpsEm[m.entregadorId] = Date.now();
         moverEntregador(m.entregadorId, null, m.lat, m.lon, m.pedidoId);
       } else if (m.type === 'entrega') {
         atualizarEntregadores();
@@ -206,7 +274,7 @@
   }
 
   // ---------------------------------------------------------------- QR code
-  // O QR usa a origem da página: abra o painel pela URL do túnel no telão ou cole a URL pública no campo.
+  // O QR usa a origem da página: abra o painel pela URL do túnel no telão ou cole o endereço público no campo.
   async function configurarQr() {
     const r = await Auth.api('/api/auth/evento');
     if (!r.ok) return;

@@ -10,7 +10,7 @@ Documento de referência do trabalho final de Sistemas Distribuídos (FURB): arq
 
 Um sistema de delivery com promoção relâmpago e rastreamento do entregador em tempo real.
 
-**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa uma unidade da promoção, o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega é despachada para o entregador, que recebe o aviso no celular e é acompanhado no mapa até o destino. Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
+**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa uma unidade da promoção, o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega fica esperando um entregador: o pedido aparece no celular dos entregadores e o primeiro a tocar em **Aceitar** leva. Ele é acompanhado no mapa até o endereço do cliente (o GPS do celular do cliente). Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
 
 O que o trabalho demonstra:
 
@@ -30,8 +30,8 @@ O que o trabalho demonstra:
 2. O estoque tenta reservar uma unidade com um UPDATE condicional e responde `estoque.reservado` ou `estoque.esgotado`.
 3. Reservado: o pedido vai para `AGUARDANDO_PAGAMENTO`, ganha um prazo (`PRAZO_PAGAMENTO_SEG`) e o pedidos envia `pagamento.cobrar`. Esgotado: o pedido termina como `ESGOTADO`.
 4. O pagamento cobra no gateway simulado, com a chave de idempotência do pedido, e responde `pagamento.aprovado` ou `pagamento.recusado`.
-5. Aprovado dentro do prazo: o pedido vai para `CONFIRMADO` e o pedidos publica `pedido.confirmado`, consumido por dois serviços: o estoque transforma a reserva em venda e as entregas despacham o pedido, se ele tiver destino.
-6. As entregas escolhem o entregador e publicam `entrega.atribuida` (pedido `EM_ENTREGA`). A página do entregador, aberta no navegador do celular, percebe a entrega nova e avisa; o navegador envia o GPS real e o painel mostra a posição em tempo real.
+5. Aprovado dentro do prazo: o pedido vai para `CONFIRMADO` e o pedidos publica `pedido.confirmado`, consumido por dois serviços: o estoque transforma a reserva em venda e as entregas criam a entrega, se o pedido tiver endereço de entrega.
+6. A entrega nasce `PENDENTE` e aparece na lista de pedidos de todo entregador Disponível (a página dele, aberta no celular, avisa). O primeiro a tocar em **Aceitar** fica com ela: as entregas publicam `entrega.atribuida` (pedido `EM_ENTREGA`) e ele passa a Ocupado. O navegador dele envia o GPS real e o painel mostra a posição em tempo real.
 7. A menos de `GEOFENCE_RAIO_M` metros do destino, ou pelo botão **Confirmar entrega**, as entregas publicam `entrega.concluida`. O pedido termina como `ENTREGUE` e a rota vai para o S3.
 
 **Compensações:**
@@ -40,7 +40,7 @@ O que o trabalho demonstra:
 - Prazo vencido sem resposta → pedido `CANCELADO` (motivo `PRAZO_EXPIRADO`) → `pedido.cancelado` → o estoque devolve a unidade.
 - Aprovação que chega depois do cancelamento → o pedidos envia `pagamento.estornar` → o pagamento estorna no gateway → `pagamento.estornado` → pedido `ESTORNADO`.
 
-**Pedidos do QR code** (clientes, sem destino) terminam em `CONFIRMADO`. Só o pedido principal, criado pelo operador com destino, vai para a entrega.
+**Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou, sem GPS, um toque no mapa). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. O operador também pode criar um pedido pelo mapa (ferramenta de apoio), até reservando o pedido para um entregador.
 
 ### 2.1 Sequências
 
@@ -49,14 +49,14 @@ Setas `--)` passam pelo RabbitMQ; setas `->>` são chamadas HTTP. As imagens fic
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Operador ou cliente
+    actor C as Cliente ou operador
     participant P as pedidos
     participant E as estoque
     participant PG as pagamento
     participant GW as gateway de pagamento
     participant ENT as entregas
     actor M as Entregador
-    C->>P: POST /api/pedidos
+    C->>P: POST /api/pedidos (com o endereço)
     P-->>C: 202 Accepted + id
     P--)E: estoque.reservar
     E--)P: estoque.reservado
@@ -66,8 +66,10 @@ sequenceDiagram
     PG--)P: pagamento.aprovado
     P--)E: pedido.confirmado
     P--)ENT: pedido.confirmado
+    Note over ENT,M: cria a entrega (PENDENTE) e espera um entregador
+    ENT-->>M: o pedido aparece na lista do entregador (polling)
+    M->>ENT: toca em Aceitar (POST /api/entregas/{id}/aceitar)
     ENT--)P: entrega.atribuida
-    ENT-->>M: a página do entregador mostra o pedido (polling)
     loop a cada 3 s
         M->>ENT: GPS do navegador (POST /api/entregas/posicoes)
     end
@@ -109,9 +111,9 @@ stateDiagram-v2
     AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento.aprovado no prazo
     AGUARDANDO_PAGAMENTO --> CANCELADO: pagamento.recusado ou prazo vencido
     CANCELADO --> ESTORNADO: aprovação atrasada estornada
-    CONFIRMADO --> EM_ENTREGA: entrega.atribuida
+    CONFIRMADO --> EM_ENTREGA: um entregador aceita (entrega.atribuida)
     EM_ENTREGA --> ENTREGUE: entrega.concluida
-    CONFIRMADO --> [*]: pedido do QR (sem destino)
+    CONFIRMADO --> [*]: pedido sem endereço de entrega
     ESGOTADO --> [*]
     CANCELADO --> [*]
     ESTORNADO --> [*]
@@ -145,9 +147,9 @@ As fontes ficam em `docs/arquitetura/`: SVG para os diagramas C4 e o caminho das
 | `pedidos` | Java 21 (Spring Boot) | API 202, máquina de estados, orquestração da saga, prazo | `pg-pedidos` |
 | `estoque` | Java 21 (Spring Boot) | unidades da promoção: reserva, devolução e baixa | `pg-estoque` |
 | `pagamento` | TypeScript (Fastify) | cobrança e estorno no gateway; roda com 2 ou mais réplicas | `pg-pagamento` |
-| `entregas` | TypeScript (Fastify) | entregadores, despacho, GPS, mapa ao vivo, rota no S3 | `pg-entregas`, `redis` |
+| `entregas` | TypeScript (Fastify) | entregadores, ofertas e aceite, GPS, mapa ao vivo, rota no S3 | `pg-entregas`, `redis` |
 | `gateway-pagamento` | TypeScript (Fastify) | dependência externa simulada: latência e falha por variável de ambiente | memória |
-| `simulador` | TypeScript (script) | reproduz rotas GPS (testes e plano B) | — |
+| `simulador` | TypeScript (script) | ferramenta de teste: faz o papel do celular (teste completo e plano B do GPS) | — |
 
 Versões: Java 21 (LTS), Node.js na LTS atual, bibliotecas na versão estável atual. Na implementação: Spring Boot 4.1.2 (Jackson 3), Node.js 24, TypeScript 7, RabbitMQ 4.
 
@@ -178,7 +180,7 @@ O Nginx repassa o caminho inteiro; cada serviço declara as rotas já com o pref
 
 | Rota | Destino | Autenticação |
 |---|---|---|
-| `/` | redireciona para `/painel/` | — |
+| `/` | tela de entrada: um login só para operador e entregador, que leva cada um para a sua tela | — |
 | `/painel/`, `/entregador/`, `/cliente/` | páginas estáticas de `web/` | as telas pedem login |
 | `POST /api/auth/login` | auth | pública, rate limit estrito |
 | `POST /api/auth/cliente` | auth | pública, rate limit generoso |
@@ -205,7 +207,7 @@ Nunca expostos pelo Nginx: `GET http://auth:3000/auth/validate` (usado pelo `aut
 - `GET /api/pedidos/config` → `{origem: {nome, lat, lon}, promocao: {nome}}`
 - `POST /api/pedidos` → `202 {id, status, statusUrl}` e header `Location`.
   - Operador: `{destino: {lat, lon, endereco?}, entregadorPreferidoId?}`.
-  - Cliente: corpo vazio; respeita o limite de pedidos em andamento.
+  - Cliente: `{destino: {lat, lon}}` (o GPS do celular dele; sem `destino` o pedido termina em `CONFIRMADO`). Não escolhe entregador. Respeita o limite de pedidos em andamento.
 - `GET /api/pedidos/{id}` → `{id, status, motivo, origem, destino, entregadorId, criadoEm, atualizadoEm}`. O cliente só vê os próprios pedidos.
 - `GET /api/pedidos` (operador) → últimos pedidos, com número e status.
 - `GET /api/pedidos/{id}/historico` → transições com horário e `correlationId`.
@@ -218,14 +220,15 @@ Nunca expostos pelo Nginx: `GET http://auth:3000/auth/validate` (usado pelo `aut
 
 - `POST /api/entregas/posicoes` (entregador) com `{lat, lon, precisao?, velocidade?}` (precisão em metros, velocidade em m/s, como a Geolocation API do navegador) → `202`. O entregador vem do header, nunca do corpo, e o horário é o do servidor.
 - `GET /api/entregas/entregadores` (operador) → status e última posição de cada entregador.
-- `GET /api/entregas/me` (entregador) → `{entregador: {id, nome, status}, entrega: {pedidoId, destino} | null}`; a página do entregador consulta a cada 3 s.
+- `GET /api/entregas/me` (entregador) → `{entregador: {id, nome, status}, entrega: {pedidoId, destino} | null, ofertas: [{pedidoId, destino}]}`; `ofertas` são os pedidos esperando entregador que ele pode aceitar (só se estiver Disponível). A página do entregador consulta a cada 3 s.
+- `POST /api/entregas/{pedidoId}/aceitar` (entregador) → `200` se ele ficou com o pedido; `409` se outro entregador aceitou antes ou se ele não está Disponível.
 - `PATCH /api/entregas/me/status` com `{status: "DISPONIVEL" | "OFFLINE"}`. `OCUPADO` só o sistema define.
 - `POST /api/entregas/{pedidoId}/confirmar` (entregador da entrega ou operador) → conclusão manual.
 - `GET /api/entregas/{pedidoId}/rota` → GeoJSON `LineString` do trajeto.
 - `WS /ws/entregas?token=<jwt>` (operador):
   - ao conectar: `{"type": "snapshot", "entregadores": [...], "entregasAtivas": [...]}`
   - a cada posição: `{"type": "posicao", "entregadorId", "lat", "lon", "ts", "velocidadeKmh", "pedidoId"}`
-  - mudanças: `{"type": "entrega", "evento": "atribuida" | "concluida", "pedidoId", "entregadorId"}`
+  - mudanças: `{"type": "entrega", "evento": "pendente" | "atribuida" | "concluida", "pedidoId", "entregadorId"}`
 
 **gateway-pagamento** (interno)
 
@@ -507,10 +510,10 @@ OPERADOR_USUARIO=admin
 OPERADOR_SENHA=admin
 ENTREGADOR1_USUARIO=entregador1
 ENTREGADOR1_SENHA=admin
-ENTREGADOR1_NOME=Entregador Real
+ENTREGADOR1_NOME=Entregador 1
 ENTREGADOR2_USUARIO=entregador2
 ENTREGADOR2_SENHA=admin
-ENTREGADOR2_NOME=Entregador Simulado
+ENTREGADOR2_NOME=Entregador 2
 # Código que vai no link do QR code
 EVENTO_CODIGO=promo
 
@@ -583,28 +586,32 @@ O objetivo é mostrar por onde cada passo passa, não monitorar tudo.
 
 HTML, CSS e JavaScript puros, com Leaflet e mapa do OpenStreetMap. Sem etapa de build.
 
-- Login.
-- Mapa com a loja, os destinos, os entregadores ao vivo (WebSocket) e o rastro da entrega ativa.
-- Clique no mapa define o destino; botão **Criar pedido**, com escolha opcional do entregador.
-- Lista de pedidos por número e status (polling a cada 2 s) e contador do estoque.
-- QR code da promoção, gerado na hora com a URL pública e o código do evento. O QR usa a origem da página: abra o painel pela URL do túnel no telão ou cole a URL pública no campo do painel. Logo abaixo, o link do entregador (`…/entregador/`) para abrir no celular.
-- Barra de status: WebSocket conectado e "última posição há X s".
-- Link para o Grafana.
+É a central da loja: serve para **acompanhar tudo ao vivo**, não para operar o dia a dia (quem pede é o cliente e quem entrega é o entregador).
+
+- Login (a tela de entrada `/` também leva o operador para cá).
+- Mapa com a loja, os entregadores ao vivo (WebSocket), os destinos dos pedidos e o rastro da entrega ativa.
+- Duas abas ao lado do mapa:
+  - **Pedidos:** quem são os entregadores (Disponível, Em entrega, Offline e há quanto tempo chegou o GPS de cada um) e a lista de pedidos com a situação em palavras simples ("Aguardando entregador", "Em entrega", "Entregue"…), com polling a cada 2 s. O botão **＋ Pedido pelo mapa** é uma ferramenta de apoio: abre um formulário, o clique no mapa escolhe o destino e dá para reservar o pedido para um entregador.
+  - **QR da plateia:** o QR da promoção, gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: abra o painel pela URL do túnel no telão ou cole o endereço público no campo. Logo abaixo, o link do entregador (`…/entregador/`).
+- Contador do estoque no topo, barra de status (WebSocket conectado, "última posição há X s") e link para o Grafana.
+- **Modo telão:** esconde as ferramentas e mostra as duas abas juntas (pedidos e QR) em letras grandes.
 
 ### 9.2 Página do entregador (`web/entregador/`)
 
 Uma página web comum, sem instalação: o celular abre o link `https://…/entregador/` no navegador. Ela precisa de `https://` porque o navegador só libera o GPS em páginas seguras (ou `localhost`); por isso o túnel.
 
-- Login; status (**Disponível** ou **Offline**); cartão do GPS; cartão da entrega atual com mapa (Leaflet), destino, distância e **Confirmar entrega**.
+- Login; status (**Disponível** ou **Offline**); cartão do GPS; lista **Pedidos para entregar** (cada pedido com a distância até o endereço do cliente e o botão **Aceitar**); cartão da entrega em andamento com mapa (Leaflet), destino, distância e **Confirmar entrega**.
 - **O GPS liga sozinho** quando o status é Disponível ou Em entrega e desliga no Offline. `watchPosition` (alta precisão) guarda o último fix; a cada 3 s a página o envia por `POST /api/entregas/posicoes`, mesmo parada (o painel precisa saber que o entregador está vivo). Wake Lock mantém a tela ligada: sem ela o navegador para o GPS.
 - O cartão do GPS diz o que falta: "Abra o link https://", "Localização bloqueada" (com **Tentar de novo**), "Sem sinal de GPS", "GPS ok, mas sem internet" ou "GPS enviando, precisão de X m".
-- Polling de `GET /api/entregas/me` a cada 3 s. Entrega nova: faixa na tela, vibração e três bipes. Entrega concluída: faixa de confirmação. É o aviso do entregador: sem serviço externo (o estado vem do banco, então não se perde).
+- Polling de `GET /api/entregas/me` a cada 3 s, que traz a entrega em andamento e a lista de pedidos para aceitar. Pedido novo na lista: faixa na tela, vibração e três bipes. Entrega concluída: faixa de confirmação. É o aviso do entregador: sem serviço externo (o estado vem do banco, então não se perde).
+- Dois entregadores Disponíveis veem o mesmo pedido: o primeiro a tocar em **Aceitar** leva e o outro recebe "já foi aceito por outro entregador".
 - Limitação conhecida: com a tela apagada ou a página em segundo plano, o navegador pausa o GPS. Por isso a página mostra o mapa da entrega ela mesma, em vez de mandar o entregador para outro app de mapas.
 
 ### 9.3 Página do cliente (`web/cliente/`) — extra do QR
 
-- Abre pelo QR (`/cliente/?codigo=...`), pede um apelido e mostra o botão **Pedir**.
-- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade reservada → pagando → confirmado (ou esgotado, cancelado ou estornado).
+- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o botão **Quero um pedido!**.
+- Ao pedir, o navegador pergunta a localização: a entrega vai para onde o cliente está (`navigator.geolocation`). Sem GPS (negado, sem https ou sem sinal) aparece um mapa para ele tocar no ponto de entrega.
+- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
 - Um pedido em andamento por pessoa.
 
 ### 9.4 GPS e pipeline das posições (entregas)
@@ -616,7 +623,7 @@ Uma página web comum, sem instalação: o celular abre o link `https://…/entr
 
 ### 9.5 Simulador e carga
 
-- `simulador` (profile `sim`): `rota --arquivo <geojson> --entregador 1|2 --velocidade <km/h> --intervalo <s>` entra com o usuário e a senha do entregador e envia posições para `http://nginx/api/entregas/posicoes`, o mesmo caminho do navegador do celular; aceita arquivo local ou `s3://<bucket>/rotas/pedido-N.geojson`. `smoke` faz o fluxo completo com o entregador simulado.
+- `simulador` (profile `sim`): `rota --arquivo <geojson> --entregador 1|2 --velocidade <km/h> --intervalo <s>` entra com o usuário e a senha do entregador e envia posições para `http://nginx/api/entregas/posicoes`, o mesmo caminho do navegador do celular; aceita arquivo local ou `s3://<bucket>/rotas/pedido-N.geojson`. Se o entregador ainda não tem entrega, `rota` aceita antes o pedido que estiver esperando por ele (plano B do GPS). `smoke` faz o fluxo completo: um cliente pede com endereço, o entregador 2 aceita e "dirige" até o destino.
 - `k6` (profile `carga`): `carga/f5-corrida.js` (100 clientes pedindo ao mesmo tempo, cada um com a própria sessão) e `carga/carga-continua.js` (pedidos por minuto configuráveis, usado em F6 e F8).
 
 ---
@@ -631,12 +638,12 @@ Cada serviço cria as próprias tabelas na subida, de forma idempotente (Flyway 
 - **pg-entregas:** `entregadores (id, nome, status)`, `entregas (pedido_id PK, entregador_id, status PENDENTE | ATRIBUIDA | CONCLUIDA, destino_lat, destino_lon, criada_em, concluida_em, rota_exportada)`, `posicoes`, `outbox`, `mensagens_processadas`.
 - **redis:** stream `posicoes`, geo `entregadores:geo`, hash `entregador:<id>:ultima`.
 
-Despacho: entregador preferido, se veio no pedido; senão, o disponível mais próximo da loja. Se o preferido estiver ocupado ou offline, a entrega espera por ele (`PENDENTE`) e não cai para outro entregador. A atribuição é um UPDATE condicional (`WHERE id = :id AND status = 'DISPONIVEL'`). Sem entregador livre, a entrega fica `PENDENTE` e um laço tenta de novo a cada 5 s.
+Ofertas e aceite: toda entrega nasce `PENDENTE` e o sistema **não escolhe entregador sozinho**. Ela aparece, para todo entregador `DISPONIVEL`, em `ofertas` (de `GET /api/entregas/me`); se o pedido foi reservado para um entregador (`entregadorPreferidoId`, só pelo painel), só ele a vê. O entregador toca em **Aceitar**: numa transação, `SELECT … FOR UPDATE` na entrega `PENDENTE` e `UPDATE entregadores SET status = 'OCUPADO' WHERE id = :id AND status = 'DISPONIVEL'`, depois a entrega vira `ATRIBUIDA` e a outbox recebe `entrega.atribuida`. Dois entregadores aceitando juntos: o primeiro leva e o outro recebe `409`. Sem entregador, a entrega espera.
 
 Dados iniciais (upsert na subida, a partir do `.env`):
 
-- estoque: produto 1 = `PROMOCAO_NOME` com `PROMOCAO_QUANTIDADE` unidades, criado só se não existir; `scripts/reset-estoque.sh` repõe para testes.
-- entregas: entregador 1 = real (`ENTREGADOR1_*`) e entregador 2 = simulado (`ENTREGADOR2_*`), ambos `DISPONIVEL`.
+- estoque: produto 1 = `PROMOCAO_NOME` com `PROMOCAO_QUANTIDADE` unidades, criado só se não existir; `scripts/reset-estoque.sh` repõe as unidades para testes e `scripts/limpar.sh` volta tudo ao início (apaga pedidos, entregas e trajetos de teste e libera os entregadores) sem reiniciar nada.
+- entregas: entregador 1 e entregador 2 (`ENTREGADOR1_*` e `ENTREGADOR2_*`), ambos `DISPONIVEL`. São duas contas reais: uma fica na tela da aula e a outra no celular de um integrante.
 - auth: `operador`, `entregador1` e `entregador2`.
 
 ---
@@ -682,7 +689,7 @@ O enunciado pede que o grupo preveja o resultado antes de executar.
 | uma réplica do `pagamento` | a outra assume, inclusive a mensagem que estava em andamento | volta a dividir a carga |
 | todas as réplicas do `pagamento` | pedidos vencem o prazo, são cancelados e o estoque volta | cobranças vencidas são recusadas sem cobrar (`expiraEm`) |
 | `gateway-pagamento` | cobranças falham, pagamentos recusados e compensação (como o F1) | volta a aprovar |
-| `entregas` | mapa congela e o celular mostra "sem internet"; pedidos confirmados esperam na fila | despacha a fila; o celular volta a enviar a posição em 3 s |
+| `entregas` | mapa congela e o celular mostra "sem internet"; pedidos confirmados esperam na fila | cria as entregas da fila e elas voltam à lista dos entregadores; o celular volta a enviar a posição em 3 s |
 | `rabbitmq` | F6: a API segue aceitando e nada se perde | reconexão automática; outbox drena |
 | `ministack` | segredos já carregados; rotas ficam pendentes | exporta as pendentes |
 | um `pg-*` | só o serviço dono para: fica unhealthy e segura as mensagens, sem mandar para a DLQ | retoma de onde parou |
@@ -729,7 +736,7 @@ delivery-tracker/
 └── scripts/
     ├── falhas/                  # f1 a f8 e todos.sh
     ├── bonus/                   # versionamento, recriar-infra e autoescala
-    ├── estado.sh  reset-estoque.sh
+    ├── estado.sh  reset-estoque.sh  limpar.sh
     └── tunnel-url.sh  smoke-test.sh  test-all.sh
 ```
 
@@ -745,9 +752,9 @@ A demonstração principal (pedido → celular do entregador → GPS no mapa →
 
 ## 14. Escopo
 
-**Fora:** cardápio, pagamento real, imagens, cadastro de usuários pela tela, vários restaurantes, entrega dos pedidos do QR.
+**Fora:** cardápio, pagamento real, imagens, cadastro de usuários pela tela, vários restaurantes.
 
-**Ideias para depois:** entregadores simulados para os pedidos do QR, foto do comprovante no S3, busca de endereço, APK.
+**Ideias para depois:** recusar pedido (hoje basta não aceitar), foto do comprovante no S3, busca de endereço, APK.
 
 ---
 
@@ -809,7 +816,7 @@ Já fazem parte do sistema. Na apresentação, basta mostrar: o Terraform recria
 | Decisão | Alternativa | Por quê |
 |---|---|---|
 | Saga orquestrada pelo pedidos | coreografia pura | um lugar só para ver o estado e decidir compensações; mais fácil de explicar e de tratar o prazo |
-| UPDATE condicional (estoque, transições, despacho) | lock distribuído no Redis | atomicidade no banco do dono do dado, sem peça a mais |
+| UPDATE condicional (estoque, transições, aceite do pedido) | lock distribuído no Redis | atomicidade no banco do dono do dado, sem peça a mais |
 | Outbox + inbox | publicar direto depois do commit | não perde mensagem com o broker fora (F6) nem aplica efeito duplicado (F3) |
 | Falha do gateway = pagamento recusado, sem nova tentativa | retry com backoff dentro do prazo | simplicidade; o prazo e a compensação já cobrem; retry fica como evolução |
 | Comando com validade (`expiraEm`) | cobrar sempre | não cobra pedido que já venceu |
@@ -819,7 +826,7 @@ Já fazem parte do sistema. Na apresentação, basta mostrar: o Terraform recria
 | Auth sem banco | auth com Postgres | usuários fixos da apresentação; um banco a menos |
 | Topologia do RabbitMQ no Terraform | cada serviço declara a sua | um lugar só para filas e bindings, versionado; e é o bônus de IaC |
 | Observabilidade num container (`otel-lgtm`) | Prometheus, Loki, Tempo e Grafana separados | um serviço no compose; feito para demonstração |
-| Pedidos do QR param em `CONFIRMADO` | entregadores simulados | foco na entrega principal, que é de verdade |
+| O entregador aceita o pedido: o primeiro a tocar leva | o sistema escolhe o entregador mais próximo | quem está na rua decide, é simples de mostrar ao vivo e o UPDATE condicional resolve a disputa |
 | GPS pelo navegador (link, sem instalar) | app nativo ou Traccar | zero instalação e um caminho só (a mesma API serve o celular e o simulador); a tela precisa ficar ligada |
 | Aviso de entrega nova na própria página | Telegram ou ntfy | sem conta, sem token e sem serviço externo; o estado vem do banco, então não se perde |
 
@@ -832,7 +839,7 @@ Decisões tomadas na implementação, onde a especificação não definia ou foi
 - **Erro de mensagem usa `reject` com requeue.** No RabbitMQ 4 o `nack` com requeue não incrementa a contagem de entregas da fila quorum (a mensagem nunca chega à DLQ); o `reject` incrementa. Confirmado por teste (F4).
 - **Contratos com `$id` absoluto** (`https://delivery-tracker.local/schemas/...`): o validador Java exige. Os payloads continuam sem `additionalProperties: false`.
 - **Testes sem Testcontainers:** `docker-compose.test.yml` sobe um Postgres e um RabbitMQ descartáveis e os testes rodam em containers (`scripts/test-all.sh`).
-- **Pedido do QR:** a regra "um pedido em andamento por pessoa" usa `pg_advisory_xact_lock` por cliente, para dois cliques simultâneos não passarem juntos pelo limite.
+- **Pedido do cliente:** a regra "um pedido em andamento por pessoa" usa `pg_advisory_xact_lock` por cliente, para dois cliques simultâneos não passarem juntos pelo limite.
 - **Aprovação com prazo vencido, antes do agendador cancelar:** o pedidos cancela na hora (`PRAZO_EXPIRADO`) e manda estornar, em vez de confirmar um pedido fora do prazo.
 - **Estorno retido:** se o gateway estiver fora, o pagamento não perde a mensagem de estorno (erro de infraestrutura: fica retida e tenta de novo).
 - **Horário da posição = horário do servidor:** o relógio do celular pode estar errado e não é preciso para nada aqui.

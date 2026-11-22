@@ -17,8 +17,8 @@
 
 **Nuvem:** AWS emulada com o MiniStack (Secrets Manager e S3), criada por Terraform. Mensageria com RabbitMQ em container próprio.
 
-**Fluxo principal:** o cliente faz um pedido de uma promoção com poucas unidades e recebe na hora o número do pedido (`202 Accepted`). O serviço de pedidos coordena a operação: pede ao estoque a reserva de uma unidade e, com ela reservada, pede ao serviço de pagamento a cobrança num gateway externo. Aprovada a cobrança, o pedido é confirmado e despachado para um entregador, que recebe o aviso no celular e é acompanhado no mapa até o destino. As unidades da promoção são o recurso escasso: sob carga, nenhuma é vendida duas vezes.
+**Fluxo principal:** o cliente faz um pedido de uma promoção com poucas unidades e recebe na hora o número do pedido (`202 Accepted`). O serviço de pedidos coordena a operação: pede ao estoque a reserva de uma unidade e, com ela reservada, pede ao serviço de pagamento a cobrança num gateway externo. Aprovada a cobrança, o pedido é confirmado e oferecido aos entregadores: o primeiro que aceita pelo celular leva e é acompanhado no mapa, pelo GPS, até o endereço do cliente. As unidades da promoção são o recurso escasso: sob carga, nenhuma é vendida duas vezes.
 
 - **Transação distribuída com compensação:** a reserva no estoque e a cobrança no pagamento. Se a cobrança falha ou não responde dentro do prazo, o pedido é cancelado e a unidade volta ao estoque; se a aprovação chega depois do prazo, o pagamento é estornado.
 - **Dependência lenta ou instável:** o gateway de pagamento, simulado pelo grupo, com latência e taxa de falha configuráveis por variável de ambiente.
-- **Evento com vários interessados:** `pedido.confirmado`, publicado uma vez e consumido pelo estoque (que transforma a reserva em venda) e pelo serviço de entregas (que despacha o pedido).
+- **Evento com vários interessados:** `pedido.confirmado`, publicado uma vez e consumido pelo estoque (que transforma a reserva em venda) e pelo serviço de entregas (que cria a entrega e a oferece aos entregadores).

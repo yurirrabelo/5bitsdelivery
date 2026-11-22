@@ -5,7 +5,7 @@ import pino from 'pino';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { concluirEntrega } from '../src/conclusao';
-import { Deps, Ultima, aoConfirmarPedido, despacharPendentes } from '../src/despacho';
+import { Deps, aceitarEntrega, aoConfirmarPedido, listarOfertas } from '../src/ofertas';
 import { Hub } from '../src/hub';
 import { Posicoes, tratarPosicao } from '../src/redis';
 import { exportarPendentes, montarRota } from '../src/rota';
@@ -22,7 +22,6 @@ class HubFalso extends Hub {
 
 let pool: Pool;
 let hub: HubFalso;
-let ultimas: Map<number, Ultima>;
 let deps: Deps;
 
 const LOJA = { lat: -26.9194, lon: -49.0661 };
@@ -37,10 +36,10 @@ afterAll(() => pool.end());
 beforeEach(async () => {
   await pool.query('TRUNCATE entregas, posicoes, outbox, mensagens_processadas');
   await pool.query('DELETE FROM entregadores');
-  await pool.query("INSERT INTO entregadores (id, nome) VALUES (1, 'Real'), (2, 'Simulado')");
+  // dois entregadores só nos testes: é o que permite provar a disputa pelo mesmo pedido
+  await pool.query("INSERT INTO entregadores (id, nome) VALUES (1, 'Ana'), (2, 'Bia')");
   hub = new HubFalso();
-  ultimas = new Map();
-  deps = { pool, hub, log, ultimaPosicao: async (id) => ultimas.get(id) ?? null };
+  deps = { pool, hub, log };
 });
 
 // ---------------------------------------------------------------- utilidades
@@ -61,98 +60,135 @@ async function receberConfirmado(e: Envelope) {
   depois.forEach((a) => a());
 }
 
+// o entregador toca em "Aceitar"
+async function aceitar(pedidoId: number, entregadorId: number) {
+  const depois: (() => void)[] = [];
+  const r = await transacao(pool, (c) => aceitarEntrega(c, pedidoId, entregadorId, deps, (a) => depois.push(a)));
+  if (r === 'aceita') depois.forEach((a) => a());
+  return r;
+}
+
 const entrega = async (pedidoId: number) => (await pool.query('SELECT * FROM entregas WHERE pedido_id = $1', [pedidoId])).rows[0];
 const statusEntregador = async (id: number) => (await pool.query('SELECT status FROM entregadores WHERE id = $1', [id])).rows[0].status;
 const saidas = async () => (await pool.query('SELECT type, payload FROM outbox ORDER BY id')).rows.map((r) => ({ type: r.type, payload: r.payload.payload }));
 
-// ---------------------------------------------------------------- despacho
-describe('despacho', () => {
-  it('pedido sem destino (QR) não vira entrega', async () => {
+// ---------------------------------------------------------------- oferta e aceite
+describe('oferta e aceite do pedido', () => {
+  it('pedido sem endereço de entrega (QR sem GPS) não vira entrega', async () => {
     await receberConfirmado(confirmado(1, { semDestino: true }));
     expect(await entrega(1)).toBeUndefined();
     expect(await saidas()).toEqual([]);
   });
 
-  it('atribui o entregador disponível mais próximo da loja', async () => {
-    ultimas.set(1, { lat: LOJA.lat + 0.05, lon: LOJA.lon, ts: Date.now() }); // longe
-    ultimas.set(2, { lat: LOJA.lat + 0.001, lon: LOJA.lon, ts: Date.now() }); // perto
+  it('pedido com endereço vira entrega PENDENTE: o sistema NÃO escolhe entregador sozinho', async () => {
     await receberConfirmado(confirmado(10));
+    expect(await entrega(10)).toMatchObject({ status: 'PENDENTE', entregador_id: null, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
+    expect(await statusEntregador(1)).toBe('DISPONIVEL');
+    expect(await statusEntregador(2)).toBe('DISPONIVEL');
+    expect(await saidas()).toEqual([]);
+    expect(hub.eventos).toEqual([{ type: 'entrega', evento: 'pendente', pedidoId: 10 }]);
+  });
 
-    expect(await entrega(10)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 2 });
+  it('a oferta aparece para os dois entregadores, a mais antiga primeiro', async () => {
+    await receberConfirmado(confirmado(11));
+    await receberConfirmado(confirmado(12));
+    for (const id of [1, 2]) {
+      expect(await listarOfertas(pool, id)).toEqual([
+        { pedidoId: 11, destino: DESTINO },
+        { pedidoId: 12, destino: DESTINO },
+      ]);
+    }
+  });
+
+  it('o entregador aceita: a entrega é dele, ele fica Ocupado e o pedido recebe entrega.atribuida', async () => {
+    await receberConfirmado(confirmado(20));
+    hub.eventos = [];
+    expect(await aceitar(20, 2)).toBe('aceita');
+
+    expect(await entrega(20)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 2 });
     expect(await statusEntregador(2)).toBe('OCUPADO');
     expect(await statusEntregador(1)).toBe('DISPONIVEL');
-    expect(await saidas()).toEqual([{ type: 'entrega.atribuida', payload: { pedidoId: 10, entregadorId: 2, entregadorNome: 'Simulado' } }]);
-    expect(hub.eventos).toEqual([{ type: 'entrega', evento: 'atribuida', pedidoId: 10, entregadorId: 2 }]);
+    expect(await saidas()).toEqual([{ type: 'entrega.atribuida', payload: { pedidoId: 20, entregadorId: 2, entregadorNome: 'Bia' } }]);
+    expect(hub.eventos).toEqual([{ type: 'entrega', evento: 'atribuida', pedidoId: 20, entregadorId: 2 }]);
+    expect(await listarOfertas(pool, 1)).toEqual([]); // a oferta sumiu para o outro
   });
 
-  it('entregador sem posição conhecida continua elegível (menor id)', async () => {
-    await receberConfirmado(confirmado(12));
-    expect((await entrega(12)).entregador_id).toBe(1);
+  it('dois entregadores aceitam o mesmo pedido ao mesmo tempo: só um fica com ele', async () => {
+    await receberConfirmado(confirmado(21));
+    const resultados = await Promise.all([aceitar(21, 1), aceitar(21, 2)]);
+    expect([...resultados].sort()).toEqual(['aceita', 'entrega_indisponivel']);
+    expect((await saidas()).filter((s) => s.type === 'entrega.atribuida')).toHaveLength(1);
+    const ocupados = (await pool.query("SELECT count(*)::int n FROM entregadores WHERE status = 'OCUPADO'")).rows[0].n;
+    expect(ocupados).toBe(1); // o que perdeu continua Disponível
   });
 
-  it('o preferido é escolhido mesmo que o outro esteja mais perto', async () => {
-    ultimas.set(1, { lat: LOJA.lat + 0.05, lon: LOJA.lon, ts: Date.now() });
-    ultimas.set(2, { lat: LOJA.lat, lon: LOJA.lon, ts: Date.now() });
-    await receberConfirmado(confirmado(13, { preferido: 1 }));
-    expect((await entrega(13)).entregador_id).toBe(1);
+  it('aceitar de novo um pedido que já foi aceito: indisponível, sem mudar nada', async () => {
+    await receberConfirmado(confirmado(22));
+    expect(await aceitar(22, 1)).toBe('aceita');
+    expect(await aceitar(22, 2)).toBe('entrega_indisponivel');
+    expect((await entrega(22)).entregador_id).toBe(1);
+    expect(await statusEntregador(2)).toBe('DISPONIVEL');
   });
 
-  it('preferido ocupado: a entrega espera por ele (PENDENTE), sem cair para o outro; ao liberar, o laço despacha', async () => {
-    await pool.query("UPDATE entregadores SET status = 'OCUPADO' WHERE id = 1");
-    await receberConfirmado(confirmado(14, { preferido: 1 }));
-    expect((await entrega(14)).status).toBe('PENDENTE');
-    expect(await statusEntregador(2)).toBe('DISPONIVEL'); // o outro estava livre e não foi usado
-
-    expect(await despacharPendentes(deps)).toBe(0); // continua esperando
-    await pool.query("UPDATE entregadores SET status = 'DISPONIVEL' WHERE id = 1");
-    expect(await despacharPendentes(deps)).toBe(1);
-    expect(await entrega(14)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 1 });
+  it('pedido feito para um entregador (preferido): só ele vê e aceita', async () => {
+    await receberConfirmado(confirmado(23, { preferido: 1 }));
+    expect(await listarOfertas(pool, 2)).toEqual([]);
+    expect(await listarOfertas(pool, 1)).toHaveLength(1);
+    expect(await aceitar(23, 2)).toBe('entrega_indisponivel');
+    expect((await entrega(23)).status).toBe('PENDENTE');
+    expect(await statusEntregador(2)).toBe('DISPONIVEL');
+    expect(await aceitar(23, 1)).toBe('aceita');
   });
 
-  it('sem entregador livre fica PENDENTE e o laço atribui quando alguém volta', async () => {
-    await pool.query("UPDATE entregadores SET status = 'OFFLINE'");
-    await receberConfirmado(confirmado(15));
-    expect((await entrega(15)).status).toBe('PENDENTE');
+  it('entregador Offline não aceita: a entrega continua esperando e nada muda', async () => {
+    await pool.query("UPDATE entregadores SET status = 'OFFLINE' WHERE id = 1");
+    await receberConfirmado(confirmado(24));
+    expect(await aceitar(24, 1)).toBe('entregador_indisponivel');
+    expect((await entrega(24)).status).toBe('PENDENTE');
+    expect(await statusEntregador(1)).toBe('OFFLINE');
     expect(await saidas()).toEqual([]);
-
-    await pool.query("UPDATE entregadores SET status = 'DISPONIVEL' WHERE id = 2");
-    expect(await despacharPendentes(deps)).toBe(1);
-    expect((await entrega(15)).entregador_id).toBe(2);
   });
 
-  it('dois pedidos disputando o único entregador livre: só um recebe (UPDATE condicional)', async () => {
-    await pool.query("UPDATE entregadores SET status = 'OFFLINE' WHERE id = 2");
-    await Promise.all([receberConfirmado(confirmado(20)), receberConfirmado(confirmado(21))]);
-    const r = await pool.query("SELECT status FROM entregas ORDER BY pedido_id");
-    expect(r.rows.map((x) => x.status).sort()).toEqual(['ATRIBUIDA', 'PENDENTE']);
+  it('um entregador só aceita um pedido por vez (fica Ocupado até concluir)', async () => {
+    await receberConfirmado(confirmado(25));
+    await receberConfirmado(confirmado(26));
+    expect(await aceitar(25, 1)).toBe('aceita');
+    expect(await aceitar(26, 1)).toBe('entregador_indisponivel');
+    expect((await entrega(26)).status).toBe('PENDENTE');
+    expect(await aceitar(26, 2)).toBe('aceita'); // o outro entregador pode
+  });
+
+  it('aceitar um pedido que não existe: indisponível', async () => {
+    expect(await aceitar(999, 1)).toBe('entrega_indisponivel');
+    expect(await statusEntregador(1)).toBe('DISPONIVEL');
   });
 
   it('versionamento: entende pedido.confirmado v1 e v2 (converte a v1 ao ler)', async () => {
     await receberConfirmado(confirmado(31, { versao: 1, preferido: 1 }));
     await receberConfirmado(confirmado(32, { versao: 2, preferido: 2 }));
-    expect(await entrega(31)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 1, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
-    expect(await entrega(32)).toMatchObject({ status: 'ATRIBUIDA', entregador_id: 2, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
+    expect(await entrega(31)).toMatchObject({ status: 'PENDENTE', entregador_preferido_id: 1, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
+    expect(await entrega(32)).toMatchObject({ status: 'PENDENTE', entregador_preferido_id: 2, destino_lat: DESTINO.lat, destino_lon: DESTINO.lon });
   });
 
-  it('v1 e v2 sem destino (QR) também não viram entrega', async () => {
+  it('v1 e v2 sem endereço (QR) também não viram entrega', async () => {
     await receberConfirmado(confirmado(33, { versao: 1, semDestino: true }));
     await receberConfirmado(confirmado(34, { versao: 2, semDestino: true }));
     expect((await pool.query('SELECT count(*)::int n FROM entregas')).rows[0].n).toBe(0);
   });
 
-  it('pedido.confirmado repetido não cria duas entregas', async () => {
+  it('pedido.confirmado repetido não cria duas entregas nem duas ofertas', async () => {
     await receberConfirmado(confirmado(30));
-    const outro = confirmado(30);
-    await receberConfirmado(outro);
+    await receberConfirmado(confirmado(30));
     expect((await pool.query('SELECT count(*)::int n FROM entregas')).rows[0].n).toBe(1);
-    expect((await saidas()).filter((s) => s.type === 'entrega.atribuida')).toHaveLength(1);
+    expect(await listarOfertas(pool, 1)).toHaveLength(1);
   });
 });
 
 // ---------------------------------------------------------------- conclusão
 describe('conclusão da entrega', () => {
   beforeEach(async () => {
-    await receberConfirmado(confirmado(40, { preferido: 1 }));
+    await receberConfirmado(confirmado(40));
+    await aceitar(40, 1);
     await pool.query('TRUNCATE outbox');
     hub.eventos = [];
   });
@@ -183,6 +219,13 @@ describe('conclusão da entrega', () => {
     const r = await pool.query('SELECT payload FROM outbox');
     expect(r.rows[0].payload.correlationId).toBe((await entrega(40)).correlation_id);
   });
+
+  it('depois de concluir o entregador volta a receber ofertas', async () => {
+    await receberConfirmado(confirmado(41));
+    expect(await aceitar(41, 1)).toBe('entregador_indisponivel'); // ainda ocupado com o #40
+    await concluir('manual');
+    expect(await aceitar(41, 1)).toBe('aceita');
+  });
 });
 
 // ---------------------------------------------------------------- posições e geofence
@@ -195,7 +238,8 @@ describe('processamento das posições', () => {
   const metro = 1 / 111195;
 
   beforeEach(async () => {
-    await receberConfirmado(confirmado(50, { preferido: 1 }));
+    await receberConfirmado(confirmado(50));
+    await aceitar(50, 1);
     hub.eventos = [];
   });
 
@@ -230,7 +274,7 @@ describe('processamento das posições', () => {
 // ---------------------------------------------------------------- rota e S3
 describe('rota', () => {
   beforeEach(async () => {
-    await receberConfirmado(confirmado(70, { preferido: 1 }));
+    await receberConfirmado(confirmado(70));
     for (const [i, p] of [[-26.91, -49.07], [-26.905, -49.06], [-26.9, -49.05]].entries()) {
       await pool.query('INSERT INTO posicoes (entregador_id, pedido_id, lat, lon, ts) VALUES (1, 70, $1, $2, now() + make_interval(secs => $3))', [p[0], p[1], i]);
     }

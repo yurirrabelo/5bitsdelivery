@@ -61,6 +61,20 @@ describe('POST /api/entregas/posicoes', () => {
     expect(recebidas).toHaveLength(0);
   });
 
+  it('aceitar pedido: só entregador (403 para operador, cliente ou sem login)', async () => {
+    const { app } = await montar();
+    for (const headers of [{ 'x-user-role': 'operador' }, { 'x-user-role': 'cliente' }, {}]) {
+      const r = await app.inject({ method: 'POST', url: '/api/entregas/12/aceitar', headers });
+      expect(r.statusCode).toBe(403);
+    }
+  });
+
+  it('aceitar pedido com número inválido: 400', async () => {
+    const { app } = await montar();
+    const r = await app.inject({ method: 'POST', url: '/api/entregas/abc/aceitar', headers: entregador });
+    expect(r.statusCode).toBe(400);
+  });
+
   it('Redis fora do ar: 503 (a página tenta de novo em 3 s)', async () => {
     const { app } = await montar(async () => {
       throw new Error('redis fora');

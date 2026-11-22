@@ -1,4 +1,5 @@
-// Página do cliente (QR code): entra com um apelido, faz um pedido da promoção e acompanha cada passo.
+// Página do cliente (QR code): entra com um apelido, pede a promoção (a entrega vai para onde ele está, pelo GPS do
+// celular) e acompanha cada passo até o entregador chegar.
 // Todo texto vindo do servidor entra por textContent. O telão nunca mostra o apelido, só o número do pedido.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -6,6 +7,7 @@
   const CHAVE_PEDIDO = 'delivery.pedidoCliente';
   let timer = null;
   let timerEstoque = null;
+  let origemLoja = null; // onde o mapa abre quando não há GPS
 
   // o código do evento vem no link do QR (?codigo=...); sem ele, a pessoa digita
   const codigoDoLink = parametros.get('codigo');
@@ -14,7 +16,7 @@
   const guardar = (n, v) => { try { v === null ? localStorage.removeItem(n) : localStorage.setItem(n, v); } catch (e) { /* sem storage */ } };
 
   function tela(nome) {
-    for (const t of ['entrar', 'pedir', 'acompanhar']) $(t).classList.toggle('oculto', t !== nome);
+    for (const t of ['entrar', 'pedir', 'escolher-local', 'acompanhar']) $(t).classList.toggle('oculto', t !== nome);
   }
 
   // ---------------------------------------------------------------- quantas unidades restam
@@ -31,8 +33,17 @@
   }
 
   // ---------------------------------------------------------------- passos de cada status
-  // O caminho feliz: recebido -> unidade reservada -> pagando -> confirmado.
-  const PASSOS = [
+  // Pedido com endereço (o normal): recebido -> reservada -> pagando -> procurando entregador -> a caminho -> entregue.
+  // Pedido sem endereço (link antigo, sem GPS): recebido -> reservada -> pagando -> confirmado.
+  const PASSOS_ENTREGA = [
+    { icone: '📝', texto: 'Pedido recebido' },
+    { icone: '📦', texto: 'Unidade reservada para você' },
+    { icone: '💳', texto: 'Pagando…' },
+    { icone: '🔎', texto: 'Procurando um entregador…' },
+    { icone: '🛵', texto: 'Entregador a caminho' },
+    { icone: '🎉', texto: 'Entregue!' },
+  ];
+  const PASSOS_SIMPLES = [
     { icone: '📝', texto: 'Pedido recebido' },
     { icone: '📦', texto: 'Unidade reservada para você' },
     { icone: '💳', texto: 'Pagando…' },
@@ -40,7 +51,8 @@
   ];
 
   // quantos passos já foram vencidos em cada status
-  const ETAPA = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 4, EM_ENTREGA: 4, ENTREGUE: 4 };
+  const ETAPA_ENTREGA = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 3, EM_ENTREGA: 4, ENTREGUE: 6 };
+  const ETAPA_SIMPLES = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 4, EM_ENTREGA: 4, ENTREGUE: 4 };
 
   function desenhar(p) {
     const ol = $('passos');
@@ -60,6 +72,10 @@
       li.append(ic, tx);
       ol.appendChild(li);
     };
+
+    const comEntrega = !!p.destino;
+    const PASSOS = comEntrega ? PASSOS_ENTREGA : PASSOS_SIMPLES;
+    const ETAPA = comEntrega ? ETAPA_ENTREGA : ETAPA_SIMPLES;
 
     const falha = {
       ESGOTADO: ['😕', 'Acabaram as unidades', 'A promoção esgotou antes do seu pedido.'],
@@ -81,11 +97,13 @@
 
     const etapa = ETAPA[p.status] ?? 0;
     PASSOS.forEach((s, i) => item(s.icone, s.texto, i < etapa ? 'feito' : i === etapa ? 'atual' : ''));
-    if (etapa >= 4) {
-      resultado.textContent = 'Pronto! Seu pedido está garantido. 🎉';
+    if (etapa >= PASSOS.length) {
+      resultado.textContent = comEntrega ? 'Seu pedido chegou! 🎉' : 'Pronto! Seu pedido está garantido. 🎉';
       resultado.classList.add('ok');
       return true;
     }
+    if (comEntrega && p.status === 'CONFIRMADO') resultado.textContent = 'Pagamento aprovado. Estamos chamando os entregadores…';
+    if (comEntrega && p.status === 'EM_ENTREGA') resultado.textContent = 'Fique por aí: o entregador está indo até a sua localização.';
     return false;
   }
 
@@ -127,20 +145,78 @@
     timer = setInterval(ciclo, 1000);
   }
 
-  // ---------------------------------------------------------------- pedir
+  // ---------------------------------------------------------------- onde entregar (GPS do celular ou toque no mapa)
+  function localizar() {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) return reject(new Error('Este aparelho não tem GPS.'));
+      if (!window.isSecureContext) return reject(new Error('O GPS só funciona em páginas https://.'));
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+        (e) => reject(new Error(e.code === 1 ? 'A localização está bloqueada neste navegador.' : 'Não consegui pegar a sua localização.')),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+      );
+    });
+  }
+
+  async function enviarPedido(destino) {
+    const r = await Auth.api('/api/pedidos', { method: 'POST', body: { destino: { lat: destino.lat, lon: destino.lon } } });
+    if (r.status === 409) throw new Error('Você já tem um pedido em andamento. Espere ele terminar.');
+    if (r.status !== 202) throw new Error('Não consegui fazer o pedido agora. Tente de novo.');
+    acompanhar((await r.json()).id);
+  }
+
   async function pedir() {
     const erro = $('erro-pedir');
     erro.textContent = '';
-    $('btn-pedir').disabled = true;
+    const botao = $('btn-pedir');
+    botao.disabled = true;
+    botao.textContent = 'Pegando sua localização…';
     try {
-      const r = await Auth.api('/api/pedidos', { method: 'POST' });
-      if (r.status === 409) throw new Error('Você já tem um pedido em andamento. Espere ele terminar.');
-      if (r.status !== 202) throw new Error('Não consegui fazer o pedido agora. Tente de novo.');
-      acompanhar((await r.json()).id);
+      let destino;
+      try {
+        destino = await localizar();
+      } catch (e) {
+        return mostrarMapaLocal(e.message); // sem GPS: a pessoa marca no mapa onde está
+      }
+      await enviarPedido(destino);
     } catch (e) {
       erro.textContent = e.message;
     } finally {
-      $('btn-pedir').disabled = false;
+      botao.disabled = false;
+      botao.textContent = 'Quero um pedido!';
+    }
+  }
+
+  // Sem GPS: um mapa para marcar onde entregar
+  let mapaLocal = null, marcadorLocal = null, pontoEscolhido = null;
+
+  function mostrarMapaLocal(motivo) {
+    $('motivo-local').textContent = motivo + ' Toque no mapa onde você está.';
+    $('erro-local').textContent = '';
+    tela('escolher-local');
+    if (!mapaLocal) {
+      const centro = origemLoja ? [origemLoja.lat, origemLoja.lon] : [-26.9194, -49.0661];
+      mapaLocal = L.map('mapa-local').setView(centro, 16);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapaLocal);
+      mapaLocal.on('click', (ev) => {
+        pontoEscolhido = { lat: ev.latlng.lat, lon: ev.latlng.lng };
+        if (marcadorLocal) marcadorLocal.setLatLng(ev.latlng);
+        else marcadorLocal = L.marker(ev.latlng).addTo(mapaLocal);
+        $('btn-pedir-aqui').disabled = false;
+      });
+    }
+    setTimeout(() => mapaLocal.invalidateSize(), 50); // o mapa estava escondido até agora
+  }
+
+  async function pedirNoPonto() {
+    if (!pontoEscolhido) return;
+    $('erro-local').textContent = '';
+    $('btn-pedir-aqui').disabled = true;
+    try {
+      await enviarPedido(pontoEscolhido);
+    } catch (e) {
+      $('erro-local').textContent = e.message;
+      $('btn-pedir-aqui').disabled = false;
     }
   }
 
@@ -164,6 +240,8 @@
   });
 
   $('btn-pedir').addEventListener('click', pedir);
+  $('btn-pedir-aqui').addEventListener('click', pedirNoPonto);
+  $('voltar-local').addEventListener('click', mostrarPedir);
   $('de-novo').addEventListener('click', mostrarPedir);
   $('trocar').addEventListener('click', () => Auth.sair());
 
@@ -172,6 +250,7 @@
     try {
       const cfg = await (await Auth.api('/api/pedidos/config')).json();
       $('promo').textContent = cfg.promocao.nome;
+      origemLoja = cfg.origem;
     } catch (e) { /* mantém o título padrão */ }
     clearInterval(timerEstoque);
     timerEstoque = setInterval(atualizarRestam, 3000); // o contador da promoção anda sozinho

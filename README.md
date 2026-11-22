@@ -2,7 +2,7 @@
 
 Sistema de delivery com **promoção relâmpago** e **entregador no mapa em tempo real**. Trabalho final de Sistemas Distribuídos (FURB).
 
-O cliente pede, o sistema separa uma unidade da promoção, cobra num gateway lento e instável e, se tudo der certo, despacha o pedido para um entregador. O celular dele manda o **GPS real pelo navegador** e o painel mostra a moto andando até o destino. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
+O cliente pede (a entrega vai para onde ele está, pelo GPS do celular dele), o sistema separa uma unidade da promoção, cobra num gateway lento e instável e, se tudo der certo, o pedido aparece para os entregadores: **o primeiro que tocar em Aceitar leva**. O celular dele manda o **GPS real pelo navegador** e o painel mostra a moto andando até o cliente. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
 
 ![Containers (C4 nível 2)](docs/arquitetura/c4-containers.png)
 
@@ -11,7 +11,7 @@ O cliente pede, o sistema separa uma unidade da promoção, cobra num gateway le
 | `pedidos` | Java | recebe o pedido (responde `202` na hora) e coordena a saga |
 | `estoque` | Java | reserva as unidades da promoção, sem nunca vender a mesma duas vezes |
 | `pagamento` | TypeScript | cobra e estorna no gateway; roda com 2 réplicas |
-| `entregas` | TypeScript | escolhe o entregador, recebe o GPS e mostra o mapa ao vivo |
+| `entregas` | TypeScript | oferece o pedido aos entregadores (quem aceitar primeiro leva), recebe o GPS e mostra o mapa ao vivo |
 | `auth` | TypeScript | login e JWT |
 | `gateway-pagamento` | TypeScript | a "operadora" externa simulada: latência e falha configuráveis |
 
@@ -35,8 +35,9 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 
 | O quê | Onde | Usuário / senha |
 |---|---|---|
-| Painel do operador | http://localhost:8080 | `admin` / `admin` |
-| Entregador (celular) | `/entregador/` | `entregador1` / `admin` |
+| Entrada (operador e entregador) | http://localhost:8080 | `admin` ou `entregador1`, senha `admin`: cada um vai para a sua tela |
+| Painel do operador | http://localhost:8080/painel/ | `admin` / `admin` |
+| Entregador (celular) | `/entregador/` | `entregador1` e `entregador2`, senha `admin` (duas contas: uma na tela da aula, outra no celular de um integrante) |
 | Cliente (plateia, pelo QR) | `/cliente/?codigo=promo` | sem usuário |
 | Grafana | http://localhost:3000 | abre direto (para editar: `admin` / `admin`) |
 
@@ -46,9 +47,9 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 ./demo.sh teste
 ```
 
-Cria um pedido, o entregador simulado "dirige" até o destino e o pedido termina `ENTREGUE` (a rota fica no S3). No fim: **`SMOKE: PASSOU`**. Deixe o painel aberto para ver a moto 🛵 andar.
+Um cliente pede (com endereço), o entregador 2 aceita e "dirige" até o destino (o teste faz o papel do celular) e o pedido termina `ENTREGUE` (a rota fica no S3). No fim: **`SMOKE: PASSOU`**. Deixe o painel aberto para ver a moto 🛵 andar e rode com os celulares dos entregadores fechados.
 
-Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Quero um pedido!** e veja: recebido → unidade reservada → pagando → confirmado. No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparece o caminho dele por cada serviço (espere uns 20 s).
+Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Quero um pedido!** e permita a localização: recebido → unidade reservada → pagando → procurando um entregador. Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparece o caminho dele por cada serviço (espere uns 20 s).
 
 ## 3. Celular do entregador (GPS real)
 
@@ -58,16 +59,17 @@ Não precisa instalar nada: o entregador abre um **link no navegador do celular*
 ./demo.sh link
 ```
 
-Ele mostra três links. No celular (use os dados móveis ou o Wi-Fi, tanto faz):
+Ele mostra os links completos. No celular (use os dados móveis ou o Wi-Fi, tanto faz):
 
-1. Abra o link do **entregador** (`https://…trycloudflare.com/entregador/`) e entre com `entregador1` / `admin`.
+1. Abra o link do **entregador** (`https://…trycloudflare.com/entregador/`) e entre com `entregador2` / `admin` (o `entregador1` fica na tela da aula). Se abrir só o endereço do túnel (sem o final), cai na tela de **Entrada**: entre com o mesmo usuário e você vai para a tela do entregador.
 2. Toque em **Disponível** e **permita a localização** quando o navegador perguntar.
 3. O cartão "GPS enviando" fica verde. No painel do notebook (abra o link do **painel**), o 🛵 aparece e anda com você.
-4. No painel, clique no mapa onde o entregador deve ir, escolha *Entregador Real* e toque em **Criar pedido**. O celular avisa (tela, vibração e som), mostra o destino no mapa e a distância. Chegando a menos de 50 m, o pedido vira `ENTREGUE` sozinho (ou toque em **Confirmar entrega**).
+4. Em outro celular (ou outra aba), abra o link do **cliente** (`…/cliente/?codigo=promo`), toque em **Quero um pedido!** e permita a localização. No celular do entregador o pedido aparece na lista (aviso na tela, vibração e som): toque em **Aceitar**. O celular mostra o endereço do cliente no mapa e a distância; chegando a menos de 50 m, o pedido vira `ENTREGUE` sozinho (ou toque em **Confirmar entrega**).
+5. Com os **dois entregadores** (`entregador1` e `entregador2`) Disponíveis, os dois veem o pedido: quem tocar primeiro em **Aceitar** leva, e o outro avisa que já foi aceito.
 
 **QR para a plateia:** com o painel aberto pelo link do túnel, o QR do cartão "Peça pelo celular" já aponta para o endereço público. Use o **Modo telão** para mostrá-lo em tela cheia.
 
-Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador para o GPS quando a tela apaga). Se o GPS falhar, o plano B é o simulador: `./demo.sh simular` (ele entra como o entregador 1 e "dirige" a rota do ensaio; feche a página do celular antes, para só uma fonte enviar o GPS).
+Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador para o GPS quando a tela apaga). Se o GPS falhar, o plano B é `./demo.sh simular`: ele entra como o entregador 2, aceita o pedido que estiver esperando e "dirige" a rota do ensaio (feche a página do celular antes, para só uma fonte enviar o GPS).
 
 > O túnel muda de endereço toda vez que reinicia: ligue uma vez e não mexa mais. Algumas redes (faculdade) bloqueiam a porta dele (7844): teste antes e, se preciso, use o roteador do celular no notebook.
 
@@ -103,9 +105,11 @@ docker compose up -d gateway-pagamento    # volta ao que está no .env
 ## 5. Antes de apresentar
 
 ```bash
-./demo.sh reset        # repõe as 10 unidades da promoção
+./demo.sh limpar       # começa limpo: apaga os pedidos e as entregas do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
 ./demo.sh estado       # confere que está tudo no ar
 ```
+
+Durante a apresentação, `./demo.sh reset [N]` só repõe as unidades (por exemplo `./demo.sh reset 25` antes do QR).
 
 Suba tudo **uma vez com boa internet antes do dia** (a primeira subida baixa imagens, Maven, npm e os providers do Terraform; depois fica tudo em cache). No dia, os mapas e o túnel precisam de internet.
 
@@ -131,7 +135,9 @@ Cada bônus só vale se for demonstrado. Os dois serviços extras ficam no profi
 | Serviço `unhealthy` ou reiniciando | dê 6 GB ao Docker e rode `docker compose up -d` de novo |
 | Porta 8080 ou 3000 ocupada | mude `NGINX_PORTA` no `.env` ou feche o programa que usa a porta |
 | `.sh` não abre ou dá erro com `\r` | use o **Git Bash**; se persistir: `git config --global core.autocrlf input` e clone de novo |
-| Pedido do operador fica em `CONFIRMADO` | nenhum entregador `Disponível`: veja o status dele no celular ou `./demo.sh estado` |
+| Pedido fica em "Aguardando entregador" | ninguém aceitou: o entregador precisa estar **Disponível**, com a página aberta, e tocar em **Aceitar** (ou use `./demo.sh simular`) |
+| Entregador preso em "Em entrega" (esqueceu de concluir) | ele toca em **Confirmar entrega**; ou `./demo.sh limpar`, que zera tudo |
+| Pedidos velhos do ensaio na tela | `./demo.sh limpar` |
 | Pedidos caem em `ESGOTADO` | `./demo.sh reset` |
 | Celular não manda o GPS | a página tem de estar em `https://` (link do túnel) e a localização liberada no navegador; o cartão do GPS diz o que falta |
 | Marcador do entregador parado | tela do celular apagou ou a página foi para segundo plano: abra de novo |

@@ -23,7 +23,7 @@
       <p class="saudacao">Olá, <b id="quem"></b></p>
 
       <!-- avisos que aparecem sozinhos -->
-      <div class="faixa nova oculto" id="faixa-nova" role="status">🛵 Nova entrega! Pedido <b id="faixa-numero"></b></div>
+      <div class="faixa nova oculto" id="faixa-nova" role="status">🛍️ Novo pedido para entregar! <b id="faixa-numero"></b></div>
       <div class="faixa pronta oculto" id="faixa-entregue" role="status">✅ Entrega concluída. Bom trabalho!</div>
 
       <!-- 1. o status: o que o sistema pode fazer com você agora -->
@@ -47,12 +47,20 @@
         </div>
       </section>
 
-      <!-- 3. a entrega -->
+      <!-- 3. os pedidos que esperam um entregador: toque em Aceitar -->
+      <section class="ofertas oculto" id="ofertas">
+        <p class="entrega-etiqueta">Pedidos para entregar</p>
+        <p class="dica">Toque em <b>Aceitar</b> no pedido que você quer entregar. O primeiro a aceitar fica com ele.</p>
+        <div id="lista-ofertas"></div>
+        <p class="erro" id="oferta-erro" role="alert"></p>
+      </section>
+
+      <!-- 4. a entrega em andamento -->
       <section class="entrega">
         <div id="sem-entrega" class="vazio">
           <span class="vazio-icone">🛵</span>
-          <p>Nenhuma entrega agora.</p>
-          <p class="dica">Fique <b>Disponível</b> com esta página aberta: o pedido aparece aqui.</p>
+          <p>Nenhum pedido agora.</p>
+          <p class="dica" id="sem-entrega-dica"></p>
         </div>
 
         <div id="com-entrega" class="oculto">

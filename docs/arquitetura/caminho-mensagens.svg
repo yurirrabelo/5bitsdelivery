@@ -29,7 +29,7 @@
 <text x="235" y="754" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">pedido.confirmado é publicado</text>
 <text x="235" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">uma vez e consumido pelo</text>
 <text x="235" y="798" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">estoque (baixa a unidade) e</text>
-<text x="235" y="820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">pelas entregas (despacho).</text>
+<text x="235" y="820" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#5a4500" text-anchor="middle">pelas entregas (cria a entrega).</text>
 <rect x="732" y="150" width="70" height="740" rx="10" fill="#fdebd8" stroke="#d98a3a" stroke-width="1.5"/>
 <text x="767" y="136" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#8a4b00" text-anchor="middle">RabbitMQ</text>
 <text x="767" y="912" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#8a4b00" text-anchor="middle">exchange delivery.eventos</text>
@@ -68,10 +68,10 @@
 <text x="1310" y="797.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[TypeScript]</text>
 <path d="M402,727 L1128,727" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="719" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">5 · pedido.confirmado</text>
-<text x="818" y="719" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">despacha, se o pedido tem destino</text>
+<text x="818" y="719" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">cria a entrega e espera um entregador</text>
 <path d="M1128,784 L402,784" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="776" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">6 · entrega.atribuida</text>
-<text x="818" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">a página do entregador avisa o celular</text>
+<text x="818" y="776" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">um entregador tocou em Aceitar</text>
 <path d="M1128,840 L402,840" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="832" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">7 · entrega.concluida</text>
 <text x="818" y="832" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">chegou ao destino (geofence)</text>

@@ -63,6 +63,9 @@ button.gigante:disabled { animation: none; }
 button.link { background: none; color: var(--suave); text-decoration: underline; padding: 0 4px; font-weight: 500; font-size: .88rem; }
 button.link:hover { filter: none; color: var(--texto); }
 
+/* ---------- sem GPS: o mapa para marcar onde entregar ---------- */
+.mapa-local { height: 280px; border-radius: 16px; overflow: hidden; border: 1px solid var(--borda); }
+
 /* ---------- acompanhamento ---------- */
 .pedido-topo { display: flex; align-items: center; justify-content: space-between; }
 .numero { font-size: 1.5rem; font-weight: 800; color: var(--acao); letter-spacing: -.02em; }

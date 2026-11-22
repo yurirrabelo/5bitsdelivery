@@ -3,7 +3,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 import { Logger, transacao } from './comuns';
 import { concluirEntrega } from './conclusao';
-import { Deps } from './despacho';
+import { Deps, aceitarEntrega, listarOfertas } from './ofertas';
 import { ErroGps, lerPosicao } from './gps';
 import { Hub } from './hub';
 import { Posicoes } from './redis';
@@ -51,7 +51,8 @@ export async function registrarRotasEntregas(app: FastifyInstance, d: DepsRotas)
     return listarEntregadores(d);
   });
 
-  // Tudo o que a página do entregador precisa: o status dele e a entrega em andamento (com o destino)
+  // Tudo o que a página do entregador precisa: o status dele, a entrega em andamento (com o destino) e, se ele
+  // estiver Disponível, os pedidos esperando um entregador que ele pode aceitar
   app.get('/api/entregas/me', async (req, reply) => {
     const id = Number(cabecalho(req, 'x-entregador-id'));
     if (cabecalho(req, 'x-user-role') !== 'entregador' || !id) return reply.code(403).send({ erro: 'apenas entregador' });
@@ -63,7 +64,22 @@ export async function registrarRotasEntregas(app: FastifyInstance, d: DepsRotas)
     return {
       entregador: e.rows[0],
       entrega: en ? { pedidoId: Number(en.pedido_id), destino: { lat: en.destino_lat, lon: en.destino_lon } } : null,
+      ofertas: e.rows[0].status === 'DISPONIVEL' ? await listarOfertas(d.pool, id) : [],
     };
+  });
+
+  // O entregador aceita um pedido da lista: o primeiro a aceitar fica com ele (UPDATE condicional)
+  app.post('/api/entregas/:pedidoId/aceitar', async (req, reply) => {
+    const entregadorId = Number(cabecalho(req, 'x-entregador-id'));
+    if (cabecalho(req, 'x-user-role') !== 'entregador' || !entregadorId) return reply.code(403).send({ erro: 'apenas entregador' });
+    const pedidoId = Number((req.params as { pedidoId: string }).pedidoId);
+    if (!Number.isInteger(pedidoId)) return reply.code(400).send({ erro: 'pedido inválido' });
+    const depois: (() => void)[] = [];
+    const r = await transacao(d.pool, (c) => aceitarEntrega(c, pedidoId, entregadorId, d.deps, (a) => depois.push(a)));
+    if (r === 'entregador_indisponivel') return reply.code(409).send({ erro: 'Você precisa estar Disponível e sem outra entrega para aceitar.' });
+    if (r === 'entrega_indisponivel') return reply.code(409).send({ erro: 'Este pedido já foi aceito por outro entregador.' });
+    depois.forEach((a) => a());
+    return { pedidoId, status: 'ATRIBUIDA' };
   });
 
   // OCUPADO só o sistema define

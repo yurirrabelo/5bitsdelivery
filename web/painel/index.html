@@ -24,7 +24,7 @@
       <div class="estoque" id="estoque" aria-label="Estoque da promoção"></div>
 
       <div class="acoes">
-        <button class="secundario" id="telao" title="Esconde os formulários e deixa só o que a turma precisa ver">📺 Modo telão</button>
+        <button class="secundario" id="telao" title="Mostra só o mapa, os pedidos e o QR, em letras grandes, para o telão">📺 Modo telão</button>
         <a id="grafana" class="link-topo" href="#" target="_blank" rel="noopener">Grafana ↗</a>
         <span class="quem" id="quem"></span>
         <button class="secundario" id="sair">Sair</button>
@@ -37,37 +37,63 @@
         <div class="legenda">
           <span><i class="loja"></i> loja</span>
           <span><i class="moto">🛵</i> entregador</span>
-          <span><i class="alvo"></i> destino</span>
+          <span><i class="alvo"></i> destino do pedido</span>
         </div>
       </section>
 
       <aside class="lateral">
-        <section class="cartao so-operador">
-          <h2><span class="num">1</span> Novo pedido</h2>
-          <p class="dica" id="destino-info">Clique no mapa para escolher o destino.</p>
-          <label>Entregador
-            <select id="entregador"><option value="">Qualquer (o mais próximo)</option></select>
-          </label>
-          <button id="criar" disabled>Criar pedido</button>
-          <p class="erro" id="criar-erro" role="alert"></p>
+        <p class="resumo so-operador">Aqui você <b>acompanha tudo ao vivo</b>: os pedidos dos clientes, os entregadores no mapa e o estoque da promoção.</p>
+
+        <nav class="abas so-operador" role="tablist" aria-label="O que mostrar">
+          <button class="aba ativa" data-aba="pedidos" role="tab">📋 Pedidos</button>
+          <button class="aba" data-aba="qr" role="tab">📱 QR da plateia</button>
+        </nav>
+
+        <!-- aba 1: pedidos e entregadores -->
+        <section class="painel-aba ativa" id="aba-pedidos">
+          <div class="cartao">
+            <h2>Entregadores</h2>
+            <ul class="entregadores" id="entregadores-lista"></ul>
+          </div>
+
+          <div class="cartao">
+            <div class="titulo-linha">
+              <h2>Pedidos</h2>
+              <button class="secundario pequeno so-operador" id="abrir-criar" title="Cria um pedido escolhendo o destino no mapa">＋ Pedido pelo mapa</button>
+            </div>
+            <p class="dica so-operador">Cada cliente que pede aparece aqui. Quando um entregador aceita, o pedido passa a <b>Em entrega</b>.</p>
+
+            <div id="form-criar" class="form-criar so-operador oculto">
+              <p class="dica" id="destino-info">Clique no mapa para escolher o destino.</p>
+              <label>Para quem
+                <select id="entregador"><option value="">Qualquer entregador</option></select>
+              </label>
+              <div class="linha-botoes">
+                <button id="criar" disabled>Criar pedido</button>
+                <button class="secundario" id="cancelar-criar">Cancelar</button>
+              </div>
+              <p class="erro" id="criar-erro" role="alert"></p>
+            </div>
+
+            <table class="pedidos">
+              <thead><tr><th>Nº</th><th>Situação</th><th>Entregador</th></tr></thead>
+              <tbody id="pedidos"></tbody>
+            </table>
+          </div>
         </section>
 
-        <section class="cartao">
-          <h2><span class="num">2</span> Pedidos</h2>
-          <table class="pedidos">
-            <thead><tr><th>Nº</th><th>Status</th><th>Entregador</th></tr></thead>
-            <tbody id="pedidos"></tbody>
-          </table>
-        </section>
-
-        <section class="cartao qr-card">
-          <h2><span class="num">3</span> Peça pelo celular</h2>
-          <div id="qr" class="qr"></div>
-          <label class="so-operador">URL pública
-            <input id="url-publica" placeholder="https://…trycloudflare.com">
-          </label>
-          <p class="dica" id="qr-link"></p>
-          <p class="dica so-operador">Entregador (abra no celular): <b id="link-entregador"></b></p>
+        <!-- aba 2: o QR para a plateia pedir -->
+        <section class="painel-aba" id="aba-qr">
+          <div class="cartao qr-card">
+            <h2>Peça pelo celular</h2>
+            <p class="dica so-operador">Mostre este QR no telão: a turma pede pelo celular e o pedido aparece para os entregadores aceitarem.</p>
+            <div id="qr" class="qr"></div>
+            <p class="dica" id="qr-link"></p>
+            <label class="so-operador">Endereço público (túnel)
+              <input id="url-publica" placeholder="https://…trycloudflare.com">
+            </label>
+            <p class="dica so-operador">Entregador (abra no celular): <b id="link-entregador"></b></p>
+          </div>
         </section>
       </aside>
     </div>

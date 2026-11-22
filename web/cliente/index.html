@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#f76707">
   <title>5Bits Delivery · Peça agora</title>
   <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/comum/estilo.css">
   <link rel="stylesheet" href="cliente.css">
 </head>
@@ -48,8 +49,18 @@
       <section id="pedir" class="cartao oculto">
         <p class="ola">Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
         <button id="btn-pedir" class="gigante">Quero um pedido!</button>
-        <p class="dica">É só tocar no botão. Você acompanha cada passo do pedido aqui mesmo.</p>
+        <p class="dica">Entregamos onde você está: o navegador vai pedir para usar a sua localização, é só tocar em <b>Permitir</b>. Você acompanha cada passo do pedido aqui mesmo.</p>
         <p class="erro" id="erro-pedir" role="alert"></p>
+      </section>
+
+      <!-- 2b. sem GPS: marcar no mapa onde entregar -->
+      <section id="escolher-local" class="cartao oculto">
+        <h2>Onde entregamos?</h2>
+        <p class="dica" id="motivo-local"></p>
+        <div id="mapa-local" class="mapa-local" aria-label="Mapa para marcar onde entregar"></div>
+        <button id="btn-pedir-aqui" class="grande" disabled>Pedir para este ponto</button>
+        <p class="erro" id="erro-local" role="alert"></p>
+        <button class="link" id="voltar-local">voltar</button>
       </section>
 
       <!-- 3. acompanhar -->
@@ -67,6 +78,7 @@
     <footer class="rodape">5Bits Delivery · feito para a apresentação de Sistemas Distribuídos</footer>
   </div>
 
+  <script src="/vendor/leaflet/leaflet.js"></script>
   <script src="/comum/auth.js"></script>
   <script src="cliente.js"></script>
 </body>

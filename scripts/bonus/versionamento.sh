@@ -35,6 +35,9 @@ publicar_confirmado 1 "$M1" "{\"pedidoId\":$V1,\"origem\":$ORIGEM,\"destino\":$D
 echo "Passo 2: publica um pedido.confirmado v2 (dados dentro de \"entrega\", entregador preferido 2)"
 publicar_confirmado 2 "$M2" "{\"pedidoId\":$V2,\"origem\":$ORIGEM,\"entrega\":{\"destino\":$DESTINO,\"entregadorPreferidoId\":2}}"
 
+echo "Passo 3: cada entregador aceita o pedido que foi feito para ele (a v1 para o 1, a v2 para o 2)"
+verificar "o entregador 1 aceitou o pedido da v1" 200 "$(aceitar_entrega 1 "$V1")"
+verificar "o entregador 2 aceitou o pedido da v2" 200 "$(aceitar_entrega 2 "$V2")"
 esperar_ate "[ \"\$(sql entregas \"SELECT count(*) FROM entregas WHERE pedido_id IN ($V1,$V2) AND status = 'ATRIBUIDA'\")\" = 2 ]" 30
 esperar_ate "[ \"\$(sql estoque \"SELECT count(*) FROM mensagens_processadas WHERE message_id IN ('$M1','$M2')\")\" = 2 ]" 30
 
@@ -48,7 +51,7 @@ verificar "destino da v1 convertido para o formato novo" "-26.91" "$(sql entrega
 verificar "destino da v2 lido de entrega.destino" "-26.91" "$(sql entregas "SELECT destino_lat FROM entregas WHERE pedido_id = $V2")"
 
 echo
-echo "Passo 3: um pedido de verdade: o pedidos publica a v2"
+echo "Passo 4: um pedido de verdade: o pedidos publica a v2"
 id=$(criar_pedido_cliente)
 esperar_status "$id" CONFIRMADO 30
 verificar "pedido real chegou a CONFIRMADO" CONFIRMADO "$(status_pedido "$id")"

@@ -1,5 +1,5 @@
 import { PoolClient, criarEnvelope, publicarNaOutbox } from './comuns';
-import { Deps } from './despacho';
+import { Deps } from './ofertas';
 
 type AposCommit = (acao: () => void) => void;
 

@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 import { Pool } from 'pg';
 import { Logger, transacao } from './comuns';
 import { concluirEntrega } from './conclusao';
-import { Deps, Ultima } from './despacho';
+import { Deps } from './ofertas';
 import { dentroDoRaio } from './geo';
 import { Hub } from './hub';
 
@@ -15,6 +15,12 @@ const PRECISAO_MAX_GEOFENCE_M = 100;
 const gpsTotal = metrics.getMeter('delivery.entregas').createCounter('delivery_gps_posicoes_total', {
   description: 'Posições de GPS processadas',
 });
+
+export interface Ultima {
+  lat: number;
+  lon: number;
+  ts: number;
+}
 
 export interface PosicaoEntregador {
   entregadorId: number;

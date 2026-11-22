@@ -2,10 +2,12 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { Ponto, extrairLinha, passoM, percorrer, reta } from './rota';
 
-// Simulador de entregador: faz o mesmo que o navegador do celular. Entra com o usuário e a senha do entregador
-// e envia as posições para POST /api/entregas/posicoes.
+// Ferramenta de teste: faz o papel do celular. Entra com o usuário e a senha do entregador e envia as posições
+// para POST /api/entregas/posicoes (o mesmo caminho do navegador do celular).
 //   rota  --arquivo <geojson|s3://bucket/chave> [--entregador 1|2] [--velocidade 30] [--intervalo 3]
-//   smoke [--velocidade 120] [--intervalo 1]      fluxo completo com o entregador simulado (entregador 2)
+//         (plano B do GPS: aceita o pedido que estiver esperando, se o entregador ainda não tem entrega, e "dirige" a rota)
+//   smoke [--velocidade 120] [--intervalo 1]      o fluxo completo: cliente pede, entregador 2 aceita e "dirige" até o destino
+// Rode com os celulares dos entregadores desligados (ou fechados): o teste usa a conta do entregador 2.
 
 const env = (n: string, p?: string) => process.env[n] ?? p ?? (() => { throw new Error(`variável ${n} não definida`); })();
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -65,7 +67,8 @@ async function andar(linha: Ponto[], token: string, kmh: number, intervaloS: num
 async function api(token: string, metodo: string, caminho: string, corpo?: unknown) {
   const r = await fetch(`${env('API_URL')}${caminho}`, {
     method: metodo,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    // sem corpo, sem Content-Type (como o navegador faz): o servidor recusa "application/json" vazio
+    headers: { Authorization: `Bearer ${token}`, ...(corpo ? { 'Content-Type': 'application/json' } : {}) },
     body: corpo ? JSON.stringify(corpo) : undefined,
   });
   return { status: r.status, json: (await r.json().catch(() => null)) as any };
@@ -84,6 +87,35 @@ async function esperarStatus(token: string, id: number, alvo: string, segundos: 
   return ultimo;
 }
 
+// Espera o pedido aparecer na lista do entregador (GET /api/entregas/me) e aceita (POST .../aceitar). Devolve o HTTP do aceite.
+async function aceitarPedido(token: string, pedidoId: number, segundos: number): Promise<number> {
+  const fim = Date.now() + segundos * 1000;
+  while (Date.now() < fim) {
+    const me = (await api(token, 'GET', '/api/entregas/me')).json;
+    if ((me?.ofertas ?? []).some((o: { pedidoId: number }) => o.pedidoId === pedidoId)) {
+      return (await api(token, 'POST', `/api/entregas/${pedidoId}/aceitar`)).status;
+    }
+    await dormir(500);
+  }
+  return 0;
+}
+
+// Plano B do GPS: se o entregador ainda não tem entrega, aceita o pedido mais antigo que estiver esperando por ele
+// (como o toque em Aceitar). Sem nenhum pedido esperando, só envia a posição (o marcador anda no mapa, sem entrega).
+async function garantirEntrega(token: string, segundos: number): Promise<void> {
+  const fim = Date.now() + segundos * 1000;
+  while (Date.now() < fim) {
+    const me = (await api(token, 'GET', '/api/entregas/me')).json;
+    if (me?.entrega) return console.log(`Entrega do pedido #${me.entrega.pedidoId} em andamento.`);
+    const oferta = me?.ofertas?.[0];
+    if (oferta && (await api(token, 'POST', `/api/entregas/${oferta.pedidoId}/aceitar`)).status === 200) {
+      return console.log(`Aceitei o pedido #${oferta.pedidoId}.`);
+    }
+    await dormir(1000);
+  }
+  console.log('Nenhum pedido esperando por este entregador: enviando só a posição.');
+}
+
 async function smoke(a: Record<string, string>): Promise<boolean> {
   const kmh = Number(a.velocidade ?? 120);
   const intervalo = Number(a.intervalo ?? 1);
@@ -100,26 +132,39 @@ async function smoke(a: Record<string, string>): Promise<boolean> {
   const origem: Ponto = [cfg.origem.lon, cfg.origem.lat];
   const destino: Ponto = [origem[0] + 0.004, origem[1] + 0.004]; // uns 600 m da loja
 
-  console.log('1. cria o pedido para o entregador simulado');
-  const criado = await api(token, 'POST', '/api/pedidos', {
-    destino: { lat: destino[1], lon: destino[0], endereco: 'Destino do smoke test' }, entregadorPreferidoId: 2,
+  console.log('1. um cliente (como o do QR code) pede, mandando o endereço dele');
+  const rc = await fetch(`${env('API_URL')}/api/auth/cliente`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apelido: 'smoke', codigo: env('EVENTO_CODIGO') }),
   });
+  const tokenCliente = ((await rc.json().catch(() => ({}))) as { token?: string }).token ?? '';
+  verificar('o cliente entra com o código do evento', !!tokenCliente);
+  const criado = await api(tokenCliente, 'POST', '/api/pedidos', { destino: { lat: destino[1], lon: destino[0] } });
   verificar('POST /api/pedidos responde 202', criado.status === 202, `(#${criado.json?.id})`);
   const id = criado.json.id as number;
 
-  console.log('2. espera o despacho (reserva -> pagamento -> confirmação -> entregador)');
-  const emEntrega = await esperarStatus(token, id, 'EM_ENTREGA', 60);
-  verificar('pedido chegou a EM_ENTREGA', emEntrega === 'EM_ENTREGA');
+  console.log('2. o pedido é reservado, pago e confirmado: a entrega fica esperando um entregador');
+  const confirmado = await esperarStatus(tokenCliente, id, 'CONFIRMADO', 60);
+  verificar('pedido chegou a CONFIRMADO', confirmado === 'CONFIRMADO');
+  if (confirmado !== 'CONFIRMADO') return false;
+
+  console.log('3. o entregador 2 vê o pedido na lista dele e toca em Aceitar');
+  const tokenEntregador = await entrarComoEntregador('2');
+  const aceite = await aceitarPedido(tokenEntregador, id, 30);
+  verificar('o pedido apareceu para o entregador e ele aceitou', aceite === 200, `(HTTP ${aceite})`);
+  const emEntrega = await esperarStatus(tokenCliente, id, 'EM_ENTREGA', 20);
+  verificar('pedido foi para EM_ENTREGA', emEntrega === 'EM_ENTREGA');
   if (emEntrega !== 'EM_ENTREGA') return false;
 
-  console.log('3. o entregador "dirige" até o destino (envia o GPS como o navegador do celular)');
-  await andar(reta(origem, destino), await entrarComoEntregador('2'), kmh, intervalo);
+  console.log('4. o entregador "dirige" até o destino (envia o GPS como o navegador do celular)');
+  await andar(reta(origem, destino), tokenEntregador, kmh, intervalo);
 
-  console.log('4. espera a conclusão pelo geofence');
-  const entregue = await esperarStatus(token, id, 'ENTREGUE', 30);
-  verificar('pedido terminou ENTREGUE', entregue === 'ENTREGUE');
+  console.log('5. espera a conclusão pelo geofence');
+  const entregue = await esperarStatus(tokenCliente, id, 'ENTREGUE', 30);
+  verificar('pedido terminou ENTREGUE (o cliente vê)', entregue === 'ENTREGUE');
 
-  console.log('5. confere a rota (API e S3)');
+  console.log('6. confere a rota (API e S3)');
   const rota = (await api(token, 'GET', `/api/entregas/${id}/rota`)).json;
   verificar('rota na API tem posições', (rota?.geometry?.coordinates?.length ?? 0) > 1, `(${rota?.geometry?.coordinates?.length ?? 0} pontos)`);
   let noS3 = false;
@@ -141,6 +186,7 @@ async function main() {
   if (comando === 'rota') {
     if (!a.arquivo) throw new Error('uso: rota --arquivo <geojson|s3://bucket/chave> [--entregador 1|2] [--velocidade 30] [--intervalo 3]');
     const token = await entrarComoEntregador(a.entregador ?? '2');
+    await garantirEntrega(token, 10);
     await andar(await carregarRota(a.arquivo), token, Number(a.velocidade ?? 30), Number(a.intervalo ?? 3));
   } else if (comando === 'smoke') {
     const ok = await smoke(a);

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>5Bits Delivery · Entrar</title>
+  <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
+  <link rel="stylesheet" href="/comum/estilo.css">
+  <style>
+    body.tema-entrada {
+      --fundo: #e9eef5; --cartao: #ffffff; --texto: #0f172a; --suave: #5b6b82; --borda: #d5deea;
+      --acao: #2563eb; --acao-texto: #fff; --erro: #dc2626; --sombra: 0 4px 16px rgba(15, 23, 42, .08);
+      min-height: 100dvh;
+    }
+    .tema-entrada .marca .bits { color: var(--marca); }
+    .tema-entrada .dica { text-align: center; max-width: 340px; }
+  </style>
+</head>
+<body class="tema-entrada">
+  <!-- Entrada única: operador e entregador entram aqui e cada um vai para a sua tela. O cliente entra pelo QR code. -->
+  <div id="login"></div>
+
+  <script src="/comum/auth.js"></script>
+  <script>
+    (function () {
+      const IR = { operador: '/painel/', entregador: '/entregador/' };
+      // quem já entrou volta direto para a sua tela
+      const sessao = Auth.sessaoDe('operador') || Auth.sessaoDe('entregador');
+      if (sessao) return location.replace(IR[sessao.usuario.role]);
+
+      Auth.montarLogin(document.getElementById('login'), ['operador', 'entregador'], (u) => location.replace(IR[u.role]), {
+        icone: '🔐', titulo: 'Entrar', subtitulo: 'Operador ou entregador: cada um vai para a sua tela.',
+        botao: 'Entrar', rotuloUsuario: 'Usuário',
+      });
+      document.querySelector('.login-wrap').insertAdjacentHTML('beforeend', '<p class="dica">Quer pedir a promoção? Use o QR code que está no telão.</p>');
+    })();
+  </script>
+</body>
+</html>

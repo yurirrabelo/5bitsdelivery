@@ -203,7 +203,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Entregador simulado: envia o GPS pela mesma API que o navegador do celular usa (profile sim)
+  # Ferramenta de teste: faz o papel do celular, pela mesma API que o navegador usa (profile sim)
   #   docker compose --profile sim run --rm simulador smoke
   #   docker compose --profile sim run --rm simulador rota --arquivo /rotas/exemplo.geojson --entregador 2
   simulador:
@@ -225,6 +225,7 @@ services:
       ENTREGADOR1_SENHA: ${ENTREGADOR1_SENHA}
       ENTREGADOR2_USUARIO: ${ENTREGADOR2_USUARIO}
       ENTREGADOR2_SENHA: ${ENTREGADOR2_SENHA}
+      EVENTO_CODIGO: ${EVENTO_CODIGO}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}

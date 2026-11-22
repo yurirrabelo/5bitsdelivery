@@ -4,9 +4,10 @@
 #   ./demo.sh subir        sobe o sistema inteiro e espera ficar pronto
 #   ./demo.sh link         liga o túnel HTTPS e mostra os links para o celular (obrigatório para o GPS do celular)
 #   ./demo.sh reset [N]    repõe as unidades da promoção (padrão: o valor do .env)
-#   ./demo.sh teste        fluxo completo com um entregador simulado (termina com SMOKE: PASSOU)
+#   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga os pedidos e as entregas de teste, repõe as unidades e libera os entregadores
+#   ./demo.sh teste        fluxo completo: o cliente pede, o entregador 2 aceita e "dirige" (termina com SMOKE: PASSOU)
 #   ./demo.sh unitarios    testes do código das bibliotecas e serviços, em containers (~3 min)
-#   ./demo.sh simular [1|2] [km/h]   plano B do GPS: o simulador "dirige" a rota do ensaio como o entregador 1 (ou 2)
+#   ./demo.sh simular [1|2] [km/h]   plano B do GPS: aceita o pedido que está esperando e reproduz a rota do ensaio (padrão: entregador 2)
 #   ./demo.sh falha N      cenário de falha do professor: 1 a 8 (ou 6b), ou "todas"
 #   ./demo.sh estado       containers, filas, pedidos, estoque e segredos
 #   ./demo.sh parar        para tudo e guarda os dados
@@ -18,7 +19,7 @@ export MSYS_NO_PATHCONV=1
 
 var() { grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'; }
 
-uso() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+uso() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 esperar_pronto() { # espera todos os containers ficarem healthy (até 5 min)
   echo "Esperando os containers ficarem prontos (a primeira vez leva alguns minutos)..."
@@ -41,7 +42,8 @@ case "${1:-}" in
     P=$(var NGINX_PORTA)
     echo
     echo "Pronto."
-    echo "  Painel do operador:  http://localhost:$P            (admin / admin)"
+    echo "  Entrada:             http://localhost:$P            (admin ou entregador1, senha admin)"
+    echo "  Painel do operador:  http://localhost:$P/painel/"
     echo "  Cliente (QR):        http://localhost:$P/cliente/?codigo=$(var EVENTO_CODIGO)"
     echo "  Grafana:             http://localhost:3000"
     echo "Para usar o celular como entregador (GPS real): ./demo.sh link"
@@ -51,6 +53,7 @@ case "${1:-}" in
     echo "Esperando o túnel..."
     URL=$(./scripts/tunnel-url.sh) || exit 1
     echo
+    echo "Entrada (qualquer um entra e vai para a sua tela):  $URL/"
     echo "Abra no navegador do notebook:   $URL/painel/                    (admin / admin)"
     echo "Abra no navegador do celular:    $URL/entregador/                (entregador1 / admin)"
     echo "QR da plateia (cliente):         $URL/cliente/?codigo=$(var EVENTO_CODIGO)"
@@ -58,12 +61,13 @@ case "${1:-}" in
     echo "Não reinicie o túnel depois: a URL muda a cada reinício."
     ;;
   reset) shift; ./scripts/reset-estoque.sh "$@" ;;
+  limpar) shift; ./scripts/limpar.sh "$@" ;;
   teste) shift; ./scripts/smoke-test.sh "$@" ;;
   unitarios) ./scripts/test-all.sh ;;
   simular)
     # a rota gravada no ensaio (simulador/rotas/ensaio.geojson) ou, se não houver, a de exemplo
     ROTA=/rotas/ensaio.geojson; [ -f simulador/rotas/ensaio.geojson ] || ROTA=/rotas/exemplo.geojson
-    docker compose --profile sim run --rm --build simulador rota --arquivo "$ROTA" --entregador "${2:-1}" --velocidade "${3:-40}" ;;
+    docker compose --profile sim run --rm --build simulador rota --arquivo "$ROTA" --entregador "${2:-2}" --velocidade "${3:-40}" ;;
   falha)
     case "${2:-}" in
       1) exec ./scripts/falhas/f1-compensacao.sh ;;

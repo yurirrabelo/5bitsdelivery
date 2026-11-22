@@ -1,13 +1,13 @@
 sequenceDiagram
     autonumber
-    actor C as Operador ou cliente
+    actor C as Cliente ou operador
     participant P as pedidos
     participant E as estoque
     participant PG as pagamento
     participant GW as gateway de pagamento
     participant ENT as entregas
     actor M as Entregador
-    C->>P: POST /api/pedidos
+    C->>P: POST /api/pedidos (com o endereço)
     P-->>C: 202 Accepted + id
     P--)E: estoque.reservar
     E--)P: estoque.reservado
@@ -17,8 +17,10 @@ sequenceDiagram
     PG--)P: pagamento.aprovado
     P--)E: pedido.confirmado
     P--)ENT: pedido.confirmado
+    Note over ENT,M: cria a entrega e espera um entregador
+    ENT-->>M: o pedido aparece na lista do entregador
+    M->>ENT: toca em Aceitar
     ENT--)P: entrega.atribuida
-    ENT-->>M: a página do entregador mostra o pedido
     loop a cada 3 s
         M->>ENT: GPS do navegador
     end

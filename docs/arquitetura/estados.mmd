@@ -5,9 +5,9 @@ stateDiagram-v2
     AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento.aprovado no prazo
     AGUARDANDO_PAGAMENTO --> CANCELADO: pagamento.recusado ou prazo vencido
     CANCELADO --> ESTORNADO: aprovação atrasada estornada
-    CONFIRMADO --> EM_ENTREGA: entrega.atribuida
+    CONFIRMADO --> EM_ENTREGA: um entregador aceita (entrega.atribuida)
     EM_ENTREGA --> ENTREGUE: entrega.concluida
-    CONFIRMADO --> [*]: pedido do QR (sem destino)
+    CONFIRMADO --> [*]: pedido sem endereço de entrega
     ESGOTADO --> [*]
     CANCELADO --> [*]
     ESTORNADO --> [*]

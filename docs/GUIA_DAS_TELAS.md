@@ -12,7 +12,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 |---|---|
 | Os 6 serviços (pedidos, estoque, pagamento, entregas, auth, gateway), em Java e TypeScript | O **gateway de pagamento**: é um serviço nosso que faz o papel de uma operadora externa. Dá para configurar falha e atraso (é assim que se provocam as falhas do professor) |
 | RabbitMQ, os 4 bancos Postgres e o Redis | A **nuvem** (MiniStack): imita o Secrets Manager e o S3 da AWS (e o DynamoDB, no bônus), criados por Terraform |
-| O GPS do celular: o navegador do entregador envia a posição real | O **entregador simulado** (`entregador2`), que "dirige" sozinho, usado no teste automático e como plano B |
+| O GPS do celular: o navegador do entregador envia a posição real | A **ferramenta de teste** (`./demo.sh teste` e `./demo.sh simular`): faz o papel do celular no teste automático e como plano B do GPS |
 | Os traces, métricas e logs: tudo que aparece no Grafana é medido, não inventado | |
 
 **O que um notebook só não mostra:** latência de rede *entre* máquinas (aqui é quase zero). Os tempos que você vê no Grafana são o custo real de cada serviço trabalhar, sem a rede no meio. Em compensação, a **latência do GPS e do celular é real** (4G + túnel).
@@ -23,12 +23,22 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 | Endereço | Quem usa | Para que serve |
 |---|---|---|
-| **http://localhost:8080** (Painel do operador) | o operador, no notebook, e o telão | Mapa ao vivo com a loja, o entregador 🛵 e o destino. Criar pedido (clique no mapa → escolha o entregador → **Criar pedido**). Lista de pedidos com o status de cada um. QR code para a plateia e o link do entregador para abrir no celular. **Modo telão** esconde os formulários. |
-| **/cliente/?codigo=promo** (Cliente) | a plateia, pelo QR code | Um botão só: **Quero um pedido!**. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → confirmado (ou o motivo da falha). |
-| **/entregador/** (Entregador) | o colega, no celular (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Quando chega um pedido, a tela avisa (faixa, vibração e som) e mostra o mapa com o destino, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
+| **http://localhost:8080** (Entrada) | operador e entregador | Um login só: quem é operador vai para o painel e quem é entregador vai para a tela do entregador. Útil para abrir só o endereço do túnel no celular. |
+| **http://localhost:8080/painel/** (Painel do operador) | o operador, no notebook, e o telão | A central da loja, para **acompanhar** (não precisa mexer em nada). Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Ao lado, duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR da plateia** (o QR code e o link do entregador). **＋ Pedido pelo mapa** é uma ferramenta de apoio para criar um pedido sem ser cliente. **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
+| **/cliente/?codigo=promo** (Cliente) | a plateia, pelo QR code | Um botão só: **Quero um pedido!**. O navegador pergunta a localização: a entrega vai até onde o cliente está (sem GPS, ele toca no mapa). Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
+| **/entregador/** (Entregador) | `entregador1` na tela da aula e `entregador2` no celular de um integrante (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Os pedidos prontos para entrega aparecem em **Pedidos para entregar** (faixa, vibração e som), com a distância: quem tocar primeiro em **Aceitar** leva, e o outro entregador lê "já foi aceito". Aceito, a tela mostra o mapa com o endereço do cliente, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
 | **http://localhost:3000** (Grafana) | o telão e quem apresenta | A tela **Apresentação** (números, caminho de cada pedido, mapa dos serviços) e a **Detalhes técnicos** (para perguntas). Sem login. |
 | http://localhost:15672 (RabbitMQ) | ninguém, em condições normais | **Não precisa abrir.** O Grafana já mostra as filas, as DLQs e os traces. Só serve para mostrar uma mensagem parada numa DLQ com as próprias mãos (`admin` / `admin`). |
 | http://localhost:4566 (MiniStack) | ninguém | Não é uma tela: é a API da "nuvem" simulada. |
+
+### Como um pedido passa pelas telas
+
+| O que acontece | Tela do cliente | Tela do entregador | Painel do operador |
+|---|---|---|---|
+| O cliente pede | "Recebido", "Unidade reservada" e "Pagando…" | (nada ainda) | o pedido entra na lista: "Recebido", depois "Pagando" |
+| O pagamento é aprovado | "🔎 Procurando um entregador…" | o pedido aparece em **Pedidos para entregar**, para todo entregador Disponível | "Aguardando entregador" e o destino no mapa |
+| Um entregador toca em **Aceitar** | "🛵 Entregador a caminho" | o mapa com a entrega; para o outro entregador o pedido some da lista | "Em entrega" e o 🛵 andando |
+| O entregador chega (menos de 50 m) ou toca em **Confirmar entrega** | "🎉 Entregue!" | "Entrega concluída. Bom trabalho!" | "Entregue" |
 
 ---
 
@@ -65,7 +75,7 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | 🏦 Gateway de pagamento (externo) | Gateway | a operadora responde |
 | ✅ Pedidos confirma o pagamento | Pedidos | "Pedido confirmado!" |
 | 📦 Estoque dá baixa (venda) | Estoque | a unidade reservada vira vendida |
-| 🛵 Entregas recebe o pedido | Entregas | só o pedido do operador (com destino) vira entrega: procura o entregador e avisa o celular. O pedido do QR termina aqui, confirmado |
+| 🛵 Entregas recebe o pedido | Entregas | o pedido com endereço vira uma entrega que espera: aparece na lista dos entregadores até um tocar em Aceitar (o pedido sem endereço termina aqui, confirmado) |
 
 Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ falhou aqui, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento, o Gateway e o veredito do Pedidos; numa promoção esgotada, o Estoque e o Pedidos.
 
