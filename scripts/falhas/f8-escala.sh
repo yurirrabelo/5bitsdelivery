@@ -41,4 +41,4 @@ g=$(gateway_cobrancas)
 verificar "chaves cobradas mais de uma vez no gateway" 0 "$(echo "$g" | grep -o '"vezesCobrada":[2-9]' | wc -l | tr -d ' ')"
 verificar "cobranças no gateway = pagamentos aprovados" "$(sql pagamento "SELECT count(*) FROM pagamentos WHERE pedido_id >= $primeiro AND status = 'APROVADO'")" "$(echo "$g" | grep -o '"vezesCobrada":1' | wc -l | tr -d ' ')"
 
-finalizar F8
+finalizar F8 "Grafana → Detalhes técnicos → \"Mensagens processadas por réplica do pagamento\": três réplicas dividiram a carga, sem cobrança duplicada."

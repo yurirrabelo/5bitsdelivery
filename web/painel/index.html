@@ -26,6 +26,7 @@
       <div class="acoes">
         <button class="secundario" id="telao" title="Mostra só o mapa, os pedidos e o QR, em letras grandes, para o telão">📺 Modo telão</button>
         <a id="grafana" class="link-topo" href="#" target="_blank" rel="noopener">Grafana ↗</a>
+        <a id="testes" class="link-topo" href="#" target="_blank" rel="noopener" title="Botões para acionar os testes de falha do professor (só no notebook). Antes, rode ./demo.sh testes">Testes ↗</a>
         <span class="quem" id="quem"></span>
         <button class="secundario" id="sair">Sair</button>
       </div>
@@ -64,14 +65,15 @@
             <p class="dica so-operador">Cada cliente que pede aparece aqui. Quando um entregador aceita, o pedido passa a <b>Em entrega</b>.</p>
 
             <div id="form-criar" class="form-criar so-operador oculto">
-              <p class="dica" id="destino-info">Clique no mapa para escolher o destino.</p>
-              <label>Para quem
+              <p class="dica" id="destino-info">1. Clique no mapa onde o pedido deve chegar.</p>
+              <label>2. Para quem (opcional)
                 <select id="entregador"><option value="">Qualquer entregador</option></select>
               </label>
               <div class="linha-botoes">
-                <button id="criar" disabled>Criar pedido</button>
-                <button class="secundario" id="cancelar-criar">Cancelar</button>
+                <button id="criar" disabled>3. Criar pedido</button>
+                <button class="secundario" id="cancelar-criar">Fechar</button>
               </div>
+              <p class="ok" id="criar-ok" role="status"></p>
               <p class="erro" id="criar-erro" role="alert"></p>
             </div>
 
@@ -85,14 +87,18 @@
         <!-- aba 2: o QR para a plateia pedir -->
         <section class="painel-aba" id="aba-qr">
           <div class="cartao qr-card">
-            <h2>Peça pelo celular</h2>
-            <p class="dica so-operador">Mostre este QR no telão: a turma pede pelo celular e o pedido aparece para os entregadores aceitarem.</p>
+            <h2>QR para a plateia pedir</h2>
+            <p class="dica so-operador">Quem ler este QR com o celular abre a página do cliente e faz um pedido, que aparece para os entregadores aceitarem. Mostre no telão.</p>
             <div id="qr" class="qr"></div>
             <p class="dica" id="qr-link"></p>
-            <label class="so-operador">Endereço público (túnel)
-              <input id="url-publica" placeholder="https://…trycloudflare.com">
-            </label>
-            <p class="dica so-operador">Entregador (abra no celular): <b id="link-entregador"></b></p>
+            <!-- só aparece quando o painel foi aberto por localhost: o celular não alcança localhost, então precisa do link do túnel -->
+            <div id="linha-url-publica" class="so-operador oculto">
+              <p class="aviso-qr">⚠️ Aberto por localhost, este QR só funciona neste computador.</p>
+              <label>Cole aqui o link do túnel (https://….trycloudflare.com) para o QR funcionar nos celulares
+                <input id="url-publica" placeholder="https://…trycloudflare.com">
+              </label>
+            </div>
+            <p class="dica so-operador">Link do entregador, para abrir no celular dele: <b id="link-entregador"></b></p>
           </div>
         </section>
       </aside>

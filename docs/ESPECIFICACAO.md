@@ -40,7 +40,7 @@ O que o trabalho demonstra:
 - Prazo vencido sem resposta → pedido `CANCELADO` (motivo `PRAZO_EXPIRADO`) → `pedido.cancelado` → o estoque devolve a unidade.
 - Aprovação que chega depois do cancelamento → o pedidos envia `pagamento.estornar` → o pagamento estorna no gateway → `pagamento.estornado` → pedido `ESTORNADO`.
 
-**Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou, sem GPS, um toque no mapa). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. O operador também pode criar um pedido pelo mapa (ferramenta de apoio), até reservando o pedido para um entregador.
+**Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou um toque no mapa: o mapa também fica à mão quando ele quer receber em outro endereço). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. O operador também pode criar um pedido pelo mapa (ferramenta de apoio), até reservando o pedido para um entregador.
 
 ### 2.1 Sequências
 
@@ -570,7 +570,7 @@ O objetivo é mostrar por onde cada passo passa, não monitorar tudo.
   - `delivery_outbox_pendentes` (todos)
   - `delivery_gps_posicoes_total` (entregas)
 - **RabbitMQ:** o Prometheus do `lgtm` coleta `rabbitmq:15692/metrics/per-object` (mensagens prontas, não confirmadas e consumidores por fila, inclusive DLQs). Para isso, montar um `prometheus.yaml` próprio sobre `/otel-lgtm/prometheus.yaml`, partindo do original da imagem (`docker run --rm grafana/otel-lgtm cat /otel-lgtm/prometheus.yaml`) e acrescentando o job.
-- **Painéis "Apresentação" (página inicial) e "Detalhes técnicos"**, provisionados por arquivo (`observabilidade/dashboards/`); acesso anônimo de leitura, só em localhost. A "Apresentação" é a tela para a plateia: números grandes (pessoas, pedidos, confirmados, sem sucesso, unidades, tempo do pagamento), pedidos por minuto, tempo médio por serviço, a tabela de pedidos recentes (clique no número) com o **caminho do pedido serviço por serviço** (busca no Tempo pelo atributo de span `pedido.id`, que pedidos, estoque, pagamento e entregas gravam em cada mensagem tratada), a cascata do trace e o mapa de serviços (service graph do Tempo). O "Detalhes técnicos" tem os itens abaixo:
+- **Painéis "Apresentação" (página inicial) e "Detalhes técnicos"**, provisionados por arquivo (`observabilidade/dashboards/`); acesso anônimo de leitura, só em localhost. A "Apresentação" é a tela para a plateia: números grandes (pessoas, pedidos, confirmados, sem sucesso, unidades, tempo do pagamento), pedidos por minuto, tempo médio por serviço, a tabela de pedidos recentes (clique no número) com o **caminho do pedido serviço por serviço** (busca no Tempo pelo atributo de span `pedido.id`, que pedidos, estoque, pagamento e entregas gravam em cada mensagem tratada), a cascata do trace e a **arquitetura do pedido escolhido** (um painel Canvas que pinta cada serviço de verde, vermelho ou cinza conforme o status dos spans do trace daquele pedido: passou, registrou o erro ou não chegou) e a faixa **"Onde a falha começou"**, que mostra o serviço do primeiro span com erro a terminar (o erro nasce ali e volta pelos outros serviços, que também ficam vermelhos). A lista de pedidos e o caminho escolhido olham as últimas 24 horas (período próprio dos painéis, `timeFrom`), para não sumirem durante a análise. O "Detalhes técnicos" tem os itens abaixo, mais o mapa de serviços de todos os pedidos somados (service graph do Tempo):
   1. pedidos por status e estoque (disponível, reservado e vendido);
   2. pagamentos (aprovados, recusados e estornados) e latência do gateway;
   3. filas, DLQs e outbox pendente;
@@ -591,8 +591,8 @@ HTML, CSS e JavaScript puros, com Leaflet e mapa do OpenStreetMap. Sem etapa de 
 - Login (a tela de entrada `/` também leva o operador para cá).
 - Mapa com a loja, os entregadores ao vivo (WebSocket), os destinos dos pedidos e o rastro da entrega ativa.
 - Duas abas ao lado do mapa:
-  - **Pedidos:** quem são os entregadores (Disponível, Em entrega, Offline e há quanto tempo chegou o GPS de cada um) e a lista de pedidos com a situação em palavras simples ("Aguardando entregador", "Em entrega", "Entregue"…), com polling a cada 2 s. O botão **＋ Pedido pelo mapa** é uma ferramenta de apoio: abre um formulário, o clique no mapa escolhe o destino e dá para reservar o pedido para um entregador.
-  - **QR da plateia:** o QR da promoção, gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: abra o painel pela URL do túnel no telão ou cole o endereço público no campo. Logo abaixo, o link do entregador (`…/entregador/`).
+  - **Pedidos:** quem são os entregadores (Disponível, Em entrega, Offline e há quanto tempo chegou o GPS de cada um) e a lista de pedidos com a situação em palavras simples ("Aguardando entregador", "Em entrega", "Entregue"…), com polling a cada 2 s. O botão **＋ Pedido pelo mapa** é uma ferramenta de apoio: abre um formulário que fica aberto entre um pedido e outro, o clique no mapa escolhe o destino (o cursor vira uma mira) e dá para reservar o pedido para um entregador.
+  - **QR da plateia:** o QR da promoção, gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: aberto pela URL do túnel, o QR já sai certo e o campo de endereço nem aparece; aberto por `localhost` (que o celular não alcança), aparece um campo para colar o link do túnel. Logo abaixo, o link do entregador (`…/entregador/`).
 - Contador do estoque no topo, barra de status (WebSocket conectado, "última posição há X s") e link para o Grafana.
 - **Modo telão:** esconde as ferramentas e mostra as duas abas juntas (pedidos e QR) em letras grandes.
 
@@ -609,7 +609,7 @@ Uma página web comum, sem instalação: o celular abre o link `https://…/entr
 
 ### 9.3 Página do cliente (`web/cliente/`) — extra do QR
 
-- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o botão **Quero um pedido!**.
+- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o botão **Quero um pedido!** e, abaixo, "Quero receber em outro endereço" (mapa). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para outro, em outro endereço.
 - Ao pedir, o navegador pergunta a localização: a entrega vai para onde o cliente está (`navigator.geolocation`). Sem GPS (negado, sem https ou sem sinal) aparece um mapa para ele tocar no ponto de entrega.
 - Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
 - Um pedido em andamento por pessoa.
@@ -705,7 +705,7 @@ O enunciado pede que o grupo preveja o resultado antes de executar.
 ```
 delivery-tracker/
 ├── README.md                    # como subir, testar e apresentar
-├── demo.sh                      # atalhos: subir, link, reset, teste, falha, estado, parar
+├── demo.sh                      # atalhos: subir, link, reset, limpar, teste, falha, testes, estado, parar
 ├── docker-compose.yml  docker-compose.test.yml
 ├── .env.example
 ├── .gitignore  .gitattributes  .dockerignore
@@ -737,6 +737,7 @@ delivery-tracker/
     ├── falhas/                  # f1 a f8 e todos.sh
     ├── bonus/                   # versionamento, recriar-infra e autoescala
     ├── estado.sh  reset-estoque.sh  limpar.sh
+    ├── testes/                  # tela com botões para os cenários de falha (servidor.py + index.html), só em localhost
     └── tunnel-url.sh  smoke-test.sh  test-all.sh
 ```
 

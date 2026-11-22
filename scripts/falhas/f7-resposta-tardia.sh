@@ -39,4 +39,4 @@ echo
 echo "Histórico do pedido:"
 api GET "/api/pedidos/$id/historico" | grep -o '"para":"[A-Z_]*"' | sed 's/"para":/   -> /'
 
-finalizar F7
+finalizar F7 "Grafana → Apresentação: escolha o pedido ↩️ Estornado. Em Detalhes técnicos: \"Pagamentos por resultado\" e \"Latência do gateway\"."

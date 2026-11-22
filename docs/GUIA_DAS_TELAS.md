@@ -24,10 +24,11 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 | Endereço | Quem usa | Para que serve |
 |---|---|---|
 | **http://localhost:8080** (Entrada) | operador e entregador | Um login só: quem é operador vai para o painel e quem é entregador vai para a tela do entregador. Útil para abrir só o endereço do túnel no celular. |
-| **http://localhost:8080/painel/** (Painel do operador) | o operador, no notebook, e o telão | A central da loja, para **acompanhar** (não precisa mexer em nada). Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Ao lado, duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR da plateia** (o QR code e o link do entregador). **＋ Pedido pelo mapa** é uma ferramenta de apoio para criar um pedido sem ser cliente. **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
-| **/cliente/?codigo=promo** (Cliente) | a plateia, pelo QR code | Um botão só: **Quero um pedido!**. O navegador pergunta a localização: a entrega vai até onde o cliente está (sem GPS, ele toca no mapa). Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
+| **http://localhost:8080/painel/** (Painel do operador) | o operador, no notebook, e o telão | A central da loja, para **acompanhar** (não precisa mexer em nada). Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Ao lado, duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR da plateia** (o QR code que leva ao pedido e o link do entregador; o campo do túnel só aparece se o painel foi aberto por `localhost`). **＋ Pedido pelo mapa** é uma ferramenta de apoio para criar pedidos sem ser cliente: o formulário fica aberto, então dá para criar vários seguidos (clique no mapa, escolha o entregador, **Criar pedido**). **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
+| **/cliente/?codigo=promo** (Cliente) | a plateia, pelo QR code | O botão **Quero um pedido!**: o navegador pergunta a localização e a entrega vai até onde o cliente está. Para entregar em **outro endereço**, ele toca em "Quero receber em outro endereço" e marca o ponto no mapa (o mesmo mapa aparece se o GPS não funcionar). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para pedir de novo. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
 | **/entregador/** (Entregador) | `entregador1` na tela da aula e `entregador2` no celular de um integrante (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Os pedidos prontos para entrega aparecem em **Pedidos para entregar** (faixa, vibração e som), com a distância: quem tocar primeiro em **Aceitar** leva, e o outro entregador lê "já foi aceito". Aceito, a tela mostra o mapa com o endereço do cliente, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
 | **http://localhost:3000** (Grafana) | o telão e quem apresenta | A tela **Apresentação** (números, caminho de cada pedido, mapa dos serviços) e a **Detalhes técnicos** (para perguntas). Sem login. |
+| **http://localhost:8099** (Testes do professor) | quem apresenta, no notebook | Botões para acionar os cenários de falha que o professor pedir (F1 a F8). Mostra a saída ao vivo, o PASSOU ou FALHOU e o que abrir no Grafana. Só abre no notebook e só depois de `./demo.sh testes`. O painel do operador tem o link **Testes ↗**. |
 | http://localhost:15672 (RabbitMQ) | ninguém, em condições normais | **Não precisa abrir.** O Grafana já mostra as filas, as DLQs e os traces. Só serve para mostrar uma mensagem parada numa DLQ com as próprias mãos (`admin` / `admin`). |
 | http://localhost:4566 (MiniStack) | ninguém | Não é uma tela: é a API da "nuvem" simulada. |
 
@@ -63,7 +64,7 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 - **Quanto cada serviço demora (média):** tempo que cada serviço leva para tratar uma mensagem. O pagamento é o mais lento porque chama o gateway.
 
 ### "O caminho do pedido" (o painel principal)
-- **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram.
+- **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram. **A lista e o caminho escolhido guardam as últimas 24 horas**, para dar tempo de analisar (o período do canto superior direito só vale para os números e gráficos de cima).
 - **2. O caminho do pedido escolhido:** o mesmo pedido, serviço por serviço, na ordem em que aconteceu e quanto cada um demorou. É a versão "de dentro" da tela do cliente:
 
 | O que aconteceu | Quem fez | O que significa |
@@ -77,12 +78,28 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | 📦 Estoque dá baixa (venda) | Estoque | a unidade reservada vira vendida |
 | 🛵 Entregas recebe o pedido | Entregas | o pedido com endereço vira uma entrega que espera: aparece na lista dos entregadores até um tocar em Aceitar (o pedido sem endereço termina aqui, confirmado) |
 
-Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ falhou aqui, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento, o Gateway e o veredito do Pedidos; numa promoção esgotada, o Estoque e o Pedidos.
+Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ registrou o erro, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento, o Gateway e o veredito do Pedidos; numa promoção esgotada, o Estoque e o Pedidos.
 
 - **Detalhe técnico do pedido escolhido (fechado):** a cascata completa do trace, com cada chamada (HTTP, banco, fila). Para quem pergunta "e dentro do serviço?".
 
-### "A arquitetura funcionando" (mapa de serviços)
-O desenho da arquitetura, **ao vivo e somando todos os pedidos do período** (não é só o pedido escolhido, por isso o desenho é sempre o mesmo; o que muda são os números e as cores). Cada círculo é um serviço ou banco, cada seta é uma chamada, e o número dentro é o tempo médio e as chamadas por segundo. **`user`** é quem chama de fora (navegador, simulador, teste de carga). **`pg-…`** são os bancos e **`redis`** é o Redis. As setas entre serviços passam pelo RabbitMQ. **Quando algo falha, o anel do serviço onde aconteceu fica vermelho**, na proporção das falhas: poucas falhas entre muitos pedidos dão só uma fatia pequena. Para o vermelho ficar bem visível, olhe um período curto (canto superior direito) logo depois de provocar uma falha.
+### "A arquitetura do pedido escolhido" e "Onde a falha começou"
+O desenho da arquitetura **só para o pedido que você escolheu** na tabela (a mesma escolha do caminho do pedido). Cada caixa é um serviço e as setas mostram quem fala com quem: as ligadas ao RabbitMQ são mensagens e as outras são chamadas HTTP.
+
+| Cor | O que quer dizer |
+|---|---|
+| 🟩 verde | o pedido passou por esse serviço sem erro |
+| 🟥 vermelho | o serviço **registrou o erro** (foi onde ele nasceu ou o serviço que recebeu o erro e reagiu) |
+| ⬜ cinza | o pedido não chegou até esse serviço |
+
+**Como ler o vermelho.** Um erro nasce em um serviço e **volta pelo caminho por onde o pedido veio**; cada serviço que recebe o erro e reage (avisa, cancela, desfaz) também fica vermelho. Por isso há mais de uma caixa vermelha. A faixa **"Onde a falha começou"**, logo acima do desenho, diz em qual serviço o erro **nasceu** (o primeiro erro a terminar):
+
+| Pedido | Onde a falha começou | O resto do vermelho |
+|---|---|---|
+| ❌ Recusado | Gateway de pagamento (a operadora recusou a cobrança) | o Pagamento avisou e o Pedidos cancelou o pedido; o Estoque ficou verde porque devolveu a unidade sem erro |
+| 😕 Esgotado | Estoque (não havia mais unidades) | o Pedidos registrou o "esgotado" e encerrou o pedido |
+| ⏱️ Demorou demais / ↩️ Estornado | Pedidos (o prazo do pagamento venceu e o pedido foi cancelado) | o estorno da aprovação que chegou atrasada |
+
+Sem falha, a faixa mostra "Sem falha neste pedido". O desenho muda na hora em que você clica em outro pedido. A visão de **todos os pedidos somados** (com os bancos e o Redis) fica em "Detalhes técnicos", no último bloco.
 
 ---
 
@@ -113,7 +130,7 @@ Abre pelo botão no topo da Apresentação. É para quando alguém pergunta algo
 | Quero provar | Mostro |
 |---|---|
 | que o pedido passa por todos os serviços | Apresentação → clique no pedido |
-| a arquitetura funcionando | Apresentação → mapa de serviços |
+| a arquitetura funcionando, com o erro em vermelho e onde ele começou | Apresentação → escolha um pedido recusado ou esgotado → "Onde a falha começou" e "A arquitetura do pedido escolhido" |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" (e "Estoque da promoção" em Detalhes técnicos) |
 | que o sistema se recupera de falhas | os scripts F1–F8 com "Detalhes técnicos" aberto |

@@ -67,7 +67,7 @@ Ele mostra os links completos. No celular (use os dados móveis ou o Wi-Fi, tant
 4. Em outro celular (ou outra aba), abra o link do **cliente** (`…/cliente/?codigo=promo`), toque em **Quero um pedido!** e permita a localização. No celular do entregador o pedido aparece na lista (aviso na tela, vibração e som): toque em **Aceitar**. O celular mostra o endereço do cliente no mapa e a distância; chegando a menos de 50 m, o pedido vira `ENTREGUE` sozinho (ou toque em **Confirmar entrega**).
 5. Com os **dois entregadores** (`entregador1` e `entregador2`) Disponíveis, os dois veem o pedido: quem tocar primeiro em **Aceitar** leva, e o outro avisa que já foi aceito.
 
-**QR para a plateia:** com o painel aberto pelo link do túnel, o QR do cartão "Peça pelo celular" já aponta para o endereço público. Use o **Modo telão** para mostrá-lo em tela cheia.
+**QR para a plateia:** na aba **QR da plateia** do painel, o QR leva quem o lê para a página do cliente. Com o painel aberto pelo link do túnel, ele já aponta para o endereço público (aberto por `localhost`, aparece um campo para colar o link do túnel). Use o **Modo telão** para mostrá-lo em tela cheia.
 
 Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador para o GPS quando a tela apaga). Se o GPS falhar, o plano B é `./demo.sh simular`: ele entra como o entregador 2, aceita o pedido que estiver esperando e "dirige" a rota do ensaio (feche a página do celular antes, para só uma fonte enviar o GPS).
 
@@ -79,10 +79,11 @@ Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador p
 ./demo.sh unitarios      # testes do código (bibliotecas e serviços), em containers, ~3 min: TESTES: PASSOU
 ./demo.sh falha 1        # um cenário de falha do professor (1 a 8)
 ./demo.sh falha todas    # todos em sequência (~14 min)
+./demo.sh testes         # abre a tela com botões para acionar os cenários de falha (http://localhost:8099, só no notebook)
 ./demo.sh estado         # containers, filas, DLQs, pedidos, estoque e outbox
 ```
 
-Cada cenário mostra o **esperado** e o **obtido** e termina com **PASSOU** ou **FALHOU**. Rode **um de cada vez** e acompanhe no Grafana ("Detalhes técnicos").
+Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora** no Grafana. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, rode `./demo.sh testes` (abre http://localhost:8099 no notebook). A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
 
 | # | Cenário | O que o script faz | Resultado esperado |
 |---|---|---|---|
@@ -181,7 +182,7 @@ observabilidade/  Prometheus e painéis "Apresentação" e "Detalhes técnicos" 
 carga/            testes de carga (k6)
 simulador/rotas/  rotas GeoJSON do simulador
 scripts/          cenários de falha (falhas/), bônus e utilitários
-demo.sh           atalhos: subir, link, reset, teste, falha, estado, parar
+demo.sh           atalhos: subir, link, reset, limpar, teste, falha, testes, estado, parar
 ```
 
 ## Equipe

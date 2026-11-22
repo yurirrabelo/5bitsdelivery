@@ -46,4 +46,4 @@ segredos=$(curl -s -X POST http://127.0.0.1:4566/ -H 'Content-Type: application/
   -H "Authorization: AWS4-HMAC-SHA256 Credential=$(var AWS_ACCESS_KEY_ID)/20260101/$(var AWS_REGION)/secretsmanager/aws4_request, SignedHeaders=host, Signature=x" -d '{}' | grep -o '"Name"' | wc -l | tr -d ' ')
 verificar "segredos continuam lá (PERSIST_STATE=1)" 6 "$segredos"
 
-finalizar F6b
+finalizar F6b "as linhas \"arquivo no S3\" e \"segredos continuam lá\" acima: a rota saiu quando o MiniStack voltou e os segredos não se perderam."

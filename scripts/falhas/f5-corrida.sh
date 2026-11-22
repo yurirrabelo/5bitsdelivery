@@ -30,4 +30,4 @@ verificar "reservas ativas (sem venda dupla)" "$QTD" "$(sql estoque "SELECT coun
 inv=$(sql estoque "SELECT (disponivel + reservado + vendido = total AND disponivel >= 0)::text FROM estoque WHERE produto_id = 1")
 verificar "invariante: disponivel + reservado + vendido = total e disponivel >= 0" true "$inv"
 
-finalizar F5
+finalizar F5 "Grafana → Apresentação: \"Unidades restantes\" zerou e \"Sem sucesso\" subiu. Escolha um 😕 Esgotado: a arquitetura do pedido mostra o Estoque em vermelho."

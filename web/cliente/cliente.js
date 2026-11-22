@@ -8,6 +8,7 @@
   let timer = null;
   let timerEstoque = null;
   let origemLoja = null; // onde o mapa abre quando não há GPS
+  let ultimoGps = null; // o último ponto que o GPS deu: o mapa abre por ali
 
   // o código do evento vem no link do QR (?codigo=...); sem ele, a pessoa digita
   const codigoDoLink = parametros.get('codigo');
@@ -124,6 +125,7 @@
     guardar(CHAVE_PEDIDO, String(id));
     $('numero').textContent = '#' + id;
     $('de-novo').classList.add('oculto');
+    $('outro-pedido').classList.remove('oculto');
     tela('acompanhar');
     clearInterval(timer);
 
@@ -137,6 +139,7 @@
           clearInterval(timer);
           guardar(CHAVE_PEDIDO, null);
           $('de-novo').classList.remove('oculto');
+          $('outro-pedido').classList.add('oculto');
           atualizarRestam();
         }
       } catch (e) { /* sem rede: tenta no próximo ciclo */ }
@@ -175,8 +178,9 @@
       let destino;
       try {
         destino = await localizar();
+        ultimoGps = destino;
       } catch (e) {
-        return mostrarMapaLocal(e.message); // sem GPS: a pessoa marca no mapa onde está
+        return mostrarMapaLocal(e.message + ' Toque no mapa onde você está.'); // sem GPS: a pessoa marca no mapa
       }
       await enviarPedido(destino);
     } catch (e) {
@@ -187,23 +191,36 @@
     }
   }
 
-  // Sem GPS: um mapa para marcar onde entregar
+  // Um mapa para marcar onde entregar: sem GPS ou quando a pessoa quer receber em outro endereço
   let mapaLocal = null, marcadorLocal = null, pontoEscolhido = null;
 
-  function mostrarMapaLocal(motivo) {
-    $('motivo-local').textContent = motivo + ' Toque no mapa onde você está.';
+  function marcarPonto(latlng) {
+    pontoEscolhido = { lat: latlng.lat, lon: latlng.lng };
+    $('btn-pedir-aqui').disabled = false;
+    if (marcadorLocal) {
+      marcadorLocal.setLatLng(latlng);
+    } else {
+      marcadorLocal = L.marker(latlng, { draggable: true }).addTo(mapaLocal); // dá para arrastar para ajustar
+      marcadorLocal.on('dragend', () => marcarPonto(marcadorLocal.getLatLng()));
+    }
+  }
+
+  function mostrarMapaLocal(texto) {
+    $('motivo-local').textContent = texto;
     $('erro-local').textContent = '';
+    // toda vez começa sem ponto marcado: a pessoa escolhe de novo (nada de voltar para o ponto do pedido anterior)
+    pontoEscolhido = null;
+    $('btn-pedir-aqui').disabled = true;
+    if (marcadorLocal) { mapaLocal.removeLayer(marcadorLocal); marcadorLocal = null; }
     tela('escolher-local');
+    const centro = ultimoGps || origemLoja;
+    const ponto = centro ? [centro.lat, centro.lon] : [-26.9194, -49.0661];
     if (!mapaLocal) {
-      const centro = origemLoja ? [origemLoja.lat, origemLoja.lon] : [-26.9194, -49.0661];
-      mapaLocal = L.map('mapa-local').setView(centro, 16);
+      mapaLocal = L.map('mapa-local').setView(ponto, 16);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapaLocal);
-      mapaLocal.on('click', (ev) => {
-        pontoEscolhido = { lat: ev.latlng.lat, lon: ev.latlng.lng };
-        if (marcadorLocal) marcadorLocal.setLatLng(ev.latlng);
-        else marcadorLocal = L.marker(ev.latlng).addTo(mapaLocal);
-        $('btn-pedir-aqui').disabled = false;
-      });
+      mapaLocal.on('click', (ev) => marcarPonto(ev.latlng));
+    } else {
+      mapaLocal.setView(ponto, 16);
     }
     setTimeout(() => mapaLocal.invalidateSize(), 50); // o mapa estava escondido até agora
   }
@@ -240,9 +257,15 @@
   });
 
   $('btn-pedir').addEventListener('click', pedir);
+  $('btn-outro-lugar').addEventListener('click', () => mostrarMapaLocal('Toque no mapa onde você quer receber o pedido. Dá para arrastar o marcador para ajustar.'));
   $('btn-pedir-aqui').addEventListener('click', pedirNoPonto);
   $('voltar-local').addEventListener('click', mostrarPedir);
   $('de-novo').addEventListener('click', mostrarPedir);
+  $('outro-pedido').addEventListener('click', () => { // o pedido de antes segue o caminho dele; aqui a tela fica livre para outro
+    clearInterval(timer);
+    guardar(CHAVE_PEDIDO, null);
+    mostrarPedir();
+  });
   $('trocar').addEventListener('click', () => Auth.sair());
 
   // ---------------------------------------------------------------- início

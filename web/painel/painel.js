@@ -35,6 +35,7 @@
 
   async function iniciar() {
     $('grafana').href = 'http://localhost:3000'; // o Grafana só abre no notebook, mesmo com o painel aberto pelo túnel
+    $('testes').href = 'http://localhost:8099'; // a tela dos testes de falha também (./demo.sh testes)
 
     const cfg = await (await Auth.api('/api/pedidos/config')).json();
     $('promo-nome').textContent = cfg.promocao.nome;
@@ -44,7 +45,8 @@
       maxZoom: 19,
       attribution: '© OpenStreetMap',
     }).addTo(mapa);
-    loja = L.marker([cfg.origem.lat, cfg.origem.lon]).addTo(mapa).bindTooltip(cfg.origem.nome, { permanent: true, direction: 'top', className: 'rotulo' });
+    // bubblingMouseEvents: o clique em cima de um marcador também chega ao mapa (senão não dá para escolher um destino perto dele)
+    loja = L.marker([cfg.origem.lat, cfg.origem.lon], { bubblingMouseEvents: true }).addTo(mapa).bindTooltip(cfg.origem.nome, { permanent: true, direction: 'top', className: 'rotulo' });
 
     // abas da lateral: Pedidos | QR da plateia
     document.querySelectorAll('.aba').forEach((b) => b.addEventListener('click', () => {
@@ -59,8 +61,9 @@
       if (!modoCriar) return;
       destinoEscolhido = e.latlng;
       if (marcadorDestino) marcadorDestino.setLatLng(e.latlng);
-      else marcadorDestino = L.marker(e.latlng, { opacity: 0.7 }).addTo(mapa);
-      $('destino-info').textContent = 'Destino: ' + e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+      else marcadorDestino = L.marker(e.latlng, { opacity: 0.7, bubblingMouseEvents: true }).addTo(mapa);
+      $('destino-info').textContent = textoDestino(e.latlng);
+      $('criar-ok').textContent = '';
       $('criar').disabled = false;
     });
     $('criar').addEventListener('click', criarPedido);
@@ -81,22 +84,28 @@
   }
 
   // ---------------------------------------------------------------- pedido pelo mapa (ferramenta de apoio)
+  const textoDestino = (ll) => 'Destino: ' + ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5) + '. Clique em outro ponto para mudar.';
+
   function ligarModoCriar(ligado) {
     modoCriar = ligado;
     $('form-criar').classList.toggle('oculto', !ligado);
+    $('mapa').classList.toggle('criando', ligado); // o cursor vira uma mira
     $('abrir-criar').textContent = ligado ? '✕ Fechar' : '＋ Pedido pelo mapa';
+    $('criar-ok').textContent = '';
+    $('criar-erro').textContent = '';
     if (!ligado) {
       if (marcadorDestino) { mapa.removeLayer(marcadorDestino); marcadorDestino = null; }
       destinoEscolhido = null;
       $('criar').disabled = true;
-      $('destino-info').textContent = 'Clique no mapa para escolher o destino.';
-      $('criar-erro').textContent = '';
     }
+    // toda vez que abre, a instrução volta (nada de ficar com o texto do pedido anterior)
+    $('destino-info').textContent = destinoEscolhido ? textoDestino(destinoEscolhido) : '1. Clique no mapa onde o pedido deve chegar.';
   }
 
   async function criarPedido() {
     const erro = $('criar-erro');
     erro.textContent = '';
+    $('criar-ok').textContent = '';
     if (!destinoEscolhido) return;
     $('criar').disabled = true;
     const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng } };
@@ -106,9 +115,10 @@
       const r = await Auth.api('/api/pedidos', { method: 'POST', body: corpo });
       if (r.status !== 202) throw new Error('Não consegui criar o pedido (' + r.status + ').');
       const j = await r.json();
-      ligarModoCriar(false);
-      $('destino-info').textContent = 'Pedido #' + j.id + ' criado.';
+      // o formulário continua aberto com o mesmo destino: dá para criar outro igual ou clicar em outro ponto
+      $('criar-ok').textContent = '✔ Pedido #' + j.id + ' criado. Crie outro igual ou clique em outro ponto do mapa.';
       atualizarLista();
+      setTimeout(() => { if (destinoEscolhido) $('criar').disabled = false; }, 800); // evita o duplo clique sem querer
     } catch (e) {
       erro.textContent = e.message;
       $('criar').disabled = false;
@@ -217,7 +227,7 @@
     let e = entregadores[id];
     if (!e) {
       const icone = L.divIcon({ className: 'icone-entregador', html: '🛵', iconSize: [28, 28], iconAnchor: [14, 14] });
-      e = entregadores[id] = { nome: nome || 'Entregador ' + id, marcador: L.marker([lat, lon], { icon: icone, zIndexOffset: 1000 }).addTo(mapa) };
+      e = entregadores[id] = { nome: nome || 'Entregador ' + id, marcador: L.marker([lat, lon], { icon: icone, zIndexOffset: 1000, bubblingMouseEvents: true }).addTo(mapa) };
       e.marcador.bindTooltip(e.nome, { direction: 'top', offset: [0, -14], className: 'rotulo' });
     } else {
       e.marcador.setLatLng([lat, lon]);
@@ -274,15 +284,24 @@
   }
 
   // ---------------------------------------------------------------- QR code
-  // O QR usa a origem da página: abra o painel pela URL do túnel no telão ou cole o endereço público no campo.
+  // O QR leva para a página do cliente no endereço desta página. Aberto pelo link do túnel, o QR já sai certo e o campo
+  // de endereço nem aparece. Aberto por localhost, o celular não alcança esse endereço: aí aparece o campo para colar
+  // o link do túnel.
   async function configurarQr() {
     const r = await Auth.api('/api/auth/evento');
     if (!r.ok) return;
     const codigo = (await r.json()).codigo;
     const campo = $('url-publica');
-    try { campo.value = localStorage.getItem('delivery.urlPublica') || ''; } catch (e) { /* sem storage */ }
+    const local = /^(localhost|127\.|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname) || location.hostname.endsWith('.localhost');
+    $('linha-url-publica').classList.toggle('oculto', !local);
+    try {
+      // um endereço guardado de um túnel antigo não vale mais: só é lido quando o painel está em localhost
+      if (local) campo.value = localStorage.getItem('delivery.urlPublica') || '';
+      else localStorage.removeItem('delivery.urlPublica');
+    } catch (e) { /* sem storage */ }
     const desenhar = () => {
-      const base = (campo.value.trim() || location.origin).replace(/\/+$/, '');
+      const digitado = local ? campo.value.trim() : '';
+      const base = (digitado || location.origin).replace(/\/+$/, '');
       const url = base + '/cliente/?codigo=' + encodeURIComponent(codigo);
       const qr = qrcode(0, 'M');
       qr.addData(url);
@@ -290,7 +309,8 @@
       $('qr').innerHTML = qr.createImgTag(6, 8);
       $('qr-link').textContent = url;
       $('link-entregador').textContent = base + '/entregador/';
-      try { localStorage.setItem('delivery.urlPublica', campo.value.trim()); } catch (e) { /* sem storage */ }
+      document.querySelector('.aviso-qr').classList.toggle('oculto', !local || !!digitado);
+      try { if (local) localStorage.setItem('delivery.urlPublica', digitado); } catch (e) { /* sem storage */ }
     };
     campo.addEventListener('input', desenhar);
     desenhar();

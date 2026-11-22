@@ -76,7 +76,11 @@ button.pequeno { padding: 6px 12px; font-size: .85rem; font-weight: 600; }
 .tema-operador .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 16px; display: grid; gap: 10px; box-shadow: var(--sombra); }
 .tema-operador h2 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
 .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--acao); color: #fff; font-size: .8rem; }
-.dica { word-break: break-all; }
+.dica { overflow-wrap: anywhere; }
+.ok { color: var(--ok); min-height: 1.3em; margin: 0; font-size: .9rem; font-weight: 600; }
+.aviso-qr { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fef3c7; color: #92400e; font-size: .85rem; font-weight: 600; }
+/* "Pedido pelo mapa" ligado: o cursor vira uma mira e o clique em qualquer lugar do mapa escolhe o destino */
+#mapa.criando, #mapa.criando .leaflet-grab, #mapa.criando .leaflet-interactive { cursor: crosshair; }
 
 /* ---------- pedidos ---------- */
 table.pedidos { width: 100%; border-collapse: collapse; font-size: .92rem; }

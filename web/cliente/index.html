@@ -50,6 +50,7 @@
         <p class="ola">Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
         <button id="btn-pedir" class="gigante">Quero um pedido!</button>
         <p class="dica">Entregamos onde você está: o navegador vai pedir para usar a sua localização, é só tocar em <b>Permitir</b>. Você acompanha cada passo do pedido aqui mesmo.</p>
+        <button class="link" id="btn-outro-lugar">📍 Quero receber em outro endereço (escolher no mapa)</button>
         <p class="erro" id="erro-pedir" role="alert"></p>
       </section>
 
@@ -72,6 +73,8 @@
         <ol class="linha-do-tempo" id="passos"></ol>
         <p id="resultado" class="resultado"></p>
         <button id="de-novo" class="grande oculto">Pedir de novo</button>
+        <!-- enquanto o pedido não termina (por exemplo, esperando um entregador), dá para fazer outro, em outro endereço -->
+        <button class="link" id="outro-pedido">Fazer outro pedido, em outro endereço</button>
       </section>
     </main>
 

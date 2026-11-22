@@ -15,7 +15,7 @@
  },
  "editable": true,
  "graphTooltip": 1,
- "description": "Tela da apresentação: números, o caminho de cada pedido e o mapa dos serviços.",
+ "description": "Tela da apresentação: números, o caminho de cada pedido e a arquitetura do pedido escolhido.",
  "panels": [
   {
    "id": 5,
@@ -29,7 +29,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "### Como ler esta tela\n**Os números de cima** dizem o que está acontecendo agora (quantas pessoas pediram, quantas unidades restam). **Em \"O caminho do pedido\"** você escolhe um pedido e vê por quais serviços ele passou e quanto cada um demorou. **Lá embaixo** está o desenho da arquitetura funcionando, somando todos os pedidos; onde algo falha, fica vermelho. Cada pedido que alguém faz pelo QR code aparece aqui em poucos segundos."
+    "content": "### Como ler esta tela\n**Os números de cima** dizem o que está acontecendo agora (quantas pessoas pediram, quantas unidades restam). **Em \"O caminho do pedido\"** você escolhe um pedido e vê por quais serviços ele passou e quanto cada um demorou; os pedidos ficam ali por 24 horas, para dar tempo de analisar. **Lá embaixo**, para o pedido escolhido: a faixa diz **onde a falha começou** (se houve) e o desenho mostra por onde o pedido passou: verde passou, vermelho registrou o erro (o erro nasce em um serviço e volta pelo caminho) e cinza nem chegou. Cada pedido que alguém faz pelo QR code aparece aqui em poucos segundos."
    },
    "transparent": true
   },
@@ -528,7 +528,7 @@
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Clique no número para ver, ao lado, o caminho dele por cada serviço.",
+   "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Ficam aqui por 24 horas. Clique no número para ver, ao lado e embaixo, o caminho dele.",
    "gridPos": {
     "x": 0,
     "y": 17,
@@ -740,7 +740,8 @@
    "options": {
     "showHeader": true,
     "cellHeight": "md"
-   }
+   },
+   "timeFrom": "24h"
   },
   {
    "id": 2,
@@ -1014,7 +1015,7 @@
        },
        {
         "id": "custom.width",
-        "value": 120
+        "value": 150
        },
        {
         "id": "mappings",
@@ -1023,7 +1024,7 @@
           "type": "value",
           "options": {
            "error": {
-            "text": "❌ falhou aqui",
+            "text": "❌ registrou o erro",
             "color": "red",
             "index": 0
            },
@@ -1134,7 +1135,8 @@
      }
     ],
     "cellHeight": "md"
-   }
+   },
+   "timeFrom": "24h"
   },
   {
    "id": 15,
@@ -1180,7 +1182,7 @@
   {
    "id": 16,
    "type": "row",
-   "title": "A arquitetura funcionando",
+   "title": "A arquitetura do pedido escolhido",
    "collapsed": false,
    "gridPos": {
     "x": 0,
@@ -1192,18 +1194,19 @@
   },
   {
    "id": 4,
-   "type": "nodeGraph",
-   "title": "Quem fala com quem (ao vivo, todos os pedidos): vermelho = onde houve falha",
+   "type": "canvas",
+   "title": "A arquitetura do pedido escolhido: verde = passou · vermelho = registrou o erro · cinza = não chegou (a legenda completa está embaixo)",
    "datasource": {
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "O desenho da arquitetura, vivo e somando todos os pedidos do período (não é só o pedido escolhido). Cada círculo é um serviço ou banco, cada seta é uma chamada. Quando algo falha (pagamento recusado, estoque esgotado, prazo vencido), o anel do serviço onde aconteceu fica vermelho na proporção das falhas.",
+   "description": "O desenho da arquitetura para o pedido que você escolheu na tabela de cima (não é a soma de todos os pedidos). Cada caixa é um serviço: verde = o pedido passou por ele, vermelho = ele registrou o erro (o erro nasce em um serviço e volta pelo caminho: a faixa de cima diz onde nasceu), cinza = o pedido não chegou até ele. As caixas azuis são quem usa o sistema, pelo celular (cliente e entregador), e a laranja é o RabbitMQ, que leva as mensagens entre os serviços: elas não mudam de cor.",
+   "timeFrom": "24h",
    "gridPos": {
     "x": 0,
-    "y": 32,
+    "y": 36,
     "w": 24,
-    "h": 18
+    "h": 16
    },
    "targets": [
     {
@@ -1212,16 +1215,1294 @@
       "uid": "tempo"
      },
      "refId": "A",
-     "queryType": "serviceMap",
-     "serviceMapQuery": ""
+     "queryType": "traceql",
+     "tableType": "spans",
+     "limit": 20,
+     "spss": 100,
+     "query": "{ trace:id = \"${traceid}\" } | select(resource.service.name, span:status)"
     }
    ],
-   "options": {
-    "nodes": {
-     "mainStatUnit": "ms",
-     "secondaryStatUnit": "reqps"
+   "transformations": [
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "status"
+       }
+      ]
+     }
     },
-    "edges": {}
+    {
+     "id": "groupBy",
+     "options": {
+      "fields": {
+       "service.name": {
+        "aggregations": [],
+        "operation": "groupby"
+       },
+       "status": {
+        "aggregations": [
+         "first"
+        ],
+        "operation": "aggregate"
+       }
+      }
+     }
+    },
+    {
+     "id": "rowsToFields",
+     "options": {
+      "mappings": [
+       {
+        "fieldName": "service.name",
+        "handlerKey": "field.name"
+       },
+       {
+        "fieldName": "status (first)",
+        "handlerKey": "field.value"
+       }
+      ]
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "error": {
+         "color": "#ff6b6b",
+         "text": "falhou aqui",
+         "index": 0
+        },
+        "ok": {
+         "color": "#69db7c",
+         "text": "passou",
+         "index": 1
+        },
+        "unset": {
+         "color": "#69db7c",
+         "text": "passou",
+         "index": 2
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "inlineEditing": false,
+    "showAdvancedTypes": false,
+    "panZoom": false,
+    "infinitePan": false,
+    "root": {
+     "type": "frame",
+     "name": "Element 1",
+     "background": {
+      "color": {
+       "fixed": "transparent"
+      }
+     },
+     "border": {
+      "color": {
+       "fixed": "transparent"
+      }
+     },
+     "constraint": {
+      "horizontal": "left",
+      "vertical": "top"
+     },
+     "placement": {
+      "top": 0,
+      "left": 0,
+      "width": 100,
+      "height": 100
+     },
+     "elements": [
+      {
+       "type": "rectangle",
+       "name": "cliente",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "📱 Cliente"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#a5d8ff"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 3,
+        "right": 85,
+        "top": 30,
+        "bottom": 50
+       },
+       "connections": [
+        {
+         "source": {
+          "x": 1,
+          "y": 0
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "pedidos",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        }
+       ]
+      },
+      {
+       "type": "rectangle",
+       "name": "pedidos",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "Pedidos (Java)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "field": "pedidos",
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 22,
+        "right": 64,
+        "top": 30,
+        "bottom": 50
+       },
+       "connections": [
+        {
+         "source": {
+          "x": 1,
+          "y": 0
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "rabbitmq",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        }
+       ]
+      },
+      {
+       "type": "rectangle",
+       "name": "rabbitmq",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "RabbitMQ"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 15,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#ffd8a8"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 42,
+        "right": 52,
+        "top": 3,
+        "bottom": 23
+       },
+       "connections": [
+        {
+         "source": {
+          "x": 1,
+          "y": 0.73
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "estoque",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        },
+        {
+         "source": {
+          "x": 1,
+          "y": 0
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "pagamento",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        },
+        {
+         "source": {
+          "x": 1,
+          "y": -0.73
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "entregas",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        }
+       ]
+      },
+      {
+       "type": "rectangle",
+       "name": "estoque",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "Estoque (Java)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "field": "estoque",
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 56,
+        "right": 29,
+        "top": 3,
+        "bottom": 77
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "pagamento",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "Pagamento (TypeScript)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "field": "pagamento",
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 56,
+        "right": 29,
+        "top": 30,
+        "bottom": 50
+       },
+       "connections": [
+        {
+         "source": {
+          "x": 1,
+          "y": 0
+         },
+         "target": {
+          "x": -1,
+          "y": 0
+         },
+         "targetName": "gateway-pagamento",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        }
+       ]
+      },
+      {
+       "type": "rectangle",
+       "name": "entregas",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "Entregas (TypeScript)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "field": "entregas",
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 56,
+        "right": 29,
+        "top": 57,
+        "bottom": 23
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "gateway-pagamento",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "Gateway de pagamento (externo)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 16,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "field": "gateway-pagamento",
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 80,
+        "right": 5,
+        "top": 30,
+        "bottom": 50
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "entregador",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "🛵 Entregador (celular)"
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#a5d8ff"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#495057"
+        },
+        "width": 2,
+        "radius": 14
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 80,
+        "right": 5,
+        "top": 57,
+        "bottom": 23
+       },
+       "connections": [
+        {
+         "source": {
+          "x": -1,
+          "y": 0
+         },
+         "target": {
+          "x": 1,
+          "y": 0
+         },
+         "targetName": "entregas",
+         "color": {
+          "fixed": "#868e96"
+         },
+         "size": {
+          "fixed": 2,
+          "min": 1,
+          "max": 10
+         },
+         "path": "straight"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "name": "r-rest",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "REST"
+        },
+        "color": {
+         "fixed": "#868e96"
+        },
+        "size": 14,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 15,
+        "right": 78,
+        "top": 32.0,
+        "bottom": 62.0
+       }
+      },
+      {
+       "type": "text",
+       "name": "r-http",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "HTTP"
+        },
+        "color": {
+         "fixed": "#868e96"
+        },
+        "size": 14,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 71,
+        "right": 20,
+        "top": 32.0,
+        "bottom": 62.0
+       }
+      },
+      {
+       "type": "text",
+       "name": "r-gps",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "GPS e Aceitar"
+        },
+        "color": {
+         "fixed": "#868e96"
+        },
+        "size": 12,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 71,
+        "right": 20,
+        "top": 59.0,
+        "bottom": 35.0
+       }
+      },
+      {
+       "type": "text",
+       "name": "r-msg",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "mensagens"
+        },
+        "color": {
+         "fixed": "#868e96"
+        },
+        "size": 12,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 35.5,
+        "right": 57.5,
+        "top": 32.0,
+        "bottom": 62.0
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "cor-verde",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": ""
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#69db7c"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#868e96"
+        },
+        "width": 1,
+        "radius": 4
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 3,
+        "right": 95.6,
+        "top": 85.5,
+        "bottom": 10.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "txt-verde",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "passou"
+        },
+        "color": {
+         "fixed": "#ced4da"
+        },
+        "size": 14,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 4.8,
+        "right": 88.2,
+        "top": 84.5,
+        "bottom": 9.5
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "cor-vermelho",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": ""
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#ff6b6b"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#868e96"
+        },
+        "width": 1,
+        "radius": 4
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 11,
+        "right": 87.6,
+        "top": 85.5,
+        "bottom": 10.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "txt-vermelho",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "registrou o erro"
+        },
+        "color": {
+         "fixed": "#ced4da"
+        },
+        "size": 14,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 12.8,
+        "right": 75.2,
+        "top": 84.5,
+        "bottom": 9.5
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "cor-cinza",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": ""
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#dee2e6"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#868e96"
+        },
+        "width": 1,
+        "radius": 4
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 25,
+        "right": 73.6,
+        "top": 85.5,
+        "bottom": 10.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "txt-cinza",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "não chegou aqui"
+        },
+        "color": {
+         "fixed": "#ced4da"
+        },
+        "size": 14,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 26.8,
+        "right": 61.2,
+        "top": 84.5,
+        "bottom": 9.5
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "cor-azul",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": ""
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#a5d8ff"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#868e96"
+        },
+        "width": 1,
+        "radius": 4
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 39,
+        "right": 59.6,
+        "top": 85.5,
+        "bottom": 10.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "txt-azul",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "quem usa, pelo celular"
+        },
+        "color": {
+         "fixed": "#ced4da"
+        },
+        "size": 14,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 40.8,
+        "right": 44.2,
+        "top": 84.5,
+        "bottom": 9.5
+       }
+      },
+      {
+       "type": "rectangle",
+       "name": "cor-laranja",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": ""
+        },
+        "color": {
+         "fixed": "#1f2933"
+        },
+        "size": 18,
+        "align": "center",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "#ffd8a8"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "#868e96"
+        },
+        "width": 1,
+        "radius": 4
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 56,
+        "right": 42.6,
+        "top": 85.5,
+        "bottom": 10.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "txt-laranja",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "RabbitMQ (mensagens entre os serviços)"
+        },
+        "color": {
+         "fixed": "#ced4da"
+        },
+        "size": 14,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 57.8,
+        "right": 12.2,
+        "top": 84.5,
+        "bottom": 9.5
+       }
+      },
+      {
+       "type": "text",
+       "name": "legenda-2",
+       "config": {
+        "text": {
+         "mode": "fixed",
+         "fixed": "A falha nasce em um serviço e volta pelo caminho: a faixa acima diz onde começou  ·  setas do RabbitMQ = mensagens, as outras = chamadas HTTP  ·  escolha um pedido na tabela de cima para ver o dele"
+        },
+        "color": {
+         "fixed": "#adb5bd"
+        },
+        "size": 13,
+        "align": "left",
+        "valign": "middle"
+       },
+       "background": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "border": {
+        "color": {
+         "fixed": "transparent"
+        }
+       },
+       "constraint": {
+        "horizontal": "scale",
+        "vertical": "scale"
+       },
+       "placement": {
+        "left": 3,
+        "right": 3,
+        "top": 91,
+        "bottom": 2
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": 18,
+   "type": "stat",
+   "title": "Onde a falha começou (ela nasce neste serviço e volta pelos outros, que ficam em vermelho)",
+   "description": "Quando um pedido dá errado, o erro nasce em um serviço e volta pelo caminho por onde o pedido veio: cada serviço que recebe o erro e reage (cancela, desfaz, avisa) também fica vermelho. Aqui aparece o serviço onde o erro nasceu: o primeiro erro a terminar. Exemplo: o gateway recusa o pagamento (nasce ali), o Pagamento avisa o Pedidos, e o Pedidos cancela o pedido.",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "timeFrom": "24h",
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "refId": "A",
+     "queryType": "traceql",
+     "tableType": "spans",
+     "limit": 20,
+     "spss": 100,
+     "query": "{ trace:id = \"${traceid}\" && status = error } | select(resource.service.name)"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "time",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
+     "id": "calculateField",
+     "options": {
+      "mode": "binary",
+      "binary": {
+       "left": {
+        "matcher": {
+         "id": "byName",
+         "options": "duration"
+        }
+       },
+       "operator": "/",
+       "right": {
+        "fixed": "1000000"
+       }
+      },
+      "alias": "dur_ms",
+      "replaceFields": false
+     }
+    },
+    {
+     "id": "calculateField",
+     "options": {
+      "mode": "binary",
+      "binary": {
+       "left": {
+        "matcher": {
+         "id": "byName",
+         "options": "time"
+        }
+       },
+       "operator": "+",
+       "right": {
+        "matcher": {
+         "id": "byName",
+         "options": "dur_ms"
+        }
+       }
+      },
+      "alias": "fim",
+      "replaceFields": false
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "sort": [
+       {
+        "field": "fim"
+       }
+      ]
+     }
+    },
+    {
+     "id": "limit",
+     "options": {
+      "limitField": 1
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "✅ Sem falha neste pedido (ou ainda sem pedido escolhido)",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "gateway-pagamento": {
+         "text": "Gateway de pagamento: recusou a cobrança",
+         "color": "red",
+         "index": 0
+        },
+        "estoque": {
+         "text": "Estoque: não havia mais unidades (esgotado)",
+         "color": "red",
+         "index": 1
+        },
+        "pedidos": {
+         "text": "Pedidos: o prazo do pagamento venceu e o pedido foi cancelado",
+         "color": "red",
+         "index": 2
+        },
+        "pagamento": {
+         "text": "Pagamento: não conseguiu cobrar",
+         "color": "red",
+         "index": 3
+        },
+        "entregas": {
+         "text": "Entregas: a entrega falhou",
+         "color": "red",
+         "index": 4
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "values": false,
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "/^service\\.name$/"
+    },
+    "textMode": "value",
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "wideLayout": true,
+    "text": {
+     "valueSize": 30
+    }
    }
   }
  ],

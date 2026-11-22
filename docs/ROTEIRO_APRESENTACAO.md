@@ -48,9 +48,9 @@ Como se comunicam (pessoa 3): o cliente fala com o sistema por **HTTP (REST)**; 
 | 12:00 | 4 | "Alguém pediu um pedido?" **A pessoa 5 entra na sala.** O sistema marca **ENTREGUE** sozinho (menos de 50 m do destino) ou ele toca em **Confirmar entrega** |
 | 13:00 | 5 | Explica o GPS: o navegador do celular manda a posição a cada 3 s → túnel → serviço de entregas → Redis → WebSocket → mapa. Fala da latência do 4G |
 | 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Um botão só: **Quero um pedido!** (o celular pede a localização) |
-| 15:30 | 2 | Narra o Grafana enquanto a plateia pede: pessoas que entraram, pedidos por minuto, tempo do pagamento, "Unidades restantes" caindo, o mapa de serviços |
+| 15:30 | 2 | Narra o Grafana enquanto a plateia pede: pessoas que entraram, pedidos por minuto, tempo do pagamento, "Unidades restantes" caindo, o caminho de um pedido e a arquitetura dele |
 | 18:00 | todos | Quando as unidades acabam: **"Sem sucesso"** sobe sem o estoque ficar negativo. É o cenário F5 acontecendo ao vivo |
-| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): `./demo.sh falha N` e mostre no **Detalhes técnicos** |
+| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): na tela de testes (`./demo.sh testes`, http://localhost:8099) clique no teste pedido (ou `./demo.sh falha N` no terminal) e mostre o que aparece em "Mostre agora". A cola está em [FALHAS.md](FALHAS.md) |
 
 Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que não se corta: o pedido, a chegada e o QR.
 
@@ -63,7 +63,7 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 5. **O QR em tela cheia, com a URL em texto embaixo** (alguns celulares não leem o QR da tela). Use o **Modo telão** do painel.
 6. **Grafana em tela cheia no telão** com o endereço `http://localhost:3000/d/apresentacao/apresentacao?kiosk`. Mostre o painel do operador e o Grafana em duas abas, e troque entre elas.
 7. **Quem narra o Grafana não é quem opera.** A pessoa 4 mexe nas telas e a pessoa 2 explica o que aparece.
-8. **Mostre o vermelho de propósito.** Com a turma pedindo, ligue uma taxa de falha no gateway (`GATEWAY_TAXA_FALHA=30 docker compose up -d gateway-pagamento`). Cerca de 3 em cada 10 pedidos passam a ser recusados: a tabela mostra "Recusado", o caminho do pedido mostra em vermelho onde falhou e o mapa de serviços ganha um anel vermelho no pagamento. Depois volte: `docker compose up -d gateway-pagamento`. Ensaie isso: é a parte que mais impressiona.
+8. **Mostre o vermelho de propósito.** Com a turma pedindo, ligue uma taxa de falha no gateway (`GATEWAY_TAXA_FALHA=30 docker compose up -d gateway-pagamento`). Cerca de 3 em cada 10 pedidos passam a ser recusados: a tabela mostra "Recusado", o caminho do pedido mostra em vermelho onde falhou e, escolhendo um pedido recusado, a arquitetura mostra o Pagamento e o Gateway em vermelho. Depois volte: `docker compose up -d gateway-pagamento`. Ensaie isso: é a parte que mais impressiona.
 9. **Plano B pronto e ensaiado** (veja "Ensaio"): se o GPS real falhar, `./demo.sh simular` entra como o entregador 2, aceita o pedido que estiver esperando (ou segue o que ele já aceitou) e reproduz a rota do ensaio: a plateia não percebe a diferença.
 10. **A disputa pelo pedido (opcional, 1 minuto).** Com o `entregador1` (tela da sala) e o `entregador2` (celular) Disponíveis, faça um pedido: os dois recebem o aviso, o primeiro a tocar em **Aceitar** leva e o outro lê "já foi aceito por outro entregador". É a concorrência resolvida no banco (UPDATE condicional), a mesma ideia da corrida pelo estoque.
 
@@ -75,7 +75,7 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 - [ ] Colega com a página do entregador aberta no celular (**entregador2**), **Disponível**, cartão "GPS enviando" verde, e o marcador aparecendo no painel com "última posição há X s" baixo. Na tela da sala, a página do **entregador1** numa aba (para mostrar a disputa).
 - [ ] Pedido de teste até `EM_ENTREGA`: o celular avisou? Toque em **Aceitar** e conclua pelo botão. Depois `./demo.sh limpar` de novo.
 - [ ] Faça um pedido pelo QR para conferir: aparece no Grafana (espere ~20 s).
-- [ ] Abas: painel (link do túnel), Grafana (Apresentação), um terminal na pasta do projeto.
+- [ ] Abas: painel (link do túnel), Grafana (Apresentação) e a tela de testes (`./demo.sh testes`, http://localhost:8099), com um terminal na pasta do projeto.
 - [ ] Combinem o sinal para o colega entrar e uma mensagem de "fecha a página" para o plano B.
 
 ## Ensaio com o celular (até 25/11)

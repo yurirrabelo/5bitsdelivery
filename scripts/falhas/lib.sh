@@ -172,10 +172,11 @@ verificar() { # verificar "o que" esperado obtido
   fi
 }
 
-finalizar() { # finalizar "F1"
+finalizar() { # finalizar "F1" ["o que mostrar agora no Grafana"]
   echo
   if [ "$FALHAS" -eq 0 ]; then
     echo "$1: PASSOU"
+    [ -n "${2:-}" ] && echo "Mostre agora: $2"
     return 0
   fi
   echo "$1: FALHOU ($FALHAS verificação(ões) com erro)"

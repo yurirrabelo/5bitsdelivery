@@ -616,6 +616,53 @@
     "dedupStrategy": "none",
     "prettifyLogMessage": false
    }
+  },
+  {
+   "id": 16,
+   "type": "row",
+   "title": "6. Quem fala com quem (todos os pedidos somados)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 47,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 17,
+   "type": "nodeGraph",
+   "title": "Quem fala com quem (ao vivo, todos os pedidos): vermelho = onde houve falha",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "description": "O desenho da arquitetura, vivo e somando todos os pedidos do período (não é só o pedido escolhido). Cada círculo é um serviço ou banco, cada seta é uma chamada. Quando algo falha (pagamento recusado, estoque esgotado, prazo vencido), o anel do serviço onde aconteceu fica vermelho na proporção das falhas.",
+   "gridPos": {
+    "x": 0,
+    "y": 48,
+    "w": 24,
+    "h": 16
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "refId": "A",
+     "queryType": "serviceMap",
+     "serviceMapQuery": ""
+    }
+   ],
+   "options": {
+    "nodes": {
+     "mainStatUnit": "ms",
+     "secondaryStatUnit": "reqps"
+    },
+    "edges": {}
+   }
   }
  ],
  "templating": {
