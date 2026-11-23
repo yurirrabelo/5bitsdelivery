@@ -85,11 +85,11 @@ Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador p
 ./demo.sh unitarios      # testes do código (bibliotecas e serviços), em containers, ~3 min: TESTES: PASSOU
 ./demo.sh falha 1        # um cenário de falha do professor (1 a 8)
 ./demo.sh falha todas    # todos em sequência (~14 min)
-./demo.sh testes         # abre a tela com botões para acionar os cenários de falha (http://localhost:8099, só no notebook)
+./demo.sh testes         # abre a tela de testes de falha, em tela cheia (http://localhost:8099, só no notebook)
 ./demo.sh estado         # containers, filas, DLQs, pedidos, estoque e outbox
 ```
 
-Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora** no Grafana. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, abra o painel de gestão por `http://localhost:8080/painel/` (no notebook) e vá na aba **Testes** (o `./demo.sh subir` já liga a tela de testes; `./demo.sh testes` abre a mesma tela em http://localhost:8099). A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
+Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora** no Grafana. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, abra o painel de gestão por `http://localhost:8080/painel/` (no notebook) e clique em **🧪 Testes de falha**: abre uma tela cheia com o que o professor pede, o passo a passo (com o porquê de cada passo), o resultado esperado, o que o cliente vê, o estado dos bancos ao vivo e o esperado × obtido (o `./demo.sh subir` já liga essa tela; `./demo.sh testes` abre a mesma em http://localhost:8099). Cada teste começa com o banco zerado. A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
 
 | # | Cenário | O que o script faz | Resultado esperado |
 |---|---|---|---|
@@ -112,7 +112,7 @@ docker compose up -d gateway-pagamento    # volta ao que está no .env
 ## 5. Antes de apresentar
 
 ```bash
-./demo.sh limpar       # começa limpo: apaga os pedidos e as entregas do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
+./demo.sh limpar       # começa limpo: apaga os pedidos, as entregas e os pontos de GPS do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
 ./demo.sh estado       # confere que está tudo no ar
 ```
 

@@ -3,7 +3,7 @@
 # a exportação da rota para o S3 fica pendente e é feita quando ele volta. Segredos e bucket continuam lá
 # (PERSIST_STATE=1).
 source "$(dirname "$0")/lib.sh"
-trap 'docker compose start ministack >/dev/null 2>&1; restaurar' EXIT
+trap 'docker compose start ministack >/dev/null 2>&1; restaurar; ./scripts/limpar-gps.sh' EXIT   # o simulador deixa um GPS falso no mapa
 
 titulo "F6b - MiniStack fora" "S3 indisponível na hora de exportar a rota: fica pendente e sai quando ele volta"
 login_operador

@@ -1,21 +1,44 @@
 # Cola dos cenários de falha
 
-O professor vai escolher um (ou alguns) ao acaso: rode **só o que ele pedir**, um de cada vez.
+O professor vai escolher um (ou alguns) ao acaso: rode **só o que ele pedir**, um de cada vez. No enunciado, o professor escolhe uma falha e o grupo a provoca ao vivo, **mostrando pelos logs e pelo estado dos bancos** que o sistema se comportou como esperado. E o grupo deve **prever o que vai acontecer antes de executar**: a tela de testes já traz essa previsão escrita.
 
-**Com botões** (o jeito mais fácil na apresentação): no **painel de gestão**, aberto no notebook por `http://localhost:8080/painel/`, clique na aba **Testes**. (O `./demo.sh subir` já liga a tela de testes que a aba usa; se ela avisar que não está ligada, rode `./demo.sh testes`, que a liga e abre a mesma tela em `http://localhost:8099`.)
+**Com botões** (o jeito mais fácil na apresentação): no **painel de gestão**, aberto no notebook por `http://localhost:8080/painel/`, clique em **🧪 Testes de falha** (na lateral, acima das abas). Abre uma tela própria, em tela cheia, em `http://localhost:8099`. O `./demo.sh subir` já a liga; se o botão estiver apagado, rode `./demo.sh testes`. (Precisa do Python 3 no notebook. Sem ele, use os comandos abaixo.)
 
-A aba mostra uma lista com os 9 testes, cada um com o que o professor costuma perguntar, o que acontece e o resultado esperado, e um botão **Acionar**. A saída aparece ao vivo no quadro ao lado (`[OK]` verde e `[ERRO]` vermelho) e, no fim, vem um **PASSOU** grande e o que mostrar no Grafana. O botão **Voltar ao normal** religa o que um teste tenha parado, se algo ficar estranho. (Precisa do Python 3 no notebook. Sem ele, use os comandos abaixo.)
+A tela tem três zonas:
 
-Também dá para acionar pelo terminal:
+- **À esquerda**, os 9 cenários, cada um com as palavras do professor (a coluna "Como provocar" da tabela do enunciado).
+- **No centro**, a história do cenário, na ordem em que se conta: 1) **o que o professor pede**; 2) o **passo a passo, com o porquê de cada passo**; 3) o **resultado esperado** (para dizer em voz alta *antes* de provocar); 4) **"Agora faça um pedido"**: o que o cliente vê (por exemplo, "Não foi possível: pagamento recusado"). O botão **▶ Provocar a falha** fica sempre à vista. Ao apertar, os passos acendem um a um e, no fim, o **resultado** aparece no alto: o PASSOU ou FALHOU, a tabela **esperado × obtido**, o caminho do pedido e o **"Mostre agora"** com os botões do Grafana.
+- **À direita, ao vivo:** o andamento e o relógio, o **estado dos bancos** (estoque, pedidos, pagamentos e as mensagens esperando na outbox, que mudam enquanto o teste roda) e os **logs** do teste. O botão **↺ Voltar ao normal** religa o que um teste tenha parado, se algo ficar estranho.
+
+**Cada teste começa com o banco zerado** (pedidos, entregas, estoque de volta nas 10 unidades, entregadores livres e sem posição de GPS), para o resultado ser fácil de ler e nada se misturar com testes anteriores. O que o teste provoca fica no banco até o próximo começar, para dar tempo de mostrar. Por isso, **não use a tela de testes com pedidos de verdade em andamento** (por exemplo, no meio da plateia pedindo pelo QR): ela os apaga.
+
+Também dá para acionar pelo terminal (mesma coisa, com o mesmo banco zerado no início):
 
 ```bash
 ./demo.sh falha        # mostra a lista e pergunta o número
 ./demo.sh falha 3      # roda direto o F3
 ```
 
-Cada cenário **provoca a falha de verdade** (para um serviço, derruba o broker, manda mensagem repetida...), espera o sistema reagir e compara o **esperado** com o **obtido**. No fim aparece **PASSOU** (ou **FALHOU**) e uma linha **"Mostre agora"** dizendo o que abrir no Grafana. Leva de 1 a 3 minutos cada. Ao terminar, o cenário devolve o sistema ao normal sozinho.
+Cada cenário **provoca a falha de verdade** (para um serviço, derruba o broker, manda mensagem repetida...), espera o sistema reagir e compara o **esperado** com o **obtido**. No fim aparece **PASSOU** (ou **FALHOU**) e uma linha **"Mostre agora"** dizendo o que abrir no Grafana. Leva de 1 a 3 minutos cada. Ao terminar, o cenário devolve o sistema ao normal sozinho. O texto de cada cenário (o que o professor pede, os passos, o porquê, o esperado e o que o cliente vê) está em `scripts/testes/cenarios.json`.
 
-**Por que a aba Testes só funciona por `localhost`?** Os cenários derrubam coisas de verdade (RabbitMQ, réplicas, nuvem), e isso só um comando na máquina pode fazer: por baixo, a aba chama uma tela de testes que roda no notebook (`scripts/testes`) e só atende páginas de `localhost`. O painel de gestão também abre pelo túnel da internet, com login simples, e a plateia enxerga esse link: um botão que desliga o sistema ali seria um risco. Pelo link público a aba apenas avisa que os testes só funcionam no notebook.
+**Por que o botão só funciona por `localhost`?** Os cenários derrubam coisas de verdade (RabbitMQ, réplicas, nuvem), e isso só um comando na máquina pode fazer: por baixo, a tela chama um servidor local do notebook (`scripts/testes`) que só atende páginas de `localhost`. O painel de gestão também abre pelo túnel da internet, com login simples, e a plateia enxerga esse link: um botão que desliga o sistema ali seria um risco. Pelo link público o botão nem aparece.
+
+## O que o professor pede (do enunciado)
+
+| # | Como provocar | Resultado esperado |
+|---|---|---|
+| **F1** Compensação | Taxa de falha da dependência em 100% | Passos anteriores desfeitos, recurso liberado, cliente notificado |
+| **F2** Serviço morre no meio | `docker kill` no consumidor durante o processamento | Mensagem reentregue a outra réplica ou após o reinício, efeito aplicado uma única vez |
+| **F3** Mensagem duplicada | Republicar a mesma mensagem (mesmo `messageId`) 5 vezes | Um único efeito |
+| **F4** Mensagem venenosa | Publicar payload inválido | N tentativas, depois DLQ; as demais mensagens seguem normalmente |
+| **F5** Corrida pelo recurso | 100 requisições simultâneas para 10 unidades | Exatamente 10 sucessos; as outras 90 recusadas ou compensadas |
+| **F6** Broker fora do ar | Parar o broker (ou o MiniStack) por 30 segundos | Serviços reconectam sozinhos, outbox drena, nenhuma mensagem perdida |
+| **F7** Resposta tardia | Latência da dependência maior que o tempo de expiração | Compensação correta do resultado que chegou atrasado |
+| **F8** Escala horizontal | Subir 3 réplicas de um consumidor | Carga dividida entre as réplicas, sem efeito duplicado |
+
+O professor também pode pedir uma **falha surpresa** (por exemplo, derrubar um serviço específico). Nesse caso não há botão: `docker compose stop <serviço>`, **diga em voz alta o que vai acontecer**, mostre e depois `docker compose start <serviço>`.
+
+## Como o nosso teste responde a cada um
 
 | # | O que acontece | Resultado esperado | Onde mostrar no Grafana |
 |---|---|---|---|
@@ -35,6 +58,6 @@ Cada cenário **provoca a falha de verdade** (para um serviço, derruba o broker
 
 - **Um por vez.** Dois cenários ao mesmo tempo atrapalham um ao outro.
 - **Antes:** `./demo.sh estado` confere que está tudo no ar (containers `healthy`, filas e DLQs vazias).
-- **Depois de um cenário** o sistema volta ao normal sozinho. Se sobrar estoque estranho: `./demo.sh reset`.
+- **Depois de um cenário** o sistema volta ao normal sozinho, mas o que ele provocou fica no banco (para mostrar). Para começar limpo: `./demo.sh limpar`.
 - **Não mexa** em `docker-compose.yml`, `.env` ou nos arquivos do Terraform enquanto um cenário roda.
 - **Pedidos que ficam no Grafana:** os pedidos dos cenários aparecem na tabela "Pedidos recentes" por 24 horas. Escolha um deles e a **arquitetura do pedido** mostra onde a falha aconteceu, em vermelho.

@@ -44,10 +44,15 @@
       <aside class="lateral">
         <p class="resumo so-operador">Aqui você <b>acompanha as entregas ao vivo, com o GPS dos entregadores</b>, vê os pedidos e o estoque da promoção e pode <b>fazer um pedido manualmente</b>.</p>
 
+        <!-- os testes de falha do professor abrem em tela cheia, numa janela própria (só no notebook: ver painel.js) -->
+        <a id="testes" class="botao-testes so-operador" href="http://localhost:8099/" target="_blank" rel="noopener">
+          <b>🧪 Testes de falha ↗</b>
+          <small>Abre em tela cheia os testes que o professor pede</small>
+        </a>
+
         <nav class="abas so-operador" role="tablist" aria-label="O que mostrar">
           <button class="aba ativa" data-aba="pedidos" role="tab">📋 Pedidos</button>
           <button class="aba" data-aba="qr" role="tab" title="O QR code da plateia">📱 QR</button>
-          <button class="aba" data-aba="testes" role="tab" title="Os testes de falha que o professor pede">🧪 Testes</button>
         </nav>
 
         <!-- aba 1: pedidos e entregadores -->
@@ -105,30 +110,6 @@
               </label>
             </div>
             <p class="dica so-operador">Link do entregador, para abrir no celular dele: <b id="link-entregador"></b></p>
-          </div>
-        </section>
-
-        <!-- aba 3: os testes de falha que o professor pede (rodam no notebook, pela tela de testes: ./demo.sh testes) -->
-        <section class="painel-aba so-operador" id="aba-testes">
-          <div class="cartao">
-            <h2>Testes de falha do professor</h2>
-            <p class="dica">Clique no teste que o professor pedir. Ele <b>provoca a falha de verdade</b>, espera o sistema reagir e mostra o esperado e o obtido. Um de cada vez.</p>
-            <p class="aviso-qr oculto" id="testes-aviso"></p>
-            <!-- a execução fica no TOPO: ao acionar um teste, o andamento e o resultado já aparecem sem rolar a lista -->
-            <div class="testes-exec" id="testes-exec">
-              <div class="testes-topo">
-                <b id="testes-titulo">Execução</b>
-                <span class="estado-teste" id="testes-estado">parado</span>
-                <button class="secundario pequeno" id="testes-restaurar" title="Se algo ficar estranho: religa o gateway e os serviços que um teste tenha parado">Voltar ao normal</button>
-              </div>
-              <pre class="testes-console oculto" id="testes-console"></pre>
-              <div class="testes-resultado oculto" id="testes-resultado">
-                <div class="testes-faixa" id="testes-faixa"></div>
-                <p class="dica" id="testes-dica"></p>
-                <a class="link-grafana" href="http://localhost:3000/d/apresentacao/apresentacao" target="_blank" rel="noopener">Abrir o Grafana ↗</a>
-              </div>
-            </div>
-            <div class="testes-lista" id="testes-lista"></div>
           </div>
         </section>
       </aside>

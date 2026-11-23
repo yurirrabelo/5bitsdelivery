@@ -2,8 +2,11 @@
 """Tela local para acionar os cenários de falha do professor (F1 a F8) com botões.
 
 Roda só neste notebook (127.0.0.1) e, por baixo, chama o mesmo comando de sempre: ./demo.sh falha N.
-Os cenários derrubam serviços de verdade, por isso este servidor só atende páginas de localhost. A aba Testes do painel de gestão
-(http://localhost:8080/painel/) usa a mesma API; pelo link público do painel a aba não funciona, de propósito.
+Os cenários derrubam serviços de verdade, por isso este servidor só atende páginas de localhost. O painel de gestão
+(http://localhost:8080/painel/) tem um botão "Testes" que abre esta tela; pelo link público do painel o botão não funciona,
+de propósito.
+
+O texto de cada cenário (o que o professor pede, os passos e o porquê de cada um, o resultado esperado) está em cenarios.json.
 
 Uso:  ./demo.sh subir  liga em segundo plano;  ./demo.sh testes  liga (se preciso) e abre http://localhost:8099 (Ctrl+C para fechar)
 """
@@ -24,38 +27,31 @@ RAIZ = PASTA.parent.parent
 PORTA = int(os.environ.get('TESTES_PORTA', '8099'))
 LOCAIS = {'localhost', '127.0.0.1', '[::1]'}
 
-# O que cada botão aciona (o texto de "pede" é como o professor costuma perguntar)
-CENARIOS = [
-    {'id': '1', 'nome': 'Compensação', 'pede': 'E se o pagamento falhar? O sistema desfaz o que fez?',
-     'acontece': 'O gateway passa a recusar todas as cobranças e um pedido é feito.',
-     'esperado': 'Pedido cancelado, a unidade volta ao estoque e nada fica reservado.', 'tempo': 'cerca de 1 min'},
-    {'id': '2', 'nome': 'Serviço morre no meio', 'pede': 'E se um serviço cair no meio do trabalho?',
-     'acontece': 'A réplica do pagamento que pegou a mensagem é morta (docker kill) enquanto trabalha.',
-     'esperado': 'A outra réplica assume e o pedido termina confirmado com uma cobrança só.', 'tempo': '1 a 2 min'},
-    {'id': '3', 'nome': 'Mensagem duplicada', 'pede': 'E se a mesma mensagem chegar mais de uma vez?',
-     'acontece': 'A mesma mensagem de reserva é publicada 5 vezes, com o mesmo identificador.',
-     'esperado': 'Uma reserva só; as outras 4 são descartadas.', 'tempo': 'cerca de 1 min'},
-    {'id': '4', 'nome': 'Mensagem venenosa', 'pede': 'E se chegar uma mensagem inválida que sempre dá erro?',
-     'acontece': 'Uma mensagem com conteúdo inválido entra na fila do estoque, junto com pedidos normais.',
-     'esperado': '3 tentativas e a mensagem vai para a fila de mortos (DLQ); os pedidos normais seguem.', 'tempo': '1 a 2 min'},
-    {'id': '5', 'nome': 'Corrida pelo estoque', 'pede': 'E se muita gente pedir a última unidade ao mesmo tempo?',
-     'acontece': '100 clientes pedem ao mesmo tempo as 10 unidades da promoção.',
-     'esperado': 'Exatamente 10 confirmados e 90 esgotados; o estoque nunca fica negativo.', 'tempo': '1 a 2 min'},
-    {'id': '6', 'nome': 'Broker fora', 'pede': 'E se o RabbitMQ cair?',
-     'acontece': 'O RabbitMQ para por 30 segundos enquanto chegam pedidos.',
-     'esperado': 'A API segue aceitando, as mensagens esperam na outbox e depois saem; nada se perde.', 'tempo': '2 a 3 min'},
-    {'id': '6b', 'nome': 'Nuvem (MiniStack) fora', 'pede': 'E se a nuvem (S3 e segredos) ficar fora do ar?',
-     'acontece': 'O MiniStack para durante uma entrega.',
-     'esperado': 'O pedido segue e termina entregue; a rota fica pendente e vai para o S3 quando ele volta.', 'tempo': '2 a 3 min'},
-    {'id': '7', 'nome': 'Resposta tardia', 'pede': 'E se o pagamento demorar mais que o prazo?',
-     'acontece': 'O gateway passa a responder mais devagar que o prazo de pagamento.',
-     'esperado': 'O pedido é cancelado no prazo e, quando a aprovação chega, ela é estornada.', 'tempo': 'cerca de 1 min'},
-    {'id': '8', 'nome': 'Escala', 'pede': 'E se tivermos várias réplicas do mesmo serviço?',
-     'acontece': 'O pagamento sobe para 3 réplicas e chega carga.',
-     'esperado': 'A carga se divide, sem pagamento duplicado e sem cobrança repetida.', 'tempo': '2 a 3 min'},
-]
+# O que cada botão aciona: o que o professor pede, os passos (com o porquê de cada um), o resultado esperado...
+CENARIOS = json.loads((PASTA / 'cenarios.json').read_text(encoding='utf-8'))
 IDS = {c['id'] for c in CENARIOS} | {'todas', 'restaurar'}
 ANSI = re.compile(r'\x1b\[[0-9;?]*[ -/]*[@-~]')
+
+# Os arquivos da tela (o resto é a API)
+ARQUIVOS = {
+    '/': ('index.html', 'text/html; charset=utf-8'),
+    '/index.html': ('index.html', 'text/html; charset=utf-8'),
+    '/testes.css': ('testes.css', 'text/css; charset=utf-8'),
+    '/testes.js': ('testes.js', 'text/javascript; charset=utf-8'),
+}
+
+# O estado de cada banco, para a tela mostrar "ao vivo" o que o teste está fazendo (cada serviço tem o seu banco).
+# Cada consulta devolve um JSON de uma linha.
+OUTBOX = "(SELECT count(*) FROM outbox WHERE publicada_em IS NULL)"
+POR_STATUS = "coalesce((SELECT json_object_agg(status, n) FROM (SELECT status, count(*) AS n FROM {t} GROUP BY status) x), '{{}}'::json)"
+BANCOS = {
+    'estoque': "SELECT json_build_object('disponivel', disponivel, 'reservado', reservado, 'vendido', vendido, 'total', total, "
+               f"'outbox', {OUTBOX}) FROM estoque WHERE produto_id = 1",
+    'pedidos': "SELECT json_build_object('total', (SELECT count(*) FROM pedidos), "
+               f"'status', {POR_STATUS.format(t='pedidos')}, 'outbox', {OUTBOX})",
+    'pagamento': "SELECT json_build_object('total', (SELECT count(*) FROM pagamentos), "
+                 f"'status', {POR_STATUS.format(t='pagamentos')}, 'outbox', {OUTBOX})",
+}
 
 
 def achar_bash():
@@ -81,6 +77,7 @@ class Execucao:
         self.fim = None
         self.codigo = None
         self.proc = None
+        self.foto = None  # o estado dos bancos quando o teste mostra o "Resultado:" (o fim do teste devolve tudo ao normal)
 
     def rodando(self):
         return self.proc is not None and self.fim is None
@@ -103,6 +100,14 @@ class Execucao:
 EXEC = Execucao()
 
 
+def tirar_foto(id_teste):
+    """Guarda o estado dos bancos de agora: é o que o teste deixou, antes de o script devolver o estoque ao normal."""
+    dados = bancos(forcar=True)
+    with EXEC.trava:
+        if EXEC.id == id_teste:
+            EXEC.foto = dados
+
+
 def ler_saida(proc):
     for linha in proc.stdout:
         linha = ANSI.sub('', linha).rstrip('\r\n')
@@ -110,6 +115,9 @@ def ler_saida(proc):
             EXEC.linhas.append(linha)
             if len(EXEC.linhas) > 3000:
                 del EXEC.linhas[:500]
+            id_teste = EXEC.id
+        if linha.startswith('Resultado:') and id_teste not in ('restaurar', 'todas'):
+            threading.Thread(target=tirar_foto, args=(id_teste,), daemon=True).start()
     proc.wait()
     with EXEC.trava:
         EXEC.codigo = proc.returncode
@@ -129,9 +137,42 @@ def iniciar(cenario):
         ambiente = dict(os.environ, MSYS_NO_PATHCONV='1', PYTHONUNBUFFERED='1')
         proc = subprocess.Popen(comando, cwd=RAIZ, env=ambiente, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', bufsize=1)
-        EXEC.id, EXEC.linhas, EXEC.inicio, EXEC.fim, EXEC.codigo, EXEC.proc = cenario, [], time.time(), None, None, proc
+        EXEC.id, EXEC.linhas, EXEC.inicio, EXEC.fim, EXEC.codigo, EXEC.proc, EXEC.foto = cenario, [], time.time(), None, None, proc, None
     threading.Thread(target=ler_saida, args=(proc,), daemon=True).start()
     return None
+
+
+# ---------------------------------------------------------------- estado dos bancos
+_bancos = {'em': 0.0, 'dados': {}}
+_trava_bancos = threading.Lock()
+
+
+def _consultar(banco):
+    """Roda a consulta no Postgres do serviço (docker compose exec) e devolve o JSON, ou None se o banco não respondeu."""
+    comando = ['docker', 'compose', 'exec', '-T', f'pg-{banco}', 'psql', '-U', banco, '-d', banco, '-Atc', BANCOS[banco]]
+    extra = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+    try:
+        r = subprocess.run(comando, cwd=RAIZ, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=8,
+                           stdin=subprocess.DEVNULL, **extra)
+        return json.loads(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else None
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return None
+
+
+def bancos(forcar=False):
+    """O estado dos bancos de estoque, pedidos e pagamento. Guarda o resultado por 2 s: a tela pergunta de 3 em 3 s."""
+    with _trava_bancos:
+        if not forcar and time.time() - _bancos['em'] < 2.0:
+            return _bancos['dados']
+        resultado = {}
+        fios = [threading.Thread(target=lambda b=b: resultado.__setitem__(b, _consultar(b))) for b in BANCOS]
+        for f in fios:
+            f.start()
+        for f in fios:
+            f.join()
+        _bancos['dados'] = {'bancos': resultado, 'atualizadoEm': time.strftime('%H:%M:%S')}
+        _bancos['em'] = time.time()
+        return _bancos['dados']
 
 
 class Pagina(BaseHTTPRequestHandler):
@@ -141,14 +182,12 @@ class Pagina(BaseHTTPRequestHandler):
         pass
 
     def _cors(self):
-        # a aba "Testes" do painel de gestão (http://localhost:8080) fala com esta tela (http://localhost:8099): outra porta,
-        # então o navegador pede permissão. Só páginas de localhost recebem (a verificação está em _local).
+        # o botão "Testes" do painel de gestão (http://localhost:8080) pergunta a esta tela (http://localhost:8099) se ela está
+        # ligada: outra porta, então o navegador pede permissão. Só páginas de localhost recebem (a verificação está em _local).
         origem = self.headers.get('Origin')
         if origem and self._local():
             self.send_header('Access-Control-Allow-Origin', origem)
             self.send_header('Vary', 'Origin')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 
     def _enviar(self, corpo, tipo, codigo=200):
         dados = corpo if isinstance(corpo, bytes) else corpo.encode('utf-8')
@@ -159,13 +198,6 @@ class Pagina(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
         self.wfile.write(dados)
-
-    def do_OPTIONS(self):  # a "consulta prévia" do navegador antes de um POST de outra porta
-        self.send_response(204 if self._local() else 403)
-        self._cors()
-        self.send_header('Access-Control-Max-Age', '600')
-        self.send_header('Content-Length', '0')
-        self.end_headers()
 
     def _json(self, objeto, codigo=200):
         self._enviar(json.dumps(objeto, ensure_ascii=False), 'application/json; charset=utf-8', codigo)
@@ -182,12 +214,15 @@ class Pagina(BaseHTTPRequestHandler):
         if not self._local():
             return self._enviar('acesso negado', 'text/plain; charset=utf-8', 403)
         caminho, _, consulta = self.path.partition('?')
-        if caminho in ('/', '/index.html'):
-            return self._enviar((PASTA / 'index.html').read_bytes(), 'text/html; charset=utf-8')
+        if caminho in ARQUIVOS:
+            arquivo, tipo = ARQUIVOS[caminho]
+            return self._enviar((PASTA / arquivo).read_bytes(), tipo)
         if caminho == '/logo.svg':
             return self._enviar((RAIZ / 'web' / 'comum' / 'logo.svg').read_bytes(), 'image/svg+xml')
         if caminho == '/api/cenarios':
             return self._json(CENARIOS)
+        if caminho == '/api/bancos':
+            return self._json(bancos())
         if caminho == '/api/estado':
             try:
                 desde = int(dict(p.split('=', 1) for p in consulta.split('&') if '=' in p).get('desde', 0))
@@ -200,6 +235,7 @@ class Pagina(BaseHTTPRequestHandler):
                     'rodando': EXEC.rodando(),
                     'resultado': EXEC.resultado(),
                     'dica': EXEC.dica(),
+                    'foto': EXEC.foto,
                     'decorrido': round(decorrido),
                     'total': len(EXEC.linhas),
                     'linhas': EXEC.linhas[desde:],

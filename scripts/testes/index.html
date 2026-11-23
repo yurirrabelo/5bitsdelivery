@@ -3,219 +3,61 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>5Bits Delivery · Testes do professor</title>
+  <title>5Bits Delivery · Testes de falha</title>
   <link rel="icon" type="image/svg+xml" href="/logo.svg">
-  <style>
-    :root { --fundo: #eef2f7; --cartao: #fff; --texto: #0f172a; --suave: #64748b; --borda: #dbe3ee; --acao: #2563eb;
-            --ok: #16a34a; --erro: #dc2626; --aviso: #b45309; --topo: #0b1220; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fundo); color: var(--texto); }
-    header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 24px; background: var(--topo); color: #fff; }
-    header img { width: 34px; height: 34px; }
-    header h1 { margin: 0; font-size: 1.15rem; font-weight: 700; }
-    header .chip { padding: 3px 10px; border-radius: 999px; background: #1e3a8a; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    header .espaco { flex: 1; }
-    header a { color: #93c5fd; text-decoration: none; font-weight: 600; font-size: .92rem; }
-    header a:hover { text-decoration: underline; }
-    main { max-width: 1280px; margin: 0 auto; padding: 18px 24px 40px; display: grid; gap: 16px; }
-    .intro { margin: 0; color: #334155; }
-    .intro b { color: var(--texto); }
-    .aviso { margin: 0; padding: 8px 12px; border-radius: 10px; background: #fef3c7; color: var(--aviso); font-size: .92rem; font-weight: 600; }
-    .colunas { display: grid; grid-template-columns: minmax(360px, 5fr) minmax(420px, 7fr); gap: 16px; align-items: start; }
-    @media (max-width: 960px) { .colunas { grid-template-columns: 1fr; } }
-
-    .lista { display: grid; gap: 10px; }
-    .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
-    .cartao.atual { border-color: var(--acao); box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
-    .cartao h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-    .num { display: inline-grid; place-items: center; min-width: 34px; height: 24px; padding: 0 6px; border-radius: 8px; background: #dbeafe; color: #1e40af; font-size: .8rem; font-weight: 800; }
-    .pede { grid-column: 1 / 2; margin: 0; color: var(--texto); font-weight: 600; font-size: .92rem; }
-    .detalhe { grid-column: 1 / 3; margin: 2px 0 0; font-size: .84rem; color: var(--suave); }
-    .detalhe b { color: #334155; }
-    button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 16px; background: var(--acao); color: #fff; cursor: pointer; }
-    button:hover:not(:disabled) { filter: brightness(1.08); }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    button.secundario { background: #e2e8f0; color: #1e293b; }
-    .cartao button { grid-column: 2 / 3; grid-row: 1 / 3; }
-    .cartao .tempo { grid-column: 2 / 3; font-size: .74rem; color: var(--suave); text-align: right; }
-
-    .execucao { position: sticky; top: 12px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
-    .exec-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--borda); }
-    .exec-topo h2 { margin: 0; font-size: 1rem; flex: 1; }
-    .estado { padding: 3px 12px; border-radius: 999px; font-size: .8rem; font-weight: 800; background: #e2e8f0; color: #334155; }
-    .estado.rodando { background: #dbeafe; color: #1e40af; }
-    .estado.passou { background: #dcfce7; color: #166534; }
-    .estado.falhou { background: #fee2e2; color: #991b1b; }
-    .console { margin: 0; height: 52vh; min-height: 320px; overflow: auto; padding: 12px 14px; background: #0b1220; color: #cbd5e1; font: 13px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
-    .console .ok { color: #4ade80; }
-    .console .erro { color: #f87171; font-weight: 700; }
-    .console .titulo { color: #fff; font-weight: 800; }
-    .console .passo { color: #93c5fd; }
-    .console .passou, .console .falhou { font-weight: 800; font-size: 1.05em; }
-    .console .passou { color: #4ade80; }
-    .console .falhou { color: #f87171; }
-    .console .dica { color: #fcd34d; }
-    .console .vazio { color: #64748b; }
-    .resultado { padding: 14px; border-top: 1px solid var(--borda); display: none; gap: 8px; }
-    .resultado.visivel { display: grid; }
-    .resultado .faixa { font-size: 1.25rem; font-weight: 800; }
-    .resultado.passou .faixa { color: var(--ok); }
-    .resultado.falhou .faixa { color: var(--erro); }
-    .resultado .dica { margin: 0; color: #334155; }
-    .resultado .botoes { display: flex; gap: 8px; flex-wrap: wrap; }
-    .resultado a { text-decoration: none; display: inline-block; }
-    .rodape { margin: 0; color: var(--suave); font-size: .84rem; }
-  </style>
+  <link rel="stylesheet" href="/testes.css">
 </head>
 <body>
-  <header>
-    <img src="/logo.svg" alt="">
-    <h1>5Bits Delivery · Testes do professor</h1>
-    <span class="chip">só neste notebook</span>
+  <header class="topo">
+    <a class="marca" href="/"><img src="/logo.svg" alt=""><span><b>5Bits</b> Delivery</span></a>
+    <span class="chip">Testes de falha</span>
+    <span class="situacao" id="situacao"><i></i><span>pronto</span></span>
     <span class="espaco"></span>
-    <a href="http://localhost:3000/d/apresentacao/apresentacao" target="_blank" rel="noopener">Grafana: Apresentação ↗</a>
-    <a href="http://localhost:3000/d/delivery-ao-vivo/detalhes-tecnicos" target="_blank" rel="noopener">Grafana: Detalhes técnicos ↗</a>
     <a href="http://localhost:8080/painel/" target="_blank" rel="noopener">Painel de gestão ↗</a>
+    <a href="http://localhost:3000/d/apresentacao/apresentacao" target="_blank" rel="noopener">Grafana: Apresentação ↗</a>
+    <a href="http://localhost:3000/d/delivery-ao-vivo/detalhes-tecnicos" target="_blank" rel="noopener">Detalhes técnicos ↗</a>
   </header>
 
-  <main>
-    <p class="intro">Clique no teste que o professor pedir. Cada um <b>provoca a falha de verdade</b>, espera o sistema reagir e compara o <b>esperado</b> com o <b>obtido</b>, linha por linha, no quadro ao lado. Rode <b>um de cada vez</b>: cada um leva de 1 a 3 minutos e, ao terminar, devolve o sistema ao normal sozinho.</p>
-    <p class="aviso">⚠️ Durante o teste o sistema falha de propósito (serviços parados, mensagens repetidas...). Não use o painel nem o celular ao mesmo tempo.</p>
+  <div class="app">
+    <!-- 1. o professor escolhe: um botão por cenário, com as palavras dele -->
+    <nav class="trilho" aria-label="Cenários de falha">
+      <p class="trilho-titulo">O professor pediu…</p>
+      <div class="trilho-lista" id="trilho"></div>
+      <button class="cena cena-todas" id="rodar-todas" type="button">
+        <span class="cena-num">todos</span>
+        <span class="cena-txt"><b>Ensaio completo</b><small>Todos em sequência, uns 14 min</small></span>
+      </button>
+    </nav>
 
-    <div class="colunas">
-      <section class="lista" id="lista" aria-label="Testes"></section>
+    <!-- 2. a história do cenário: o que o professor pede, o que vamos fazer e por quê, o que esperamos, o que o cliente vê -->
+    <main class="roteiro" id="roteiro" aria-live="polite"></main>
 
-      <section class="execucao" aria-live="polite">
-        <div class="exec-topo">
-          <h2 id="exec-titulo">Execução</h2>
+    <!-- 3. ao vivo: andamento, o estado dos bancos e os logs -->
+    <aside class="ao-vivo" aria-label="Ao vivo">
+      <section class="cartao status">
+        <h2><span class="badge b-azul">📡</span> Ao vivo</h2>
+        <div class="linha-estado">
           <span class="estado" id="estado">parado</span>
-          <button class="secundario" id="restaurar" title="Se algo ficar estranho: religa o gateway e os serviços que um teste tenha parado">Voltar ao normal</button>
+          <span class="relogio" id="relogio">00:00</span>
         </div>
-        <pre class="console" id="console"><span class="vazio">Escolha um teste ao lado. A saída aparece aqui, ao vivo.</span></pre>
-        <div class="resultado" id="resultado">
-          <div class="faixa" id="faixa"></div>
-          <p class="dica" id="dica"></p>
-          <div class="botoes">
-            <a href="http://localhost:3000/d/apresentacao/apresentacao" target="_blank" rel="noopener"><button type="button">Abrir o Grafana: Apresentação</button></a>
-            <a href="http://localhost:3000/d/delivery-ao-vivo/detalhes-tecnicos" target="_blank" rel="noopener"><button type="button" class="secundario">Detalhes técnicos</button></a>
-          </div>
-        </div>
+        <div class="progresso" aria-hidden="true"><div id="progresso"></div></div>
+        <p class="passo-agora" id="passo-agora">Escolha um cenário e aperte “Provocar a falha”.</p>
+        <button class="secundario" id="restaurar" type="button" title="Se algo ficar estranho: religa o gateway e os serviços que um teste tenha parado">↺ Voltar ao normal</button>
       </section>
-    </div>
 
-    <p class="rodape">Esta tela só abre neste notebook (localhost) e chama, por baixo, o comando <code>./demo.sh falha N</code>. Para fechar: Ctrl+C no terminal onde rodou <code>./demo.sh testes</code>.</p>
-  </main>
+      <section class="cartao bancos">
+        <h2><span class="badge b-roxo">🗄️</span> Estado dos bancos <small id="bancos-hora"></small></h2>
+        <p class="dica">Cada serviço tem o seu banco. É aqui que se vê o efeito do teste.</p>
+        <div class="bancos-lista" id="bancos"></div>
+      </section>
 
-  <script>
-    const $ = (s) => document.querySelector(s);
-    let cenarios = [];
-    let vistas = 0;       // quantas linhas da saída já estão na tela
-    let idAtual = null;   // qual execução está na tela
+      <section class="cartao logs">
+        <h2><span class="badge b-cinza">📜</span> Logs do teste <small id="logs-contagem"></small></h2>
+        <pre class="console" id="console"><span class="vazio">A saída do teste aparece aqui, ao vivo.</span></pre>
+      </section>
+    </aside>
+  </div>
 
-    function desenharLista() {
-      const lista = $('#lista');
-      lista.textContent = '';
-      for (const c of cenarios) {
-        const cartao = document.createElement('article');
-        cartao.className = 'cartao';
-        cartao.id = 'c-' + c.id;
-        cartao.innerHTML = '<h3><span class="num"></span><span class="nome"></span></h3><p class="pede"></p><p class="detalhe"></p><span class="tempo"></span><button type="button">Acionar</button>';
-        cartao.querySelector('.num').textContent = 'F' + c.id;
-        cartao.querySelector('.nome').textContent = c.nome;
-        cartao.querySelector('.pede').textContent = '“' + c.pede + '”';
-        const d = cartao.querySelector('.detalhe');
-        const o = document.createElement('b'); o.textContent = 'O que acontece: ';
-        const e = document.createElement('b'); e.textContent = ' Esperado: ';
-        d.append(o, c.acontece, document.createElement('br'), e, c.esperado);
-        cartao.querySelector('.tempo').textContent = c.tempo;
-        cartao.querySelector('button').addEventListener('click', () => acionar(c.id, 'F' + c.id + ' · ' + c.nome));
-        lista.appendChild(cartao);
-      }
-      const todos = document.createElement('article');
-      todos.className = 'cartao';
-      todos.id = 'c-todas';
-      todos.innerHTML = '<h3><span class="num">todos</span><span class="nome">Todos em sequência</span></h3><p class="pede">Só para ensaiar, não para a apresentação.</p><span class="tempo">uns 14 min</span><button type="button" class="secundario">Rodar todos</button>';
-      todos.querySelector('button').addEventListener('click', () => {
-        if (confirm('Rodar todos os testes em sequência? Leva uns 14 minutos e o sistema vai falhar de propósito várias vezes.')) acionar('todas', 'Todos em sequência');
-      });
-      lista.appendChild(todos);
-    }
-
-    async function acionar(id, titulo) {
-      const r = await fetch('/api/executar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        alert(j.erro || 'Não consegui acionar o teste.');
-        return;
-      }
-      $('#exec-titulo').textContent = titulo;
-      atualizar();
-    }
-
-    $('#restaurar').addEventListener('click', () => acionar('restaurar', 'Voltar ao normal'));
-
-    function classe(linha) {
-      if (/^\s*\[OK\]/.test(linha)) return 'ok';
-      if (/^\s*\[ERRO\]/.test(linha)) return 'erro';
-      if (/^===/.test(linha)) return 'titulo';
-      if (/^\S+: PASSOU/.test(linha)) return 'passou';
-      if (/^\S+: FALHOU/.test(linha)) return 'falhou';
-      if (/^Mostre agora:/.test(linha)) return 'dica';
-      if (/^(Passo|Resultado|Histórico)/.test(linha)) return 'passo';
-      return '';
-    }
-
-    const tempo = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-
-    async function atualizar() {
-      let e;
-      try { e = await (await fetch('/api/estado?desde=' + vistas)).json(); } catch { return; }
-      const console_ = $('#console');
-      if (e.id !== idAtual || e.total < vistas) { // outra execução (ou o servidor reiniciou): recomeça a tela
-        idAtual = e.id;
-        vistas = 0;
-        console_.textContent = '';
-        if (e.id) return atualizar();
-        console_.innerHTML = '<span class="vazio">Escolha um teste ao lado. A saída aparece aqui, ao vivo.</span>';
-      }
-      const embaixo = console_.scrollTop + console_.clientHeight >= console_.scrollHeight - 40;
-      for (const linha of e.linhas) {
-        const el = document.createElement('div');
-        el.className = classe(linha);
-        el.textContent = linha || ' ';
-        console_.appendChild(el);
-      }
-      vistas = e.total;
-      if (embaixo) console_.scrollTop = console_.scrollHeight;
-
-      const estado = $('#estado');
-      const faixa = $('#resultado');
-      if (e.rodando) {
-        estado.className = 'estado rodando';
-        estado.textContent = 'rodando ' + tempo(e.decorrido);
-        faixa.className = 'resultado';
-      } else if (e.resultado) {
-        estado.className = 'estado ' + e.resultado;
-        estado.textContent = (e.resultado === 'passou' ? 'passou' : 'falhou') + ' em ' + tempo(e.decorrido);
-        faixa.className = 'resultado visivel ' + e.resultado;
-        const nome = e.id === 'restaurar' ? 'Voltar ao normal' : e.id === 'todas' ? 'Todos os testes' : 'F' + e.id;
-        $('#faixa').textContent = e.resultado === 'passou' ? '✅ ' + nome + ': PASSOU' : '❌ ' + nome + ': FALHOU (veja as linhas [ERRO] acima)';
-        $('#dica').textContent = e.dica ? 'Mostre agora: ' + e.dica : '';
-      } else {
-        estado.className = 'estado';
-        estado.textContent = 'parado';
-        faixa.className = 'resultado';
-      }
-      for (const b of document.querySelectorAll('.cartao button, #restaurar')) b.disabled = e.rodando;
-      for (const c of document.querySelectorAll('.cartao')) c.classList.toggle('atual', e.id !== null && c.id === 'c-' + e.id);
-    }
-
-    (async () => {
-      cenarios = await (await fetch('/api/cenarios')).json();
-      desenharLista();
-      await atualizar();
-      setInterval(atualizar, 1000);
-    })();
-  </script>
+  <script src="/testes.js"></script>
 </body>
 </html>

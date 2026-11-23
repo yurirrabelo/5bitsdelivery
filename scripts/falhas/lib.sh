@@ -162,7 +162,14 @@ k6() { # k6 script.js [-e VAR=valor ...]
 resumo_k6() { echo "$1" | grep -o 'RESUMO {.*}' | tail -1 | sed 's/^RESUMO //'; }
 
 # ---------------------------------------------------------------- relatório
-titulo() { echo; echo "=== $1"; echo "    $2"; echo; }
+# Todo cenário começa do zero: sem pedidos de testes anteriores, estoque cheio, entregadores livres e sem posição de GPS
+# (os pontos que ficaram no mapa). O que o cenário provoca fica no banco até o próximo começar, para dar tempo de mostrar.
+zerar_banco() {
+  echo "Passo 0: zera o banco para começar do zero"
+  ./scripts/limpar.sh >/dev/null 2>&1 || { echo "  [ERRO] não consegui zerar o banco"; FALHAS=$((FALHAS + 1)); }
+}
+
+titulo() { echo; echo "=== $1"; echo "    $2"; echo; zerar_banco; }
 
 verificar() { # verificar "o que" esperado obtido
   if [ "$2" = "$3" ]; then

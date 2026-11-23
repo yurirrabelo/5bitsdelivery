@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Atalhos para tudo o que a demonstração precisa. No Windows, rode pelo Git Bash.
 #
-#   ./demo.sh subir        sobe o sistema inteiro, liga a aba Testes do painel de gestão e espera ficar pronto
+#   ./demo.sh subir        sobe o sistema inteiro, liga a tela de testes de falha e espera ficar pronto
 #   ./demo.sh link         liga o túnel HTTPS e mostra os links para o celular (obrigatório para o GPS do celular)
 #   ./demo.sh reset [N]    repõe as unidades da promoção (padrão: o valor do .env)
-#   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga os pedidos e as entregas de teste, repõe as unidades e libera os entregadores
+#   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga pedidos, pagamentos, entregas e pontos de GPS de teste, repõe as unidades e libera os entregadores
 #   ./demo.sh teste        fluxo completo: o cliente pede, o entregador 2 aceita e "dirige" (termina com SMOKE: PASSOU)
 #   ./demo.sh unitarios    testes do código das bibliotecas e serviços, em containers (~3 min)
 #   ./demo.sh simular [1|2] [km/h]   plano B do GPS: aceita o pedido que está esperando e reproduz a rota do ensaio (padrão: entregador 2)
-#   ./demo.sh falha [N]    cenário de falha do professor: 1 a 8 (ou 6b), ou "todas"; sem número, mostra a lista e pergunta
-#   ./demo.sh testes       liga (se preciso) e abre a tela de testes: os mesmos botões da aba Testes do painel de gestão (http://localhost:8099)
+#   ./demo.sh falha [N]    cenário de falha do professor: 1 a 8 (ou 6b), ou "todas"; sem número, mostra a lista e pergunta (cada um começa com o banco zerado)
+#   ./demo.sh testes       liga (se preciso) e abre a tela de testes de falha, em tela cheia (http://localhost:8099); o painel de gestão tem um botão para ela
 #   ./demo.sh estado       containers, filas, pedidos, estoque e segredos
 #   ./demo.sh parar        para tudo e guarda os dados
 #   ./demo.sh apagar       para tudo e apaga os dados (recomeço do zero)
@@ -30,8 +30,8 @@ achar_python() { # no Windows, "python3" pode ser só o atalho da Loja: confere 
   return 1
 }
 
-# A aba Testes do painel de gestão fala com uma tela local (scripts/testes), que roda os cenários de falha. Liga em segundo
-# plano; sem Python, a aba avisa como ligar. Ela só atende páginas de localhost: o painel aberto pelo link público não a alcança.
+# O botão "Testes de falha" do painel de gestão abre uma tela local (scripts/testes), que roda os cenários de falha. Liga em
+# segundo plano; sem Python, o botão avisa como ligar. Ela só atende páginas de localhost: pelo link público o botão nem aparece.
 TESTES_URL=http://localhost:8099
 testes_ligada() { curl -s -o /dev/null --max-time 2 "$TESTES_URL/api/cenarios"; }
 iniciar_testes() {
@@ -86,7 +86,7 @@ case "${1:-}" in
     echo "  Grafana:             http://localhost:3000"
     echo "Para usar o celular como entregador (GPS real): ./demo.sh link"
     iniciar_testes
-    echo "Testes de falha do professor: aba Testes do painel de gestão (abra por http://localhost:$P/painel/)"
+    echo "Testes de falha do professor: botão \"Testes de falha\" do painel de gestão (abra por http://localhost:$P/painel/) ou $TESTES_URL"
     ;;
   link)
     docker compose --profile tunnel up -d cloudflared || exit 1
@@ -133,7 +133,7 @@ case "${1:-}" in
   testes)
     achar_python || { echo "A tela de testes precisa do Python 3. Sem ele, use: ./demo.sh falha N"; exit 1; }
     if testes_ligada; then
-      echo "A tela de testes já está ligada: $TESTES_URL (os mesmos botões estão na aba Testes do painel de gestão)."
+      echo "A tela de testes já está ligada: $TESTES_URL (o painel de gestão tem um botão que abre a mesma tela)."
       "$PY" -c "import webbrowser; webbrowser.open('$TESTES_URL')"
     else
       exec "$PY" scripts/testes/servidor.py

@@ -595,11 +595,12 @@ HTML, CSS e JavaScript puros, com Leaflet e mapa do OpenStreetMap. Sem etapa de 
 
 - Login (a tela de entrada `/` também leva a gestão para cá).
 - Mapa com a loja, os entregadores ao vivo (WebSocket), os destinos dos pedidos e o rastro da entrega ativa.
-- Três abas ao lado do mapa:
+- Duas abas ao lado do mapa:
   - **Pedidos:** quem são os entregadores (Disponível, Em entrega, Offline e há quanto tempo chegou o GPS de cada um) e a lista de pedidos com a situação em palavras simples ("Aguardando entregador", "Em entrega", "Entregue"…), com polling a cada 2 s. O botão **＋ Pedido pelo mapa** é uma ferramenta de apoio: abre um formulário que fica aberto entre um pedido e outro, o clique no mapa escolhe o destino (o cursor vira uma mira) e dá para reservar o pedido para um entregador.
   - **QR:** o QR da promoção (QR para a plateia), gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: aberto pela URL do túnel, o QR já sai certo e o campo de endereço nem aparece; aberto por `localhost` (que o celular não alcança), aparece um campo para colar o link do túnel. Logo abaixo, o link do entregador (`…/entregador/`).
 - Contador do estoque no topo, barra de status (WebSocket conectado, "última posição há X s") e link para o Grafana.
-  - **Testes:** os botões dos cenários de falha do professor (F1 a F8). A aba fala com a tela de testes do notebook (`scripts/testes`, ligada pelo `./demo.sh subir`), que roda `./demo.sh falha N` e devolve a saída ao vivo, o PASSOU ou FALHOU e o que mostrar no Grafana. A tela de testes só atende páginas de `localhost`: a aba só funciona com o painel aberto em `http://localhost:8080/painel/` e **nunca pelo link público**, porque os cenários derrubam serviços de verdade.
+- O botão **Testes de falha**, acima das abas, abre em outra janela a **tela de testes** do notebook (`scripts/testes`, `http://localhost:8099`, ligada pelo `./demo.sh subir`): à esquerda os cenários do professor (F1 a F8); no centro, para o cenário escolhido, o que o professor pede, o passo a passo com o porquê de cada passo, o resultado esperado e "agora faça um pedido" (o que o cliente vê); à direita, ao vivo, o andamento, o estado dos bancos de estoque, pedidos e pagamento (com a outbox) e os logs. O botão **Provocar a falha** roda `./demo.sh falha N` e, no fim, mostra o PASSOU ou FALHOU, a tabela esperado × obtido e o que mostrar no Grafana. O texto de cada cenário está em `scripts/testes/cenarios.json`. O servidor da tela só atende páginas de `localhost`: o botão só existe com o painel aberto em `http://localhost:8080/painel/` e **nunca aparece pelo link público**, porque os cenários derrubam serviços de verdade.
+- O mapa mostra só quem está mandando GPS agora (nos últimos 2 minutos): a última posição de cada entregador fica guardada sem prazo no Redis e, sem essa regra, o ponto de um teste antigo ficaria no mapa como se fosse um entregador de verdade.
 - **Modo telão:** esconde as ferramentas e mostra as duas abas juntas (pedidos e QR) em letras grandes.
 
 ### 9.2 Página do entregador (`web/entregador/`)
@@ -648,7 +649,7 @@ Ofertas e aceite: toda entrega nasce `PENDENTE` e o sistema **não escolhe entre
 
 Dados iniciais (upsert na subida, a partir do `.env`):
 
-- estoque: produto 1 = `PROMOCAO_NOME` com `PROMOCAO_QUANTIDADE` unidades, criado só se não existir; `scripts/reset-estoque.sh` repõe as unidades para testes e `scripts/limpar.sh` volta tudo ao início (apaga pedidos, entregas e trajetos de teste e libera os entregadores) sem reiniciar nada.
+- estoque: produto 1 = `PROMOCAO_NOME` com `PROMOCAO_QUANTIDADE` unidades, criado só se não existir; `scripts/reset-estoque.sh` repõe as unidades para testes e `scripts/limpar.sh` volta tudo ao início (apaga pedidos, entregas, trajetos, as posições de GPS guardadas no Redis e, se o bônus CQRS estiver no ar, a visão no DynamoDB; antes: pedidos, entregas e trajetos de teste e libera os entregadores) sem reiniciar nada.
 - entregas: entregador 1 e entregador 2 (`ENTREGADOR1_*` e `ENTREGADOR2_*`), ambos `DISPONIVEL`. São duas contas reais: uma fica na tela da aula e a outra no celular de um integrante.
 - auth: `operador`, `entregador1` e `entregador2`.
 
@@ -656,7 +657,7 @@ Dados iniciais (upsert na subida, a partir do `.env`):
 
 ## 11. Testes do professor
 
-O enunciado pede que cada requisito seja apontado no código e na apresentação, e que o professor escolha uma falha para provocarmos ao vivo. Cada cenário tem um script em `scripts/falhas/` que provoca a falha, espera, compara o esperado com o obtido e termina com **PASSOU** ou **FALHOU**. `scripts/falhas/todos.sh` roda todos; `scripts/estado.sh` mostra o estado dos bancos e das filas; ao terminar, cada script devolve a configuração normal.
+O enunciado pede que cada requisito seja apontado no código e na apresentação, e que o professor escolha uma falha para provocarmos ao vivo. Cada cenário tem um script em `scripts/falhas/` que **começa zerando o banco** (`scripts/limpar.sh`: pedidos, entregas, trajetos, posições de GPS no Redis, estoque de volta às unidades e, se o bônus CQRS estiver no ar, a visão no DynamoDB), provoca a falha, espera, compara o esperado com o obtido e termina com **PASSOU** ou **FALHOU**. `scripts/falhas/todos.sh` roda todos; `scripts/estado.sh` mostra o estado dos bancos e das filas; ao terminar, cada script devolve a configuração normal.
 
 ### 11.1 Requisitos
 
@@ -742,8 +743,8 @@ delivery-tracker/
 └── scripts/
     ├── falhas/                  # f1 a f8 e todos.sh
     ├── bonus/                   # versionamento, recriar-infra e autoescala
-    ├── estado.sh  reset-estoque.sh  limpar.sh
-    ├── testes/                  # tela com botões para os cenários de falha (servidor.py + index.html), só em localhost
+    ├── estado.sh  reset-estoque.sh  limpar.sh  limpar-gps.sh
+    ├── testes/                  # tela cheia dos cenários de falha: servidor.py, index.html, testes.css, testes.js e cenarios.json (o texto de cada cenário); só em localhost
     └── tunnel-url.sh  smoke-test.sh  test-all.sh
 ```
 

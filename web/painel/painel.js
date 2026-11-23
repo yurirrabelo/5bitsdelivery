@@ -47,14 +47,12 @@
     // bubblingMouseEvents: o clique em cima de um marcador também chega ao mapa (senão não dá para escolher um destino perto dele)
     loja = L.marker([cfg.origem.lat, cfg.origem.lon], { bubblingMouseEvents: true }).addTo(mapa).bindTooltip(cfg.origem.nome, { permanent: true, direction: 'top', className: 'rotulo' });
 
-    // abas da lateral: Pedidos | QR | Testes
+    // abas da lateral: Pedidos | QR
     document.querySelectorAll('.aba').forEach((b) => b.addEventListener('click', () => {
       document.querySelectorAll('.aba').forEach((x) => x.classList.toggle('ativa', x === b));
       document.querySelectorAll('.painel-aba').forEach((p) => p.classList.toggle('ativa', p.id === 'aba-' + b.dataset.aba));
-      if (b.dataset.aba === 'testes') abrirTestes();
-      else fecharTestes(); // a aba Testes só consulta a tela de testes enquanto está aberta
     }));
-    $('testes-restaurar').addEventListener('click', () => acionarTeste('restaurar'));
+    configurarTestes();
 
     // "Pedido pelo mapa": só com o formulário aberto o clique no mapa escolhe o destino
     $('abrir-criar').addEventListener('click', () => ligarModoCriar(!modoCriar));
@@ -225,17 +223,31 @@
       return '<li><span class="bolinha ' + Auth.escapar(e.status) + '"></span><b>' + Auth.escapar(e.nome) + '</b>' +
         '<span class="sit">' + Auth.escapar(rotulos[e.status] || e.status) + '</span><small>' + gps + '</small></li>';
     }).join('') || '<li class="vazio">Nenhum entregador cadastrado.</li>';
+    Object.keys(entregadores).forEach(mostrarSeVivo); // quem parou de mandar GPS sai do mapa
+  }
+
+  // Só aparece no mapa quem está mandando GPS agora. A última posição de cada entregador fica guardada sem prazo (no Redis):
+  // sem esta regra, o ponto de um teste ou de um celular que já saiu ficaria no mapa como se fosse um entregador de verdade.
+  const GPS_VIVO_S = 120;
+  function mostrarSeVivo(id) {
+    const e = entregadores[id];
+    if (!e) return;
+    const idade = gpsEm[id] ? (Date.now() - gpsEm[id]) / 1000 : Infinity;
+    const noMapa = mapa.hasLayer(e.marcador);
+    if (idade < GPS_VIVO_S && !noMapa) e.marcador.addTo(mapa);
+    else if (idade >= GPS_VIVO_S && noMapa) mapa.removeLayer(e.marcador);
   }
 
   function moverEntregador(id, nome, lat, lon, pedidoId) {
     let e = entregadores[id];
     if (!e) {
       const icone = L.divIcon({ className: 'icone-entregador', html: '🛵', iconSize: [28, 28], iconAnchor: [14, 14] });
-      e = entregadores[id] = { nome: nome || 'Entregador ' + id, marcador: L.marker([lat, lon], { icon: icone, zIndexOffset: 1000, bubblingMouseEvents: true }).addTo(mapa) };
+      e = entregadores[id] = { nome: nome || 'Entregador ' + id, marcador: L.marker([lat, lon], { icon: icone, zIndexOffset: 1000, bubblingMouseEvents: true }) };
       e.marcador.bindTooltip(e.nome, { direction: 'top', offset: [0, -14], className: 'rotulo' });
     } else {
       e.marcador.setLatLng([lat, lon]);
     }
+    mostrarSeVivo(id);
     if (pedidoId) {
       const r = rastros[pedidoId] || (rastros[pedidoId] = { pontos: [], linha: L.polyline([], { color: '#e8590c', weight: 4 }).addTo(mapa) });
       r.pontos.push([lat, lon]);
@@ -263,7 +275,11 @@
     ws.onmessage = (ev) => {
       const m = JSON.parse(ev.data);
       if (m.type === 'snapshot') {
-        m.entregadores.forEach((e) => { if (e.ultimaPosicao) moverEntregador(e.id, e.nome, e.ultimaPosicao.lat, e.ultimaPosicao.lon, null); });
+        m.entregadores.forEach((e) => {
+          if (!e.ultimaPosicao) return;
+          gpsEm[e.id] = Math.max(gpsEm[e.id] || 0, e.ultimaPosicao.ts);
+          moverEntregador(e.id, e.nome, e.ultimaPosicao.lat, e.ultimaPosicao.lon, null);
+        });
         m.entregasAtivas.forEach((a) => carregarRastro(a.pedidoId));
       } else if (m.type === 'posicao') {
         ultimaPosicaoEm = Date.now();
@@ -287,142 +303,32 @@
       : 'sem posições ainda';
   }
 
-  // ---------------------------------------------------------------- testes de falha do professor (aba Testes)
-  // Os testes derrubam serviços de verdade, então rodam numa tela local do notebook (./demo.sh testes, que o ./demo.sh subir
-  // já liga), que só atende páginas de localhost. Esta aba fala com ela; por isso só funciona com o painel aberto por localhost
-  // (e nunca pelo link público, que a plateia também enxerga).
-  const TESTES_URL = 'http://localhost:8099';
-  const NO_NOTEBOOK = /^(localhost|127\.|\[::1\])/.test(location.hostname);
-  let testesPronto = false;
-  let testesTimer = null;
-  let testesVistas = 0; // quantas linhas da saída já estão na tela
-  let testesId = null; // qual execução está na tela
-  const testesNomes = {}; // id do teste -> nome, para o título da execução
-
-  const testesChamar = (caminho, corpo) => fetch(TESTES_URL + caminho, corpo
-    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) } : undefined);
-
-  function testesAviso(texto) {
-    $('testes-aviso').textContent = texto || '';
-    $('testes-aviso').classList.toggle('oculto', !texto);
-  }
-
-  async function abrirTestes() {
-    if (!NO_NOTEBOOK) {
-      return testesAviso('Os testes só funcionam com o painel aberto no notebook, por http://localhost:8080/painel/ (por segurança, nunca pelo link público).');
-    }
-    if (!testesPronto) {
-      try {
-        desenharTestes(await (await testesChamar('/api/cenarios')).json());
-        testesPronto = true;
-        testesAviso('');
-      } catch (e) {
-        return testesAviso('A tela de testes não está ligada. No terminal, rode ./demo.sh testes (o ./demo.sh subir já liga).');
-      }
-    }
-    atualizarTestes();
-    clearInterval(testesTimer);
-    testesTimer = setInterval(atualizarTestes, 1000);
-  }
-
-  function fecharTestes() { clearInterval(testesTimer); }
-
-  function desenharTestes(cenarios) {
-    const lista = $('testes-lista');
-    lista.textContent = '';
-    const texto = (tag, conteudo, classe) => { const el = document.createElement(tag); el.textContent = conteudo; if (classe) el.className = classe; return el; };
-    for (const c of cenarios) {
-      testesNomes[c.id] = 'F' + c.id + ' · ' + c.nome;
-      const cartao = document.createElement('div');
-      cartao.className = 'teste';
-      cartao.id = 'teste-' + c.id;
-      const botao = texto('button', 'Acionar');
-      botao.addEventListener('click', () => acionarTeste(c.id));
-      const cab = document.createElement('div');
-      cab.className = 'teste-cab';
-      cab.append(texto('span', 'F' + c.id, 'teste-num'), texto('b', c.nome), botao);
-      const det = document.createElement('details');
-      const acontece = document.createElement('p');
-      acontece.append(texto('b', 'O que acontece: '), c.acontece);
-      const esperado = document.createElement('p');
-      esperado.append(texto('b', 'Esperado: '), c.esperado);
-      det.append(texto('summary', 'o que acontece e o esperado'), acontece, esperado);
-      cartao.append(cab, texto('p', '“' + c.pede + '”', 'teste-pede'), det);
-      lista.appendChild(cartao);
-    }
-  }
-
-  async function acionarTeste(id) {
-    try {
-      const r = await testesChamar('/api/executar', { id });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        return testesAviso(j.erro || 'Não consegui acionar o teste.');
-      }
-      testesAviso('');
-      await atualizarTestes();
-      $('testes-exec').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // a execução fica no topo da aba
-    } catch (e) {
-      testesAviso('A tela de testes não respondeu. Rode ./demo.sh testes no terminal.');
-    }
-  }
-
-  function classeDaLinha(linha) {
-    if (/^\s*\[OK\]/.test(linha)) return 't-ok';
-    if (/^\s*\[ERRO\]/.test(linha)) return 't-erro';
-    if (/^===/.test(linha)) return 't-titulo';
-    if (/^\S+: PASSOU/.test(linha)) return 't-passou';
-    if (/^\S+: FALHOU/.test(linha)) return 't-falhou';
-    if (/^Mostre agora:/.test(linha)) return 't-dica';
-    if (/^(Passo|Resultado|Histórico)/.test(linha)) return 't-passo';
-    return '';
-  }
-
-  const mmss = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-
-  async function atualizarTestes() {
-    let e;
-    try { e = await (await testesChamar('/api/estado?desde=' + testesVistas)).json(); } catch (erro) { return; }
-    const saida = $('testes-console');
-    if (e.id !== testesId || e.total < testesVistas) { // outra execução (ou a tela de testes reiniciou): recomeça o quadro
-      testesId = e.id;
-      testesVistas = 0;
-      saida.textContent = '';
-      if (e.id) return atualizarTestes();
-    }
-    saida.classList.toggle('oculto', !e.id); // sem nenhuma execução ainda, não há saída para mostrar
-    $('testes-titulo').textContent = !e.id ? 'Execução'
-      : e.id === 'restaurar' ? 'Voltar ao normal' : e.id === 'todas' ? 'Todos os testes' : (testesNomes[e.id] || 'F' + e.id);
-    const embaixo = saida.scrollTop + saida.clientHeight >= saida.scrollHeight - 30;
-    for (const linha of e.linhas) {
-      const el = document.createElement('div');
-      el.className = classeDaLinha(linha);
-      el.textContent = linha || ' ';
-      saida.appendChild(el);
-    }
-    testesVistas = e.total;
-    if (embaixo) saida.scrollTop = saida.scrollHeight;
-
-    const estado = $('testes-estado');
-    const faixa = $('testes-resultado');
-    if (e.rodando) {
-      estado.className = 'estado-teste rodando';
-      estado.textContent = 'rodando ' + mmss(e.decorrido);
-      faixa.classList.add('oculto');
-    } else if (e.resultado) {
-      estado.className = 'estado-teste ' + e.resultado;
-      estado.textContent = (e.resultado === 'passou' ? 'passou' : 'falhou') + ' em ' + mmss(e.decorrido);
-      faixa.className = 'testes-resultado ' + e.resultado;
-      const nome = e.id === 'restaurar' ? 'Voltar ao normal' : e.id === 'todas' ? 'Todos os testes' : 'F' + e.id;
-      $('testes-faixa').textContent = e.resultado === 'passou' ? '✅ ' + nome + ': PASSOU' : '❌ ' + nome + ': FALHOU (veja as linhas [ERRO])';
-      $('testes-dica').textContent = e.dica ? 'Mostre agora: ' + e.dica : '';
-    } else {
-      estado.className = 'estado-teste';
-      estado.textContent = 'parado';
-      faixa.classList.add('oculto');
-    }
-    for (const b of document.querySelectorAll('#testes-lista button, #testes-restaurar')) b.disabled = e.rodando;
-    for (const c of document.querySelectorAll('#testes-lista .teste')) c.classList.toggle('atual', e.id !== null && c.id === 'teste-' + e.id);
+  // ---------------------------------------------------------------- testes de falha do professor
+  // Os testes derrubam serviços de verdade, então ficam numa tela própria, em tela cheia, que roda só neste notebook
+  // (./demo.sh testes; o ./demo.sh subir já liga) e só atende páginas de localhost. O botão do topo a abre numa janela nova,
+  // e só existe com o painel aberto por localhost: pelo link público (que a plateia também enxerga) ele nem aparece.
+  // Se a tela de testes estiver desligada, o botão fica apagado e avisa como ligar.
+  const TESTES_URL = 'http://localhost:8099/';
+  function configurarTestes() {
+    const botao = $('testes');
+    if (!/^(localhost|127\.|\[::1\])/.test(location.hostname)) { botao.classList.add('oculto'); return; }
+    const dica = botao.querySelector('small');
+    const textoDica = dica.textContent;
+    const sondar = async () => {
+      let ligada = false;
+      try { ligada = (await fetch(TESTES_URL + 'api/cenarios')).ok; } catch (e) { /* desligada */ }
+      botao.classList.toggle('apagado', !ligada);
+      botao.dataset.ligada = ligada ? '1' : '';
+      dica.textContent = ligada ? textoDica : 'Desligada. No terminal: ./demo.sh testes';
+    };
+    botao.addEventListener('click', (ev) => {
+      if (botao.dataset.ligada) return; // o próprio link abre a tela de testes numa janela nova
+      ev.preventDefault();
+      dica.textContent = 'Rode ./demo.sh testes no terminal e tente de novo';
+      setTimeout(sondar, 4000);
+    });
+    sondar();
+    setInterval(sondar, 10000);
   }
 
   // ---------------------------------------------------------------- QR code
