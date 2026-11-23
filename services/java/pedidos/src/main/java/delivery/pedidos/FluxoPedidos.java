@@ -21,11 +21,13 @@ public class FluxoPedidos {
     private static final Logger log = LoggerFactory.getLogger(FluxoPedidos.class);
 
     private final PedidoRepositorio repo;
+    private final PedidoServico servico;
     private final Outbox outbox;
     private final RegrasPedidos regras;
 
-    public FluxoPedidos(PedidoRepositorio repo, Outbox outbox, RegrasPedidos regras) {
+    public FluxoPedidos(PedidoRepositorio repo, PedidoServico servico, Outbox outbox, RegrasPedidos regras) {
         this.repo = repo;
+        this.servico = servico;
         this.outbox = outbox;
         this.regras = regras;
     }
@@ -65,18 +67,11 @@ public class FluxoPedidos {
         return ManipuladorMensagem.de("entrega.concluida", this::aoConcluir);
     }
 
-    // RECEBIDO -> AGUARDANDO_PAGAMENTO: ganha o prazo e o pedidos manda cobrar
+    // RECEBIDO -> AGUARDANDO_PAGAMENTO: o estoque reservou a unidade (pedido com cupom); o pedidos manda cobrar
     void aoReservar(Envelope e) {
         long id = e.payloadLong("pedidoId");
-        UUID corr = UUID.fromString(e.correlationId());
-        boolean mudou = repo.transicionar(
-                id, "RECEBIDO", "AGUARDANDO_PAGAMENTO", null, "estoque.reservado", corr,
-                "prazo_pagamento = now() + make_interval(secs => " + regras.prazoPagamentoSeg + ")", null);
-        if (!mudou) return;
-        Pedido p = repo.buscar(id).orElseThrow();
-        outbox.publicar(
-                "pagamento.cobrar", e.correlationId(),
-                Map.of("pedidoId", id, "expiraEm", p.prazoPagamento().toString()), p.traceparent());
+        String traceparent = repo.buscar(id).map(Pedido::traceparent).orElse(null);
+        servico.aguardarPagamento(id, UUID.fromString(e.correlationId()), "estoque.reservado", traceparent);
     }
 
     // RECEBIDO -> ESGOTADO (fim)

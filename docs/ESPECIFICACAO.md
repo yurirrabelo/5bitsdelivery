@@ -10,7 +10,7 @@ Documento de referência do trabalho final de Sistemas Distribuídos (FURB): arq
 
 Um sistema de delivery com promoção relâmpago e rastreamento do entregador em tempo real.
 
-**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa uma unidade da promoção, o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega fica esperando um entregador: o pedido aparece no celular dos entregadores e o primeiro a tocar em **Aceitar** leva. Ele é acompanhado no mapa até o endereço do cliente (o GPS do celular do cliente). Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
+**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa uma das 10 unidades da promoção (só quando o pedido usa o cupom `#promobcc`; o pedido normal pula essa etapa), o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega fica esperando um entregador: o pedido aparece no celular dos entregadores e o primeiro a tocar em **Aceitar** leva. Ele é acompanhado no mapa até o endereço do cliente (o GPS do celular do cliente). Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
 
 O que o trabalho demonstra:
 
@@ -26,21 +26,23 @@ O que o trabalho demonstra:
 
 ## 2. Fluxo principal
 
-1. O pedido entra por `POST /api/pedidos`. O serviço de pedidos grava o pedido como `RECEBIDO`, deixa o comando `estoque.reservar` na outbox (mesma transação) e responde `202 Accepted` com o id.
-2. O estoque tenta reservar uma unidade com um UPDATE condicional e responde `estoque.reservado` ou `estoque.esgotado`.
-3. Reservado: o pedido vai para `AGUARDANDO_PAGAMENTO`, ganha um prazo (`PRAZO_PAGAMENTO_SEG`) e o pedidos envia `pagamento.cobrar`. Esgotado: o pedido termina como `ESGOTADO`.
+1. O pedido entra por `POST /api/pedidos`. O serviço de pedidos grava o pedido como `RECEBIDO` e responde `202 Accepted` com o id. **Com o cupom da promoção** ele deixa o comando `estoque.reservar` na outbox (mesma transação). **Sem cupom** (pedido normal) o pedido pula o estoque: vai direto para `AGUARDANDO_PAGAMENTO` e o comando `pagamento.cobrar` é que fica na outbox.
+2. (Só pedido com cupom.) O estoque tenta reservar uma unidade com um UPDATE condicional e responde `estoque.reservado` ou `estoque.esgotado`.
+3. Reservado: o pedido vai para `AGUARDANDO_PAGAMENTO`, ganha um prazo (`PRAZO_PAGAMENTO_SEG`) e o pedidos envia `pagamento.cobrar`. Esgotado: o pedido termina como `ESGOTADO` (para o cliente, o cupom deixou de valer: a tela avisa "Cupom inválido: a promoção acabou" e oferece um pedido normal).
 4. O pagamento cobra no gateway simulado, com a chave de idempotência do pedido, e responde `pagamento.aprovado` ou `pagamento.recusado`.
-5. Aprovado dentro do prazo: o pedido vai para `CONFIRMADO` e o pedidos publica `pedido.confirmado`, consumido por dois serviços: o estoque transforma a reserva em venda e as entregas criam a entrega, se o pedido tiver endereço de entrega.
+5. Aprovado dentro do prazo: o pedido vai para `CONFIRMADO` e o pedidos publica `pedido.confirmado`, consumido por dois serviços: o estoque transforma a reserva em venda (no pedido normal não há reserva e ele ignora a mensagem) e as entregas criam a entrega, se o pedido tiver endereço de entrega.
 6. A entrega nasce `PENDENTE` e aparece na lista de pedidos de todo entregador Disponível (a página dele, aberta no celular, avisa). O primeiro a tocar em **Aceitar** fica com ela: as entregas publicam `entrega.atribuida` (pedido `EM_ENTREGA`) e ele passa a Ocupado. O navegador dele envia o GPS real e o painel mostra a posição em tempo real.
 7. A menos de `GEOFENCE_RAIO_M` metros do destino, ou pelo botão **Confirmar entrega**, as entregas publicam `entrega.concluida`. O pedido termina como `ENTREGUE` e a rota vai para o S3.
 
 **Compensações:**
 
-- Pagamento recusado → pedido `CANCELADO` (motivo `PAGAMENTO_RECUSADO`) → `pedido.cancelado` → o estoque devolve a unidade.
+- Pagamento recusado → pedido `CANCELADO` (motivo `PAGAMENTO_RECUSADO`) → `pedido.cancelado` → o estoque devolve a unidade (se o pedido tinha uma).
 - Prazo vencido sem resposta → pedido `CANCELADO` (motivo `PRAZO_EXPIRADO`) → `pedido.cancelado` → o estoque devolve a unidade.
 - Aprovação que chega depois do cancelamento → o pedidos envia `pagamento.estornar` → o pagamento estorna no gateway → `pagamento.estornado` → pedido `ESTORNADO`.
 
-**Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou um toque no mapa: o mapa também fica à mão quando ele quer receber em outro endereço). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. O operador também pode criar um pedido pelo mapa (ferramenta de apoio), até reservando o pedido para um entregador.
+**Cupom e pedido normal:** o cupom é `PROMOCAO_CUPOM` (padrão `promobcc`); o cliente escreve `#promobcc` (vale com ou sem o `#`, em maiúsculas ou minúsculas). Com o cupom o pedido usa uma das `PROMOCAO_QUANTIDADE` unidades (10) e passa pelo estoque; sem cupom é um pedido normal, que não usa o estoque da promoção e não tem limite. Cupom escrito errado: `422` e nenhum pedido é criado. Cupom certo com as unidades acabadas: o pedido termina `ESGOTADO` e a tela do cliente avisa que o cupom deixou de valer (ela também avisa antes, quando o estoque chega a zero). A gestão, ao criar um pedido à mão, escolhe o tipo (normal ou com cupom).
+
+**Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou um toque no mapa: o mapa também fica à mão quando ele quer receber em outro endereço). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. A gestão também pode criar um pedido pelo mapa (ferramenta de apoio), escolhendo se ele é da promoção ou normal, até reservando o pedido para um entregador.
 
 ### 2.1 Sequências
 
@@ -49,15 +51,16 @@ Setas `--)` passam pelo RabbitMQ; setas `->>` são chamadas HTTP. As imagens fic
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Cliente ou operador
+    actor C as Cliente ou gestão
     participant P as pedidos
     participant E as estoque
     participant PG as pagamento
     participant GW as gateway de pagamento
     participant ENT as entregas
     actor M as Entregador
-    C->>P: POST /api/pedidos (com o endereço)
+    C->>P: POST /api/pedidos (endereço e cupom)
     P-->>C: 202 Accepted + id
+    Note over P,E: com cupom: reserva uma das 10 unidades. Sem cupom (pedido normal): vai direto ao pagamento
     P--)E: estoque.reservar
     E--)P: estoque.reservado
     P--)PG: pagamento.cobrar
@@ -106,8 +109,9 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> RECEBIDO
-    RECEBIDO --> AGUARDANDO_PAGAMENTO: estoque.reservado
-    RECEBIDO --> ESGOTADO: estoque.esgotado
+    RECEBIDO --> AGUARDANDO_PAGAMENTO: estoque.reservado (com cupom)
+    RECEBIDO --> AGUARDANDO_PAGAMENTO: pedido normal (sem cupom)
+    RECEBIDO --> ESGOTADO: estoque.esgotado (o cupom deixa de valer)
     AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento.aprovado no prazo
     AGUARDANDO_PAGAMENTO --> CANCELADO: pagamento.recusado ou prazo vencido
     CANCELADO --> ESTORNADO: aprovação atrasada estornada
@@ -143,7 +147,7 @@ As fontes ficam em `docs/arquitetura/`: SVG para os diagramas C4 e o caminho das
 | Serviço | Linguagem | Faz o quê | Dados |
 |---|---|---|---|
 | `nginx` | Nginx | API Gateway: entrada única, autenticação (`auth_request`), rate limit, páginas web | — |
-| `auth` | TypeScript (Fastify) | login de operador e entregador, sessão de cliente do QR, JWT | sem banco (usuários do `.env`) |
+| `auth` | TypeScript (Fastify) | login da gestão e do entregador, sessão de cliente do QR, JWT | sem banco (usuários do `.env`) |
 | `pedidos` | Java 21 (Spring Boot) | API 202, máquina de estados, orquestração da saga, prazo | `pg-pedidos` |
 | `estoque` | Java 21 (Spring Boot) | unidades da promoção: reserva, devolução e baixa | `pg-estoque` |
 | `pagamento` | TypeScript (Fastify) | cobrança e estorno no gateway; roda com 2 ou mais réplicas | `pg-pagamento` |
@@ -180,7 +184,7 @@ O Nginx repassa o caminho inteiro; cada serviço declara as rotas já com o pref
 
 | Rota | Destino | Autenticação |
 |---|---|---|
-| `/` | tela de entrada: um login só para operador e entregador, que leva cada um para a sua tela | — |
+| `/` | tela de entrada: um login só para a gestão e o entregador, que leva cada um para a sua tela, e os links das 3 interfaces (Gestão, Entregador, Pedidos) | — |
 | `/painel/`, `/entregador/`, `/cliente/` | páginas estáticas de `web/` | as telas pedem login |
 | `POST /api/auth/login` | auth | pública, rate limit estrito |
 | `POST /api/auth/cliente` | auth | pública, rate limit generoso |
@@ -199,15 +203,15 @@ Nunca expostos pelo Nginx: `GET http://auth:3000/auth/validate` (usado pelo `aut
 - `POST /api/auth/login` com `{username, password}` → `200 {token, expiresIn, usuario: {id, nome, role, entregadorId}}`. Erro sempre `401` genérico.
 - `POST /api/auth/cliente` com `{apelido, codigo}` → `200 {token, expiresIn}`. `codigo` precisa ser igual a `EVENTO_CODIGO`; apelido de 1 a 20 caracteres.
 - `GET /api/auth/me` → usuário do token.
-- `GET /api/auth/evento` (operador) → `{codigo}`, usado pelo painel para montar o QR.
+- `GET /api/auth/evento` (gestão) → `{codigo}`, usado pelo painel para montar o QR.
 - `GET /auth/validate` (interno) → `200` com `X-User-Id`, `X-User-Name`, `X-User-Role` e `X-Entregador-Id`, ou `401`. Lê o token do header `Authorization: Bearer` ou do parâmetro `token` presente em `X-Original-URI` (o WebSocket do navegador não envia headers).
 
 **pedidos**
 
 - `GET /api/pedidos/config` → `{origem: {nome, lat, lon}, promocao: {nome}}`
-- `POST /api/pedidos` → `202 {id, status, statusUrl}` e header `Location`.
-  - Operador: `{destino: {lat, lon, endereco?}, entregadorPreferidoId?}`.
-  - Cliente: `{destino: {lat, lon}}` (o GPS do celular dele; sem `destino` o pedido termina em `CONFIRMADO`). Não escolhe entregador. Respeita o limite de pedidos em andamento.
+- `POST /api/pedidos` → `202 {id, status, promocao, statusUrl}` e header `Location` (`status` é `RECEBIDO` no pedido com cupom e `AGUARDANDO_PAGAMENTO` no normal).
+  - Gestão (papel `operador`): `{destino: {lat, lon, endereco?}, entregadorPreferidoId?, promocao?}` (`promocao: true` usa uma das unidades; por padrão o pedido é normal).
+  - Cliente: `{destino: {lat, lon}, cupom?}` (o GPS do celular dele; sem `destino` o pedido termina em `CONFIRMADO`; sem `cupom` o pedido é normal; cupom errado: `422`). Não escolhe entregador. Respeita o limite de pedidos em andamento.
 - `GET /api/pedidos/{id}` → `{id, status, motivo, origem, destino, entregadorId, criadoEm, atualizadoEm}`. O cliente só vê os próprios pedidos.
 - `GET /api/pedidos` (operador) → últimos pedidos, com número e status.
 - `GET /api/pedidos/{id}/historico` → transições com horário e `correlationId`.
@@ -520,6 +524,7 @@ EVENTO_CODIGO=promo
 # ---------- Regras ----------
 PROMOCAO_NOME=Promoção relâmpago
 PROMOCAO_QUANTIDADE=10
+PROMOCAO_CUPOM=promobcc
 PRAZO_PAGAMENTO_SEG=15
 CLIENTE_PEDIDOS_EM_ANDAMENTO=1
 ORIGEM_NOME=Loja
@@ -582,18 +587,19 @@ O objetivo é mostrar por onde cada passo passa, não monitorar tudo.
 
 ## 9. Clientes
 
-### 9.1 Painel do operador (`web/painel/`)
+### 9.1 Painel de gestão (`web/painel/`)
 
 HTML, CSS e JavaScript puros, com Leaflet e mapa do OpenStreetMap. Sem etapa de build.
 
-É a central da loja: serve para **acompanhar tudo ao vivo**, não para operar o dia a dia (quem pede é o cliente e quem entrega é o entregador).
+É a central da loja: serve para **acompanhar as entregas ao vivo, com o GPS dos entregadores**, ver os pedidos e o estoque da promoção e **fazer um pedido manualmente**. Quem pede é o cliente (interface Pedidos) e quem entrega é o entregador.
 
-- Login (a tela de entrada `/` também leva o operador para cá).
+- Login (a tela de entrada `/` também leva a gestão para cá).
 - Mapa com a loja, os entregadores ao vivo (WebSocket), os destinos dos pedidos e o rastro da entrega ativa.
-- Duas abas ao lado do mapa:
+- Três abas ao lado do mapa:
   - **Pedidos:** quem são os entregadores (Disponível, Em entrega, Offline e há quanto tempo chegou o GPS de cada um) e a lista de pedidos com a situação em palavras simples ("Aguardando entregador", "Em entrega", "Entregue"…), com polling a cada 2 s. O botão **＋ Pedido pelo mapa** é uma ferramenta de apoio: abre um formulário que fica aberto entre um pedido e outro, o clique no mapa escolhe o destino (o cursor vira uma mira) e dá para reservar o pedido para um entregador.
-  - **QR da plateia:** o QR da promoção, gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: aberto pela URL do túnel, o QR já sai certo e o campo de endereço nem aparece; aberto por `localhost` (que o celular não alcança), aparece um campo para colar o link do túnel. Logo abaixo, o link do entregador (`…/entregador/`).
+  - **QR:** o QR da promoção (QR para a plateia), gerado na hora com a URL pública e o código do evento. Ele usa a origem da página: aberto pela URL do túnel, o QR já sai certo e o campo de endereço nem aparece; aberto por `localhost` (que o celular não alcança), aparece um campo para colar o link do túnel. Logo abaixo, o link do entregador (`…/entregador/`).
 - Contador do estoque no topo, barra de status (WebSocket conectado, "última posição há X s") e link para o Grafana.
+  - **Testes:** os botões dos cenários de falha do professor (F1 a F8). A aba fala com a tela de testes do notebook (`scripts/testes`, ligada pelo `./demo.sh subir`), que roda `./demo.sh falha N` e devolve a saída ao vivo, o PASSOU ou FALHOU e o que mostrar no Grafana. A tela de testes só atende páginas de `localhost`: a aba só funciona com o painel aberto em `http://localhost:8080/painel/` e **nunca pelo link público**, porque os cenários derrubam serviços de verdade.
 - **Modo telão:** esconde as ferramentas e mostra as duas abas juntas (pedidos e QR) em letras grandes.
 
 ### 9.2 Página do entregador (`web/entregador/`)
@@ -607,11 +613,11 @@ Uma página web comum, sem instalação: o celular abre o link `https://…/entr
 - Dois entregadores Disponíveis veem o mesmo pedido: o primeiro a tocar em **Aceitar** leva e o outro recebe "já foi aceito por outro entregador".
 - Limitação conhecida: com a tela apagada ou a página em segundo plano, o navegador pausa o GPS. Por isso a página mostra o mapa da entrega ela mesma, em vez de mandar o entregador para outro app de mapas.
 
-### 9.3 Página do cliente (`web/cliente/`) — extra do QR
+### 9.3 Interface Pedidos (`web/cliente/`) — a página do cliente, pelo QR
 
-- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o botão **Quero um pedido!** e, abaixo, "Quero receber em outro endereço" (mapa). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para outro, em outro endereço.
+- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o campo do **cupom** (`#promobcc`, opcional) e o botão de pedir ("Pedir com o cupom" ou, sem cupom, "Fazer pedido normal") e, abaixo, "Quero receber em outro endereço" (mapa). Quando as unidades da promoção acabam, a tela avisa "Cupom inválido: acabaram as unidades da promoção" e só deixa fazer o pedido normal; se o pedido com cupom terminar `ESGOTADO`, aparece "Fazer um pedido normal", no mesmo endereço. Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para outro, em outro endereço.
 - Ao pedir, o navegador pergunta a localização: a entrega vai para onde o cliente está (`navigator.geolocation`). Sem GPS (negado, sem https ou sem sinal) aparece um mapa para ele tocar no ponto de entrega.
-- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
+- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade da promoção reservada (só com cupom) → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
 - Um pedido em andamento por pessoa.
 
 ### 9.4 GPS e pipeline das posições (entregas)
@@ -720,7 +726,7 @@ delivery-tracker/
 │   └── arquitetura/             # SVG, Mermaid e PNG dos diagramas
 ├── nginx/                       # nginx.conf e proxy-autenticado.conf
 ├── web/
-│   ├── painel/                  # operador (telão)
+│   ├── painel/                  # gestão (telão)
 │   ├── entregador/              # página do celular (GPS pelo navegador)
 │   └── cliente/                 # página do QR code
 ├── services/

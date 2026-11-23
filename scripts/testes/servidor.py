@@ -2,9 +2,10 @@
 """Tela local para acionar os cenários de falha do professor (F1 a F8) com botões.
 
 Roda só neste notebook (127.0.0.1) e, por baixo, chama o mesmo comando de sempre: ./demo.sh falha N.
-Os cenários derrubam serviços de verdade, por isso a tela NÃO fica no painel do operador (que abre pela internet).
+Os cenários derrubam serviços de verdade, por isso este servidor só atende páginas de localhost. A aba Testes do painel de gestão
+(http://localhost:8080/painel/) usa a mesma API; pelo link público do painel a aba não funciona, de propósito.
 
-Uso:  ./demo.sh testes        (abre http://localhost:8099; Ctrl+C para fechar)
+Uso:  ./demo.sh subir  liga em segundo plano;  ./demo.sh testes  liga (se preciso) e abre http://localhost:8099 (Ctrl+C para fechar)
 """
 import json
 import os
@@ -139,14 +140,32 @@ class Pagina(BaseHTTPRequestHandler):
     def log_message(self, *args):  # sem o ruído de cada requisição no terminal
         pass
 
+    def _cors(self):
+        # a aba "Testes" do painel de gestão (http://localhost:8080) fala com esta tela (http://localhost:8099): outra porta,
+        # então o navegador pede permissão. Só páginas de localhost recebem (a verificação está em _local).
+        origem = self.headers.get('Origin')
+        if origem and self._local():
+            self.send_header('Access-Control-Allow-Origin', origem)
+            self.send_header('Vary', 'Origin')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+
     def _enviar(self, corpo, tipo, codigo=200):
         dados = corpo if isinstance(corpo, bytes) else corpo.encode('utf-8')
         self.send_response(codigo)
         self.send_header('Content-Type', tipo)
         self.send_header('Content-Length', str(len(dados)))
         self.send_header('Cache-Control', 'no-store')
+        self._cors()
         self.end_headers()
         self.wfile.write(dados)
+
+    def do_OPTIONS(self):  # a "consulta prévia" do navegador antes de um POST de outra porta
+        self.send_response(204 if self._local() else 403)
+        self._cors()
+        self.send_header('Access-Control-Max-Age', '600')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
 
     def _json(self, objeto, codigo=200):
         self._enviar(json.dumps(objeto, ensure_ascii=False), 'application/json; charset=utf-8', codigo)
@@ -190,6 +209,9 @@ class Pagina(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._local() or 'application/json' not in self.headers.get('Content-Type', ''):
             return self._enviar('acesso negado', 'text/plain; charset=utf-8', 403)
+        if self.path == '/api/encerrar':  # ./demo.sh parar fecha a tela de testes junto com o resto
+            self._json({'ok': True})
+            return threading.Thread(target=self.server.shutdown, daemon=True).start()
         if self.path != '/api/executar':
             return self._enviar('não encontrado', 'text/plain; charset=utf-8', 404)
         try:

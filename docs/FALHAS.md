@@ -2,13 +2,9 @@
 
 O professor vai escolher um (ou alguns) ao acaso: rode **só o que ele pedir**, um de cada vez.
 
-**Com botões** (o jeito mais fácil na apresentação): em um terminal, na pasta do projeto, rode
+**Com botões** (o jeito mais fácil na apresentação): no **painel de gestão**, aberto no notebook por `http://localhost:8080/painel/`, clique na aba **Testes**. (O `./demo.sh subir` já liga a tela de testes que a aba usa; se ela avisar que não está ligada, rode `./demo.sh testes`, que a liga e abre a mesma tela em `http://localhost:8099`.)
 
-```bash
-./demo.sh testes
-```
-
-Abre no navegador do notebook a tela **http://localhost:8099**: uma lista com os 9 testes, cada um com o que o professor costuma perguntar, o que acontece e o resultado esperado, e um botão **Acionar**. A saída aparece ao vivo no quadro ao lado (`[OK]` verde e `[ERRO]` vermelho) e, no fim, vem um **PASSOU** grande e o que mostrar no Grafana. O botão **Voltar ao normal** religa o que um teste tenha parado, se algo ficar estranho. (Precisa do Python 3 no notebook. Sem ele, use os comandos abaixo.)
+A aba mostra uma lista com os 9 testes, cada um com o que o professor costuma perguntar, o que acontece e o resultado esperado, e um botão **Acionar**. A saída aparece ao vivo no quadro ao lado (`[OK]` verde e `[ERRO]` vermelho) e, no fim, vem um **PASSOU** grande e o que mostrar no Grafana. O botão **Voltar ao normal** religa o que um teste tenha parado, se algo ficar estranho. (Precisa do Python 3 no notebook. Sem ele, use os comandos abaixo.)
 
 Também dá para acionar pelo terminal:
 
@@ -19,7 +15,7 @@ Também dá para acionar pelo terminal:
 
 Cada cenário **provoca a falha de verdade** (para um serviço, derruba o broker, manda mensagem repetida...), espera o sistema reagir e compara o **esperado** com o **obtido**. No fim aparece **PASSOU** (ou **FALHOU**) e uma linha **"Mostre agora"** dizendo o que abrir no Grafana. Leva de 1 a 3 minutos cada. Ao terminar, o cenário devolve o sistema ao normal sozinho.
 
-**Por que a tela de testes é separada do painel do operador?** Os cenários derrubam coisas de verdade (RabbitMQ, réplicas, nuvem), e isso só um comando na máquina pode fazer. O painel do operador fica aberto pelo túnel da internet, com login simples: um botão que desliga o sistema ali seria um risco. Por isso a tela de testes só abre **neste notebook** (`localhost`), mas o painel tem um link **Testes ↗** para ela, ao lado do link do Grafana.
+**Por que a aba Testes só funciona por `localhost`?** Os cenários derrubam coisas de verdade (RabbitMQ, réplicas, nuvem), e isso só um comando na máquina pode fazer: por baixo, a aba chama uma tela de testes que roda no notebook (`scripts/testes`) e só atende páginas de `localhost`. O painel de gestão também abre pelo túnel da internet, com login simples, e a plateia enxerga esse link: um botão que desliga o sistema ali seria um risco. Pelo link público a aba apenas avisa que os testes só funcionam no notebook.
 
 | # | O que acontece | Resultado esperado | Onde mostrar no Grafana |
 |---|---|---|---|

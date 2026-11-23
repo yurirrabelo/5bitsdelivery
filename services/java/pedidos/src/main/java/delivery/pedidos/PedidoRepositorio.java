@@ -40,6 +40,7 @@ public class PedidoRepositorio {
                 rs.getString("destino_endereco"),
                 rs.getObject("entregador_preferido_id", Integer.class),
                 rs.getObject("entregador_id", Integer.class),
+                rs.getBoolean("promocao"),
                 rs.getObject("correlation_id", UUID.class),
                 rs.getString("traceparent"),
                 instante(rs, "prazo_pagamento"),
@@ -60,12 +61,13 @@ public class PedidoRepositorio {
             Double destinoLon,
             String endereco,
             Integer preferido,
+            boolean promocao,
             UUID correlationId,
             String traceparent) {
         Long id = jdbc.queryForObject(
                 "INSERT INTO pedidos (status, cliente_id, origem_lat, origem_lon, destino_lat, destino_lon, "
-                        + "destino_endereco, entregador_preferido_id, correlation_id, traceparent) "
-                        + "VALUES ('RECEBIDO', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                        + "destino_endereco, entregador_preferido_id, promocao, correlation_id, traceparent) "
+                        + "VALUES ('RECEBIDO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                 Long.class,
                 clienteId,
                 origemLat,
@@ -74,6 +76,7 @@ public class PedidoRepositorio {
                 destinoLon,
                 endereco,
                 preferido,
+                promocao,
                 correlationId,
                 traceparent);
         registrarHistorico(id, null, "RECEBIDO", "POST /api/pedidos", correlationId);

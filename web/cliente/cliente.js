@@ -1,5 +1,5 @@
-// Página do cliente (QR code): entra com um apelido, pede a promoção (a entrega vai para onde ele está, pelo GPS do
-// celular) e acompanha cada passo até o entregador chegar.
+// Interface "Pedidos" (QR code): entra com um apelido, pede com o cupom da promoção (ou sem cupom, um pedido normal; a
+// entrega vai para onde a pessoa está, pelo GPS do celular) e acompanha cada passo até o entregador chegar.
 // Todo texto vindo do servidor entra por textContent. O telão nunca mostra o apelido, só o número do pedido.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -9,6 +9,8 @@
   let timerEstoque = null;
   let origemLoja = null; // onde o mapa abre quando não há GPS
   let ultimoGps = null; // o último ponto que o GPS deu: o mapa abre por ali
+  let ultimoDestino = null; // onde foi o último pedido: serve para refazer como pedido normal quando o cupom acaba
+  let promocaoAcabou = false; // acabaram as unidades da promoção: o cupom deixou de valer
 
   // o código do evento vem no link do QR (?codigo=...); sem ele, a pessoa digita
   const codigoDoLink = parametros.get('codigo');
@@ -20,7 +22,7 @@
     for (const t of ['entrar', 'pedir', 'escolher-local', 'acompanhar']) $(t).classList.toggle('oculto', t !== nome);
   }
 
-  // ---------------------------------------------------------------- quantas unidades restam
+  // ---------------------------------------------------------------- quantas unidades restam e o cupom
   async function atualizarRestam() {
     try {
       const r = await Auth.api('/api/estoque');
@@ -30,30 +32,54 @@
       $('restam-n').textContent = e.disponivel + (e.disponivel === 1 ? ' unidade' : ' unidades');
       $('restam-total').textContent = e.total;
       $('restam-barra').style.width = (e.total ? (100 * e.disponivel) / e.total : 0) + '%';
+      promocaoAcabou = e.disponivel <= 0;
+      atualizarCupom();
     } catch (e) { /* sem rede: mantém o último valor */ }
   }
 
-  // ---------------------------------------------------------------- passos de cada status
-  // Pedido com endereço (o normal): recebido -> reservada -> pagando -> procurando entregador -> a caminho -> entregue.
-  // Pedido sem endereço (link antigo, sem GPS): recebido -> reservada -> pagando -> confirmado.
-  const PASSOS_ENTREGA = [
-    { icone: '📝', texto: 'Pedido recebido' },
-    { icone: '📦', texto: 'Unidade reservada para você' },
-    { icone: '💳', texto: 'Pagando…' },
-    { icone: '🔎', texto: 'Procurando um entregador…' },
-    { icone: '🛵', texto: 'Entregador a caminho' },
-    { icone: '🎉', texto: 'Entregue!' },
-  ];
-  const PASSOS_SIMPLES = [
-    { icone: '📝', texto: 'Pedido recebido' },
-    { icone: '📦', texto: 'Unidade reservada para você' },
-    { icone: '💳', texto: 'Pagando…' },
-    { icone: '🎉', texto: 'Pedido confirmado!' },
-  ];
+  // O que está escrito no cupom (vazio quando a promoção acabou: o cupom não vale mais e o pedido é normal)
+  const cupomAtual = () => (promocaoAcabou ? '' : $('cupom').value.trim());
 
-  // quantos passos já foram vencidos em cada status
-  const ETAPA_ENTREGA = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 3, EM_ENTREGA: 4, ENTREGUE: 6 };
-  const ETAPA_SIMPLES = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: 2, CONFIRMADO: 4, EM_ENTREGA: 4, ENTREGUE: 4 };
+  // O texto sobre o cupom e o botão acompanham o que a pessoa escreve e quantas unidades restam
+  function atualizarCupom() {
+    const campo = $('cupom');
+    const dica = $('dica-cupom');
+    campo.disabled = promocaoAcabou;
+    if (promocaoAcabou) campo.value = '';
+    dica.classList.toggle('ruim', promocaoAcabou);
+    dica.textContent = promocaoAcabou
+      ? 'Cupom inválido: acabaram as unidades da promoção. Você ainda pode fazer um pedido normal.'
+      : 'Escreva o cupom para usar uma das unidades da promoção. Sem cupom, o pedido é normal.';
+    const botao = $('btn-pedir');
+    if (!botao.dataset.ocupado) botao.textContent = cupomAtual() ? 'Pedir com o cupom' : 'Fazer pedido normal';
+  }
+
+  // ---------------------------------------------------------------- passos de cada status
+  // Pedido da promoção (com cupom): recebido -> unidade reservada -> pagando -> ...
+  // Pedido normal (sem cupom): recebido -> pagando -> ... (não usa o estoque da promoção)
+  // Com endereço (o normal do app): ... -> procurando entregador -> a caminho -> entregue. Sem endereço: ... -> confirmado.
+  const PASSO = {
+    recebido: { icone: '📝', texto: 'Pedido recebido' },
+    reservada: { icone: '📦', texto: 'Unidade da promoção reservada para você' },
+    pagando: { icone: '💳', texto: 'Pagando…' },
+    procurando: { icone: '🔎', texto: 'Procurando um entregador…' },
+    caminho: { icone: '🛵', texto: 'Entregador a caminho' },
+    entregue: { icone: '🎉', texto: 'Entregue!' },
+    confirmado: { icone: '🎉', texto: 'Pedido confirmado!' },
+  };
+
+  function roteiro(p) {
+    const antes = p.promocao === false ? [PASSO.recebido, PASSO.pagando] : [PASSO.recebido, PASSO.reservada, PASSO.pagando];
+    return p.destino ? [...antes, PASSO.procurando, PASSO.caminho, PASSO.entregue] : [...antes, PASSO.confirmado];
+  }
+
+  // quantos passos já foram vencidos em cada status (n = os passos até o pagamento)
+  function etapa(p, n) {
+    const feitosAntesDoPagamento = { RECEBIDO: 0, AGUARDANDO_PAGAMENTO: n - 1 };
+    if (p.status in feitosAntesDoPagamento) return feitosAntesDoPagamento[p.status];
+    if (!p.destino) return n + 1; // sem entrega: confirmado é o último passo
+    return { CONFIRMADO: n, EM_ENTREGA: n + 1, ENTREGUE: n + 3 }[p.status] ?? 0;
+  }
 
   function desenhar(p) {
     const ol = $('passos');
@@ -74,21 +100,21 @@
       ol.appendChild(li);
     };
 
-    const comEntrega = !!p.destino;
-    const PASSOS = comEntrega ? PASSOS_ENTREGA : PASSOS_SIMPLES;
-    const ETAPA = comEntrega ? ETAPA_ENTREGA : ETAPA_SIMPLES;
+    const promocao = p.promocao !== false; // pedidos antigos, sem o campo, eram da promoção
+    const PASSOS = roteiro(p);
+    const n = promocao ? 3 : 2;
 
     const falha = {
-      ESGOTADO: ['😕', 'Acabaram as unidades', 'A promoção esgotou antes do seu pedido.'],
+      ESGOTADO: ['🎟️', 'Cupom inválido: a promoção acabou', 'As unidades da promoção já foram usadas. Você ainda pode fazer um pedido normal.'],
       CANCELADO: p.motivo === 'PRAZO_EXPIRADO'
-        ? ['⏱️', 'O pagamento demorou demais', 'Cancelamos o pedido e devolvemos a unidade.']
-        : ['❌', 'Pagamento recusado', 'Cancelamos o pedido e devolvemos a unidade.'],
+        ? ['⏱️', 'O pagamento demorou demais', promocao ? 'Cancelamos o pedido e devolvemos a unidade.' : 'Cancelamos o pedido.']
+        : ['❌', 'Pagamento recusado', promocao ? 'Cancelamos o pedido e devolvemos a unidade.' : 'Cancelamos o pedido.'],
       ESTORNADO: ['↩️', 'Pagamento estornado', 'O pagamento chegou atrasado e foi devolvido. Pode tentar de novo.'],
     }[p.status];
 
     if (falha) {
       // mostra por onde o pedido passou e onde ele parou
-      const passou = p.status === 'ESGOTADO' ? 1 : 2;
+      const passou = p.status === 'ESGOTADO' ? 1 : n - 1;
       PASSOS.slice(0, passou).forEach((s) => item(s.icone, s.texto, 'feito'));
       item(falha[0], falha[1], 'falhou');
       resultado.textContent = falha[2];
@@ -96,15 +122,15 @@
       return true;
     }
 
-    const etapa = ETAPA[p.status] ?? 0;
-    PASSOS.forEach((s, i) => item(s.icone, s.texto, i < etapa ? 'feito' : i === etapa ? 'atual' : ''));
-    if (etapa >= PASSOS.length) {
-      resultado.textContent = comEntrega ? 'Seu pedido chegou! 🎉' : 'Pronto! Seu pedido está garantido. 🎉';
+    const feitos = etapa(p, n);
+    PASSOS.forEach((s, i) => item(s.icone, s.texto, i < feitos ? 'feito' : i === feitos ? 'atual' : ''));
+    if (feitos >= PASSOS.length) {
+      resultado.textContent = p.destino ? 'Seu pedido chegou! 🎉' : 'Pronto! Seu pedido está garantido. 🎉';
       resultado.classList.add('ok');
       return true;
     }
-    if (comEntrega && p.status === 'CONFIRMADO') resultado.textContent = 'Pagamento aprovado. Estamos chamando os entregadores…';
-    if (comEntrega && p.status === 'EM_ENTREGA') resultado.textContent = 'Fique por aí: o entregador está indo até a sua localização.';
+    if (p.destino && p.status === 'CONFIRMADO') resultado.textContent = 'Pagamento aprovado. Estamos chamando os entregadores…';
+    if (p.destino && p.status === 'EM_ENTREGA') resultado.textContent = 'Fique por aí: o entregador está indo até a sua localização.';
     return false;
   }
 
@@ -124,7 +150,9 @@
   function acompanhar(id) {
     guardar(CHAVE_PEDIDO, String(id));
     $('numero').textContent = '#' + id;
+    $('cupom').value = ''; // o cupom foi usado neste pedido
     $('de-novo').classList.add('oculto');
+    $('pedido-normal').classList.add('oculto');
     $('outro-pedido').classList.remove('oculto');
     tela('acompanhar');
     clearInterval(timer);
@@ -134,11 +162,15 @@
         const r = await lerPedido(id);
         if (r.status === 404) { guardar(CHAVE_PEDIDO, null); clearInterval(timer); return mostrarPedir(); }
         if (!r.ok) return;
-        const fim = desenhar(await r.json());
+        const p = await r.json();
+        const fim = desenhar(p);
         if (fim) {
           clearInterval(timer);
           guardar(CHAVE_PEDIDO, null);
-          $('de-novo').classList.remove('oculto');
+          // o cupom não valeu (a promoção acabou): o caminho agora é o pedido normal
+          const semCupom = p.status === 'ESGOTADO' && p.promocao !== false;
+          $('pedido-normal').classList.toggle('oculto', !semCupom);
+          $('de-novo').classList.toggle('oculto', semCupom);
           $('outro-pedido').classList.add('oculto');
           atualizarRestam();
         }
@@ -161,18 +193,24 @@
     });
   }
 
-  async function enviarPedido(destino) {
-    const r = await Auth.api('/api/pedidos', { method: 'POST', body: { destino: { lat: destino.lat, lon: destino.lon } } });
+  async function enviarPedido(destino, cupom) {
+    ultimoDestino = destino;
+    const corpo = { destino: { lat: destino.lat, lon: destino.lon } };
+    if (cupom) corpo.cupom = cupom;
+    const r = await Auth.api('/api/pedidos', { method: 'POST', body: corpo });
     if (r.status === 409) throw new Error('Você já tem um pedido em andamento. Espere ele terminar.');
+    if (r.status === 422) throw new Error('Cupom inválido. Confira o que você escreveu (o cupom começa com #).');
     if (r.status !== 202) throw new Error('Não consegui fazer o pedido agora. Tente de novo.');
     acompanhar((await r.json()).id);
   }
 
-  async function pedir() {
+  async function pedir(ev) {
+    ev.preventDefault();
     const erro = $('erro-pedir');
     erro.textContent = '';
     const botao = $('btn-pedir');
     botao.disabled = true;
+    botao.dataset.ocupado = '1';
     botao.textContent = 'Pegando sua localização…';
     try {
       let destino;
@@ -182,12 +220,13 @@
       } catch (e) {
         return mostrarMapaLocal(e.message + ' Toque no mapa onde você está.'); // sem GPS: a pessoa marca no mapa
       }
-      await enviarPedido(destino);
+      await enviarPedido(destino, cupomAtual());
     } catch (e) {
       erro.textContent = e.message;
     } finally {
       botao.disabled = false;
-      botao.textContent = 'Quero um pedido!';
+      delete botao.dataset.ocupado;
+      atualizarCupom();
     }
   }
 
@@ -230,16 +269,32 @@
     $('erro-local').textContent = '';
     $('btn-pedir-aqui').disabled = true;
     try {
-      await enviarPedido(pontoEscolhido);
+      await enviarPedido(pontoEscolhido, cupomAtual());
     } catch (e) {
       $('erro-local').textContent = e.message;
       $('btn-pedir-aqui').disabled = false;
     }
   }
 
+  // O cupom acabou: refaz o pedido como pedido normal, no mesmo endereço (ou no GPS, se a página foi recarregada)
+  async function pedidoNormal() {
+    const botao = $('pedido-normal');
+    botao.disabled = true;
+    try {
+      await enviarPedido(ultimoDestino || (await localizar()), '');
+    } catch (e) {
+      mostrarPedir();
+      $('erro-pedir').textContent = e.message;
+    } finally {
+      botao.disabled = false;
+    }
+  }
+
   function mostrarPedir() {
     $('nome').textContent = Auth.usuario().nome; // textContent: o apelido nunca é interpretado como HTML
+    $('erro-pedir').textContent = '';
     tela('pedir');
+    atualizarCupom();
     atualizarRestam();
   }
 
@@ -256,11 +311,13 @@
     }
   });
 
-  $('btn-pedir').addEventListener('click', pedir);
+  $('form-pedido').addEventListener('submit', pedir);
+  $('cupom').addEventListener('input', atualizarCupom);
   $('btn-outro-lugar').addEventListener('click', () => mostrarMapaLocal('Toque no mapa onde você quer receber o pedido. Dá para arrastar o marcador para ajustar.'));
   $('btn-pedir-aqui').addEventListener('click', pedirNoPonto);
   $('voltar-local').addEventListener('click', mostrarPedir);
   $('de-novo').addEventListener('click', mostrarPedir);
+  $('pedido-normal').addEventListener('click', pedidoNormal);
   $('outro-pedido').addEventListener('click', () => { // o pedido de antes segue o caminho dele; aqui a tela fica livre para outro
     clearInterval(timer);
     guardar(CHAVE_PEDIDO, null);
@@ -286,7 +343,7 @@
     const u = Auth.usuario();
     if (u && u.role === 'cliente') return iniciarLogado();
 
-    // Veio pelo QR (o código está no link): entra sozinho como visitante e já mostra o botão de pedir.
+    // Veio pelo QR (o código está no link): entra sozinho como visitante e já mostra a tela de pedir.
     // Sem o código no link, a pessoa digita o apelido e o código.
     if (codigoDoLink) {
       try {

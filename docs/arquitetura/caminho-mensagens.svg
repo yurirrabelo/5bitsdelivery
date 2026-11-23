@@ -38,7 +38,7 @@
 <text x="1310" y="272.5" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#ffffff" text-anchor="middle">[Java · Spring Boot]</text>
 <path d="M402,197 L1128,197" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="189" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">1 · estoque.reservar</text>
-<text x="818" y="189" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">reserva 1 unidade (UPDATE condicional)</text>
+<text x="818" y="189" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">só pedido com cupom: reserva 1 unidade</text>
 <path d="M1128,238 L402,238" fill="none" stroke="#5f6b7a" stroke-width="1.6" marker-end="url(#seta)"/>
 <text x="418" y="230" font-family="'DejaVu Sans Mono', Consolas, 'Courier New', monospace" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">2 · estoque.reservado / esgotado</text>
 <text x="818" y="230" font-family="Inter, Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#52606d" text-anchor="start">resultado da reserva</text>

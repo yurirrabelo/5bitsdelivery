@@ -1,7 +1,8 @@
-// Sessão e chamadas autenticadas, compartilhadas pelas três telas.
+// Sessão e chamadas autenticadas, compartilhadas pelas três interfaces: Gestão, Entregador e Pedidos.
 // O token fica no localStorage; qualquer resposta 401 encerra a sessão.
-// A sessão é guardada por papel (operador, entregador, cliente): abrir o painel, o app do entregador e a página
-// do cliente no mesmo navegador não derruba um ao outro. Quem entra na tela de outro papel é levado para a tela certa.
+// A sessão é guardada por papel (operador = a gestão, entregador, cliente = quem faz pedidos): abrir o painel de gestão,
+// o app do entregador e a página de pedidos no mesmo navegador não derruba um ao outro. Quem entra na tela de outro papel
+// é levado para a tela certa.
 (function () {
   const TELA = location.pathname.startsWith('/entregador') ? 'entregador' : location.pathname.startsWith('/cliente') ? 'cliente' : 'operador';
   const chave = (papel) => 'delivery.sessao.' + papel;
@@ -35,7 +36,7 @@
       location.reload();
     },
 
-    // Operador ou entregador
+    // Gestão (papel "operador") ou entregador
     async login(username, password) {
       const r = await fetch('/api/auth/login', {
         method: 'POST',

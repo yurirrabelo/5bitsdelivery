@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>5Bits Delivery · Painel do operador</title>
+  <title>5Bits Delivery · Painel de gestão</title>
   <link rel="icon" type="image/svg+xml" href="/comum/logo.svg">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/comum/estilo.css">
@@ -15,7 +15,7 @@
   <div id="app" class="oculto">
     <header class="topo">
       <a class="marca" href="/painel/"><img src="/comum/logo.svg" alt=""><span><span class="bits">5Bits</span> Delivery</span></a>
-      <span class="papel">Painel do operador</span>
+      <span class="papel">Painel de gestão</span>
 
       <div class="promo-info">
         <span class="rotulo-topo">Promoção</span>
@@ -26,7 +26,6 @@
       <div class="acoes">
         <button class="secundario" id="telao" title="Mostra só o mapa, os pedidos e o QR, em letras grandes, para o telão">📺 Modo telão</button>
         <a id="grafana" class="link-topo" href="#" target="_blank" rel="noopener">Grafana ↗</a>
-        <a id="testes" class="link-topo" href="#" target="_blank" rel="noopener" title="Botões para acionar os testes de falha do professor (só no notebook). Antes, rode ./demo.sh testes">Testes ↗</a>
         <span class="quem" id="quem"></span>
         <button class="secundario" id="sair">Sair</button>
       </div>
@@ -43,11 +42,12 @@
       </section>
 
       <aside class="lateral">
-        <p class="resumo so-operador">Aqui você <b>acompanha tudo ao vivo</b>: os pedidos dos clientes, os entregadores no mapa e o estoque da promoção.</p>
+        <p class="resumo so-operador">Aqui você <b>acompanha as entregas ao vivo, com o GPS dos entregadores</b>, vê os pedidos e o estoque da promoção e pode <b>fazer um pedido manualmente</b>.</p>
 
         <nav class="abas so-operador" role="tablist" aria-label="O que mostrar">
           <button class="aba ativa" data-aba="pedidos" role="tab">📋 Pedidos</button>
-          <button class="aba" data-aba="qr" role="tab">📱 QR da plateia</button>
+          <button class="aba" data-aba="qr" role="tab" title="O QR code da plateia">📱 QR</button>
+          <button class="aba" data-aba="testes" role="tab" title="Os testes de falha que o professor pede">🧪 Testes</button>
         </nav>
 
         <!-- aba 1: pedidos e entregadores -->
@@ -66,11 +66,17 @@
 
             <div id="form-criar" class="form-criar so-operador oculto">
               <p class="dica" id="destino-info">1. Clique no mapa onde o pedido deve chegar.</p>
-              <label>2. Para quem (opcional)
+              <label>2. Tipo do pedido
+                <select id="tipo-pedido">
+                  <option value="normal">Pedido normal (sem cupom)</option>
+                  <option value="promocao">Com o cupom da promoção (usa 1 das unidades)</option>
+                </select>
+              </label>
+              <label>3. Para quem (opcional)
                 <select id="entregador"><option value="">Qualquer entregador</option></select>
               </label>
               <div class="linha-botoes">
-                <button id="criar" disabled>3. Criar pedido</button>
+                <button id="criar" disabled>4. Criar pedido</button>
                 <button class="secundario" id="cancelar-criar">Fechar</button>
               </div>
               <p class="ok" id="criar-ok" role="status"></p>
@@ -99,6 +105,30 @@
               </label>
             </div>
             <p class="dica so-operador">Link do entregador, para abrir no celular dele: <b id="link-entregador"></b></p>
+          </div>
+        </section>
+
+        <!-- aba 3: os testes de falha que o professor pede (rodam no notebook, pela tela de testes: ./demo.sh testes) -->
+        <section class="painel-aba so-operador" id="aba-testes">
+          <div class="cartao">
+            <h2>Testes de falha do professor</h2>
+            <p class="dica">Clique no teste que o professor pedir. Ele <b>provoca a falha de verdade</b>, espera o sistema reagir e mostra o esperado e o obtido. Um de cada vez.</p>
+            <p class="aviso-qr oculto" id="testes-aviso"></p>
+            <!-- a execução fica no TOPO: ao acionar um teste, o andamento e o resultado já aparecem sem rolar a lista -->
+            <div class="testes-exec" id="testes-exec">
+              <div class="testes-topo">
+                <b id="testes-titulo">Execução</b>
+                <span class="estado-teste" id="testes-estado">parado</span>
+                <button class="secundario pequeno" id="testes-restaurar" title="Se algo ficar estranho: religa o gateway e os serviços que um teste tenha parado">Voltar ao normal</button>
+              </div>
+              <pre class="testes-console oculto" id="testes-console"></pre>
+              <div class="testes-resultado oculto" id="testes-resultado">
+                <div class="testes-faixa" id="testes-faixa"></div>
+                <p class="dica" id="testes-dica"></p>
+                <a class="link-grafana" href="http://localhost:3000/d/apresentacao/apresentacao" target="_blank" rel="noopener">Abrir o Grafana ↗</a>
+              </div>
+            </div>
+            <div class="testes-lista" id="testes-lista"></div>
           </div>
         </section>
       </aside>

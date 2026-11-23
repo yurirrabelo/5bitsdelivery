@@ -8,6 +8,7 @@ import { Counter } from 'k6/metrics';
 const BASE = __ENV.BASE_URL || 'http://nginx';
 const CLIENTES = Number(__ENV.CLIENTES || 100);
 const JSON_H = { headers: { 'Content-Type': 'application/json' } };
+const CUPOM = '#' + (__ENV.PROMOCAO_CUPOM || 'promobcc'); // o cliente escreve o cupom; sem ele o pedido é normal e não disputa o estoque
 
 export const options = {
   scenarios: { corrida: { executor: 'per-vu-iterations', vus: CLIENTES, iterations: 1, maxDuration: '120s' } },
@@ -28,12 +29,13 @@ export default function (dados) {
   const sessao = http.post(`${BASE}/api/auth/cliente`, JSON.stringify({ apelido: `cliente${__VU}`, codigo: __ENV.EVENTO_CODIGO }), JSON_H);
   check(sessao, { 'sessão criada': (r) => r.status === 200 });
   const auth = { headers: { Authorization: `Bearer ${sessao.json('token')}` } };
+  const comCorpo = { headers: { Authorization: `Bearer ${sessao.json('token')}`, 'Content-Type': 'application/json' } };
 
   // largada simultânea
   const falta = dados.largada - Date.now();
   if (falta > 0) sleep(falta / 1000);
 
-  const criado = http.post(`${BASE}/api/pedidos`, null, auth);
+  const criado = http.post(`${BASE}/api/pedidos`, JSON.stringify({ cupom: CUPOM }), comCorpo);
   check(criado, { 'pedido aceito (202)': (r) => r.status === 202 });
   const id = criado.json('id');
 

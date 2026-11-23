@@ -96,6 +96,7 @@ services:
       ORIGEM_LAT: ${ORIGEM_LAT}
       ORIGEM_LON: ${ORIGEM_LON}
       PROMOCAO_NOME: ${PROMOCAO_NOME}
+      PROMOCAO_CUPOM: ${PROMOCAO_CUPOM:-promobcc}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
       interval: 5s
@@ -226,6 +227,7 @@ services:
       ENTREGADOR2_USUARIO: ${ENTREGADOR2_USUARIO}
       ENTREGADOR2_SENHA: ${ENTREGADOR2_SENHA}
       EVENTO_CODIGO: ${EVENTO_CODIGO}
+      PROMOCAO_CUPOM: ${PROMOCAO_CUPOM:-promobcc}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -458,6 +460,7 @@ services:
     environment:
       BASE_URL: http://nginx
       EVENTO_CODIGO: ${EVENTO_CODIGO}
+      PROMOCAO_CUPOM: ${PROMOCAO_CUPOM:-promobcc}
       K6_NO_USAGE_REPORT: "true"
 
 volumes:

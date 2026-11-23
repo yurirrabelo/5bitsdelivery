@@ -1,5 +1,5 @@
-// Painel do operador: a central da loja. Acompanha ao vivo os pedidos dos clientes, os entregadores no mapa e o
-// estoque da promoção, e mostra o QR para a plateia pedir. (Criar um pedido pelo mapa é uma ferramenta de apoio.)
+// Painel de gestão: a central da loja. Acompanha ao vivo as entregas (o GPS dos entregadores no mapa), os pedidos dos
+// clientes e o estoque da promoção, mostra o QR para a plateia pedir e deixa fazer um pedido manualmente pelo mapa.
 // Todo texto vindo do servidor entra na tela por textContent ou escapado (Auth.escapar).
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -17,8 +17,8 @@
   else {
     $('login').classList.remove('oculto');
     Auth.montarLogin($('login'), ['operador'], mostrarApp, {
-      icone: '🎛️', titulo: 'Painel do operador', subtitulo: 'Acompanhe os pedidos, os entregadores e a promoção ao vivo.',
-      botao: 'Entrar no painel', rotuloUsuario: 'Usuário do operador',
+      icone: '🎛️', titulo: 'Painel de gestão', subtitulo: 'Acompanhe as entregas, os pedidos e a promoção ao vivo.',
+      botao: 'Entrar no painel', rotuloUsuario: 'Usuário da gestão',
     });
   }
 
@@ -35,7 +35,6 @@
 
   async function iniciar() {
     $('grafana').href = 'http://localhost:3000'; // o Grafana só abre no notebook, mesmo com o painel aberto pelo túnel
-    $('testes').href = 'http://localhost:8099'; // a tela dos testes de falha também (./demo.sh testes)
 
     const cfg = await (await Auth.api('/api/pedidos/config')).json();
     $('promo-nome').textContent = cfg.promocao.nome;
@@ -48,11 +47,14 @@
     // bubblingMouseEvents: o clique em cima de um marcador também chega ao mapa (senão não dá para escolher um destino perto dele)
     loja = L.marker([cfg.origem.lat, cfg.origem.lon], { bubblingMouseEvents: true }).addTo(mapa).bindTooltip(cfg.origem.nome, { permanent: true, direction: 'top', className: 'rotulo' });
 
-    // abas da lateral: Pedidos | QR da plateia
+    // abas da lateral: Pedidos | QR | Testes
     document.querySelectorAll('.aba').forEach((b) => b.addEventListener('click', () => {
       document.querySelectorAll('.aba').forEach((x) => x.classList.toggle('ativa', x === b));
       document.querySelectorAll('.painel-aba').forEach((p) => p.classList.toggle('ativa', p.id === 'aba-' + b.dataset.aba));
+      if (b.dataset.aba === 'testes') abrirTestes();
+      else fecharTestes(); // a aba Testes só consulta a tela de testes enquanto está aberta
     }));
+    $('testes-restaurar').addEventListener('click', () => acionarTeste('restaurar'));
 
     // "Pedido pelo mapa": só com o formulário aberto o clique no mapa escolhe o destino
     $('abrir-criar').addEventListener('click', () => ligarModoCriar(!modoCriar));
@@ -108,7 +110,7 @@
     $('criar-ok').textContent = '';
     if (!destinoEscolhido) return;
     $('criar').disabled = true;
-    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng } };
+    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng }, promocao: $('tipo-pedido').value === 'promocao' };
     const pref = $('entregador').value;
     if (pref) corpo.entregadorPreferidoId = Number(pref);
     try {
@@ -169,7 +171,9 @@
     // telão: só o número e a situação de cada pedido, nunca o apelido de quem pediu
     tbody.innerHTML = lista.slice(0, 15).map((p) => {
       const [texto, classe] = situacao(p);
-      return '<tr><td>#' + Auth.escapar(p.id) + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
+      // 🎟️ = o pedido usou o cupom da promoção (uma das unidades do estoque)
+      const cupom = p.promocao === false ? '' : ' <span title="usou o cupom da promoção">🎟️</span>';
+      return '<tr><td>#' + Auth.escapar(p.id) + cupom + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
         '</span></td><td>' + Auth.escapar(nomeDoEntregador(p.entregadorId)) + '</td></tr>';
     }).join('') || '<tr><td colspan="3" class="vazio">Nenhum pedido ainda.</td></tr>';
 
@@ -281,6 +285,144 @@
     $('ultima-posicao').textContent = ultimaPosicaoEm
       ? 'última posição há ' + Math.round((Date.now() - ultimaPosicaoEm) / 1000) + ' s'
       : 'sem posições ainda';
+  }
+
+  // ---------------------------------------------------------------- testes de falha do professor (aba Testes)
+  // Os testes derrubam serviços de verdade, então rodam numa tela local do notebook (./demo.sh testes, que o ./demo.sh subir
+  // já liga), que só atende páginas de localhost. Esta aba fala com ela; por isso só funciona com o painel aberto por localhost
+  // (e nunca pelo link público, que a plateia também enxerga).
+  const TESTES_URL = 'http://localhost:8099';
+  const NO_NOTEBOOK = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  let testesPronto = false;
+  let testesTimer = null;
+  let testesVistas = 0; // quantas linhas da saída já estão na tela
+  let testesId = null; // qual execução está na tela
+  const testesNomes = {}; // id do teste -> nome, para o título da execução
+
+  const testesChamar = (caminho, corpo) => fetch(TESTES_URL + caminho, corpo
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) } : undefined);
+
+  function testesAviso(texto) {
+    $('testes-aviso').textContent = texto || '';
+    $('testes-aviso').classList.toggle('oculto', !texto);
+  }
+
+  async function abrirTestes() {
+    if (!NO_NOTEBOOK) {
+      return testesAviso('Os testes só funcionam com o painel aberto no notebook, por http://localhost:8080/painel/ (por segurança, nunca pelo link público).');
+    }
+    if (!testesPronto) {
+      try {
+        desenharTestes(await (await testesChamar('/api/cenarios')).json());
+        testesPronto = true;
+        testesAviso('');
+      } catch (e) {
+        return testesAviso('A tela de testes não está ligada. No terminal, rode ./demo.sh testes (o ./demo.sh subir já liga).');
+      }
+    }
+    atualizarTestes();
+    clearInterval(testesTimer);
+    testesTimer = setInterval(atualizarTestes, 1000);
+  }
+
+  function fecharTestes() { clearInterval(testesTimer); }
+
+  function desenharTestes(cenarios) {
+    const lista = $('testes-lista');
+    lista.textContent = '';
+    const texto = (tag, conteudo, classe) => { const el = document.createElement(tag); el.textContent = conteudo; if (classe) el.className = classe; return el; };
+    for (const c of cenarios) {
+      testesNomes[c.id] = 'F' + c.id + ' · ' + c.nome;
+      const cartao = document.createElement('div');
+      cartao.className = 'teste';
+      cartao.id = 'teste-' + c.id;
+      const botao = texto('button', 'Acionar');
+      botao.addEventListener('click', () => acionarTeste(c.id));
+      const cab = document.createElement('div');
+      cab.className = 'teste-cab';
+      cab.append(texto('span', 'F' + c.id, 'teste-num'), texto('b', c.nome), botao);
+      const det = document.createElement('details');
+      const acontece = document.createElement('p');
+      acontece.append(texto('b', 'O que acontece: '), c.acontece);
+      const esperado = document.createElement('p');
+      esperado.append(texto('b', 'Esperado: '), c.esperado);
+      det.append(texto('summary', 'o que acontece e o esperado'), acontece, esperado);
+      cartao.append(cab, texto('p', '“' + c.pede + '”', 'teste-pede'), det);
+      lista.appendChild(cartao);
+    }
+  }
+
+  async function acionarTeste(id) {
+    try {
+      const r = await testesChamar('/api/executar', { id });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        return testesAviso(j.erro || 'Não consegui acionar o teste.');
+      }
+      testesAviso('');
+      await atualizarTestes();
+      $('testes-exec').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // a execução fica no topo da aba
+    } catch (e) {
+      testesAviso('A tela de testes não respondeu. Rode ./demo.sh testes no terminal.');
+    }
+  }
+
+  function classeDaLinha(linha) {
+    if (/^\s*\[OK\]/.test(linha)) return 't-ok';
+    if (/^\s*\[ERRO\]/.test(linha)) return 't-erro';
+    if (/^===/.test(linha)) return 't-titulo';
+    if (/^\S+: PASSOU/.test(linha)) return 't-passou';
+    if (/^\S+: FALHOU/.test(linha)) return 't-falhou';
+    if (/^Mostre agora:/.test(linha)) return 't-dica';
+    if (/^(Passo|Resultado|Histórico)/.test(linha)) return 't-passo';
+    return '';
+  }
+
+  const mmss = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+
+  async function atualizarTestes() {
+    let e;
+    try { e = await (await testesChamar('/api/estado?desde=' + testesVistas)).json(); } catch (erro) { return; }
+    const saida = $('testes-console');
+    if (e.id !== testesId || e.total < testesVistas) { // outra execução (ou a tela de testes reiniciou): recomeça o quadro
+      testesId = e.id;
+      testesVistas = 0;
+      saida.textContent = '';
+      if (e.id) return atualizarTestes();
+    }
+    saida.classList.toggle('oculto', !e.id); // sem nenhuma execução ainda, não há saída para mostrar
+    $('testes-titulo').textContent = !e.id ? 'Execução'
+      : e.id === 'restaurar' ? 'Voltar ao normal' : e.id === 'todas' ? 'Todos os testes' : (testesNomes[e.id] || 'F' + e.id);
+    const embaixo = saida.scrollTop + saida.clientHeight >= saida.scrollHeight - 30;
+    for (const linha of e.linhas) {
+      const el = document.createElement('div');
+      el.className = classeDaLinha(linha);
+      el.textContent = linha || ' ';
+      saida.appendChild(el);
+    }
+    testesVistas = e.total;
+    if (embaixo) saida.scrollTop = saida.scrollHeight;
+
+    const estado = $('testes-estado');
+    const faixa = $('testes-resultado');
+    if (e.rodando) {
+      estado.className = 'estado-teste rodando';
+      estado.textContent = 'rodando ' + mmss(e.decorrido);
+      faixa.classList.add('oculto');
+    } else if (e.resultado) {
+      estado.className = 'estado-teste ' + e.resultado;
+      estado.textContent = (e.resultado === 'passou' ? 'passou' : 'falhou') + ' em ' + mmss(e.decorrido);
+      faixa.className = 'testes-resultado ' + e.resultado;
+      const nome = e.id === 'restaurar' ? 'Voltar ao normal' : e.id === 'todas' ? 'Todos os testes' : 'F' + e.id;
+      $('testes-faixa').textContent = e.resultado === 'passou' ? '✅ ' + nome + ': PASSOU' : '❌ ' + nome + ': FALHOU (veja as linhas [ERRO])';
+      $('testes-dica').textContent = e.dica ? 'Mostre agora: ' + e.dica : '';
+    } else {
+      estado.className = 'estado-teste';
+      estado.textContent = 'parado';
+      faixa.classList.add('oculto');
+    }
+    for (const b of document.querySelectorAll('#testes-lista button, #testes-restaurar')) b.disabled = e.rodando;
+    for (const c of document.querySelectorAll('#testes-lista .teste')) c.classList.toggle('atual', e.id !== null && c.id === 'teste-' + e.id);
   }
 
   // ---------------------------------------------------------------- QR code

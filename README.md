@@ -2,7 +2,13 @@
 
 Sistema de delivery com **promoção relâmpago** e **entregador no mapa em tempo real**. Trabalho final de Sistemas Distribuídos (FURB).
 
-O cliente pede (a entrega vai para onde ele está, pelo GPS do celular dele), o sistema separa uma unidade da promoção, cobra num gateway lento e instável e, se tudo der certo, o pedido aparece para os entregadores: **o primeiro que tocar em Aceitar leva**. O celular dele manda o **GPS real pelo navegador** e o painel mostra a moto andando até o cliente. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
+O cliente pede na interface **Pedidos** (a entrega vai para onde ele está, pelo GPS do celular dele). Com o **cupom `#promobcc`** o pedido usa uma das **10 unidades** da promoção; sem cupom é um **pedido normal**. Quando as 10 unidades acabam, o cupom deixa de valer (o cliente é avisado) e só dá para fazer um pedido normal. O sistema cobra num gateway lento e instável e, se tudo der certo, o pedido aparece para os entregadores: **o primeiro que tocar em Aceitar leva**. O celular do entregador manda o **GPS real pelo navegador** e o **painel de gestão** mostra a moto andando até o cliente. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
+
+| As 3 interfaces | Quem usa | O que faz |
+|---|---|---|
+| **Gestão** (`/painel/`) | quem apresenta, no notebook e no telão | as **entregas ao vivo no mapa, com o GPS** dos entregadores, a lista de pedidos, o estoque da promoção, o **pedido manual** pelo mapa, o QR da plateia e os testes de falha do professor |
+| **Entregador** (`/entregador/`) | o entregador, no celular | fica Disponível, aceita um pedido e leva até o cliente; o celular envia o GPS |
+| **Pedidos** (`/cliente/`) | a plateia, pelo QR code | pede com o cupom (ou sem) e acompanha o pedido passo a passo |
 
 ![Containers (C4 nível 2)](docs/arquitetura/c4-containers.png)
 
@@ -35,10 +41,10 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 
 | O quê | Onde | Usuário / senha |
 |---|---|---|
-| Entrada (operador e entregador) | http://localhost:8080 | `admin` ou `entregador1`, senha `admin`: cada um vai para a sua tela |
-| Painel do operador | http://localhost:8080/painel/ | `admin` / `admin` |
+| Entrada (gestão e entregador) | http://localhost:8080 | `admin` ou `entregador1`, senha `admin`: cada um vai para a sua tela |
+| Painel de gestão | http://localhost:8080/painel/ | `admin` / `admin` |
 | Entregador (celular) | `/entregador/` | `entregador1` e `entregador2`, senha `admin` (duas contas: uma na tela da aula, outra no celular de um integrante) |
-| Cliente (plateia, pelo QR) | `/cliente/?codigo=promo` | sem usuário |
+| Pedidos (plateia, pelo QR) | `/cliente/?codigo=promo` | sem usuário; o cupom da promoção é `#promobcc` (`PROMOCAO_CUPOM` no `.env`) |
 | Grafana | http://localhost:3000 | abre direto (para editar: `admin` / `admin`) |
 
 ## 2. Ver funcionando
@@ -49,7 +55,7 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 
 Um cliente pede (com endereço), o entregador 2 aceita e "dirige" até o destino (o teste faz o papel do celular) e o pedido termina `ENTREGUE` (a rota fica no S3). No fim: **`SMOKE: PASSOU`**. Deixe o painel aberto para ver a moto 🛵 andar e rode com os celulares dos entregadores fechados.
 
-Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Quero um pedido!** e permita a localização: recebido → unidade reservada → pagando → procurando um entregador. Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparece o caminho dele por cada serviço (espere uns 20 s).
+Depois, abra `http://localhost:8080/cliente/?codigo=promo`, escreva o cupom **`#promobcc`** (ou deixe em branco para um pedido normal), toque no botão e permita a localização: recebido → unidade da promoção reservada → pagando → procurando um entregador. Depois das 10 unidades, o cupom deixa de valer e a tela avisa "Cupom inválido". Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparece o caminho dele por cada serviço (espere uns 20 s).
 
 ## 3. Celular do entregador (GPS real)
 
@@ -64,10 +70,10 @@ Ele mostra os links completos. No celular (use os dados móveis ou o Wi-Fi, tant
 1. Abra o link do **entregador** (`https://…trycloudflare.com/entregador/`) e entre com `entregador2` / `admin` (o `entregador1` fica na tela da aula). Se abrir só o endereço do túnel (sem o final), cai na tela de **Entrada**: entre com o mesmo usuário e você vai para a tela do entregador.
 2. Toque em **Disponível** e **permita a localização** quando o navegador perguntar.
 3. O cartão "GPS enviando" fica verde. No painel do notebook (abra o link do **painel**), o 🛵 aparece e anda com você.
-4. Em outro celular (ou outra aba), abra o link do **cliente** (`…/cliente/?codigo=promo`), toque em **Quero um pedido!** e permita a localização. No celular do entregador o pedido aparece na lista (aviso na tela, vibração e som): toque em **Aceitar**. O celular mostra o endereço do cliente no mapa e a distância; chegando a menos de 50 m, o pedido vira `ENTREGUE` sozinho (ou toque em **Confirmar entrega**).
+4. Em outro celular (ou outra aba), abra o link de **Pedidos** (`…/cliente/?codigo=promo`), escreva `#promobcc`, toque no botão e permita a localização. No celular do entregador o pedido aparece na lista (aviso na tela, vibração e som): toque em **Aceitar**. O celular mostra o endereço do cliente no mapa e a distância; chegando a menos de 50 m, o pedido vira `ENTREGUE` sozinho (ou toque em **Confirmar entrega**).
 5. Com os **dois entregadores** (`entregador1` e `entregador2`) Disponíveis, os dois veem o pedido: quem tocar primeiro em **Aceitar** leva, e o outro avisa que já foi aceito.
 
-**QR para a plateia:** na aba **QR da plateia** do painel, o QR leva quem o lê para a página do cliente. Com o painel aberto pelo link do túnel, ele já aponta para o endereço público (aberto por `localhost`, aparece um campo para colar o link do túnel). Use o **Modo telão** para mostrá-lo em tela cheia.
+**QR para a plateia:** na aba **QR** do painel de gestão, o QR leva quem o lê para a página de Pedidos. Com o painel aberto pelo link do túnel, ele já aponta para o endereço público (aberto por `localhost`, aparece um campo para colar o link do túnel). Use o **Modo telão** para mostrá-lo em tela cheia.
 
 Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador para o GPS quando a tela apaga). Se o GPS falhar, o plano B é `./demo.sh simular`: ele entra como o entregador 2, aceita o pedido que estiver esperando e "dirige" a rota do ensaio (feche a página do celular antes, para só uma fonte enviar o GPS).
 
@@ -83,7 +89,7 @@ Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador p
 ./demo.sh estado         # containers, filas, DLQs, pedidos, estoque e outbox
 ```
 
-Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora** no Grafana. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, rode `./demo.sh testes` (abre http://localhost:8099 no notebook). A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
+Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora** no Grafana. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, abra o painel de gestão por `http://localhost:8080/painel/` (no notebook) e vá na aba **Testes** (o `./demo.sh subir` já liga a tela de testes; `./demo.sh testes` abre a mesma tela em http://localhost:8099). A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
 
 | # | Cenário | O que o script faz | Resultado esperado |
 |---|---|---|---|
@@ -174,7 +180,7 @@ docker compose restart estoque              # reinicia um serviço
 contracts/        AsyncAPI e JSON Schemas das mensagens
 docs/             especificação, guia das telas, roteiro da apresentação e diagramas
 nginx/            API Gateway (entrada única, autenticação, rate limit)
-web/              painel do operador, página do entregador, página do cliente
+web/              painel de gestão, página do entregador, página de pedidos (cliente)
 services/java/    pedidos e estoque (+ commons) e o Dockerfile que constrói cada um (`SERVICO=nome`)
 services/ts/      auth, pagamento, gateway simulado, entregas, simulador (+ commons) e o Dockerfile deles; bônus: consultas e autoscaler
 infra/            Terraform (segredos, bucket, filas) e configuração do RabbitMQ

@@ -1,14 +1,15 @@
 sequenceDiagram
     autonumber
-    actor C as Cliente ou operador
+    actor C as Cliente ou gestão
     participant P as pedidos
     participant E as estoque
     participant PG as pagamento
     participant GW as gateway de pagamento
     participant ENT as entregas
     actor M as Entregador
-    C->>P: POST /api/pedidos (com o endereço)
+    C->>P: POST /api/pedidos (endereço e cupom)
     P-->>C: 202 Accepted + id
+    Note over P,E: com cupom: reserva uma das 10 unidades. Sem cupom (pedido normal): vai direto ao pagamento
     P--)E: estoque.reservar
     E--)P: estoque.reservado
     P--)PG: pagamento.cobrar

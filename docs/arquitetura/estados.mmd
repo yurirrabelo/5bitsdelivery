@@ -1,7 +1,8 @@
 stateDiagram-v2
     [*] --> RECEBIDO
-    RECEBIDO --> AGUARDANDO_PAGAMENTO: estoque.reservado
-    RECEBIDO --> ESGOTADO: estoque.esgotado
+    RECEBIDO --> AGUARDANDO_PAGAMENTO: estoque.reservado (com cupom)
+    RECEBIDO --> AGUARDANDO_PAGAMENTO: pedido normal (sem cupom)
+    RECEBIDO --> ESGOTADO: estoque.esgotado (o cupom deixa de valer)
     AGUARDANDO_PAGAMENTO --> CONFIRMADO: pagamento.aprovado no prazo
     AGUARDANDO_PAGAMENTO --> CANCELADO: pagamento.recusado ou prazo vencido
     CANCELADO --> ESTORNADO: aprovação atrasada estornada

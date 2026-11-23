@@ -11,7 +11,7 @@ async function main() {
     expiracaoHoras: envInt('JWT_EXPIRACAO_HORAS', 12),
     eventoCodigo: env('EVENTO_CODIGO'),
     usuarios: [
-      criarUsuario(env('OPERADOR_USUARIO'), 'Operador', 'operador', null, env('OPERADOR_SENHA')),
+      criarUsuario(env('OPERADOR_USUARIO'), 'Gestão', 'operador', null, env('OPERADOR_SENHA')), // o papel interno é "operador"; na tela aparece "Gestão"
       criarUsuario(env('ENTREGADOR1_USUARIO'), env('ENTREGADOR1_NOME'), 'entregador', 1, env('ENTREGADOR1_SENHA')),
       criarUsuario(env('ENTREGADOR2_USUARIO'), env('ENTREGADOR2_NOME'), 'entregador', 2, env('ENTREGADOR2_SENHA')),
     ],

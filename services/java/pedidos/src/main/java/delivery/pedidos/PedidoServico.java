@@ -29,11 +29,13 @@ public class PedidoServico {
     }
 
     /**
-     * Grava o pedido como RECEBIDO e deixa o comando estoque.reservar na outbox, na mesma transação.
+     * Grava o pedido como RECEBIDO, na mesma transação do comando que vem a seguir:
+     * - pedido com cupom (promoção): estoque.reservar, para usar uma das unidades da promoção;
+     * - pedido normal (sem cupom): não usa o estoque da promoção e vai direto para o pagamento.
      * O correlationId nasce aqui e acompanha todas as mensagens do pedido.
      */
     @Transactional
-    public long criar(String clienteId, boolean aplicarLimite, Destino destino, Integer entregadorPreferidoId) {
+    public long criar(String clienteId, boolean aplicarLimite, Destino destino, Integer entregadorPreferidoId, boolean promocao) {
         if (aplicarLimite) {
             repo.travarCliente(clienteId);
             if (repo.contarEmAndamento(clienteId) >= regras.limiteClienteEmAndamento) {
@@ -50,10 +52,28 @@ public class PedidoServico {
                 destino == null ? null : destino.lon(),
                 destino == null ? null : destino.endereco(),
                 entregadorPreferidoId,
+                promocao,
                 correlationId,
                 traceparent);
-        // o clienteId é opcional no contrato: o serviço consultas (CQRS) o usa para o cliente ver só os próprios pedidos
-        outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id, "clienteId", clienteId), traceparent);
+        if (promocao) {
+            // o clienteId é opcional no contrato: o serviço consultas (CQRS) o usa para o cliente ver só os próprios pedidos
+            outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id, "clienteId", clienteId), traceparent);
+        } else {
+            aguardarPagamento(id, correlationId, "pedido normal (sem cupom, não usa o estoque da promoção)", traceparent);
+        }
         return id;
+    }
+
+    /** RECEBIDO -> AGUARDANDO_PAGAMENTO: ganha o prazo e o pedidos manda cobrar. Quem chama: o estoque (reservou) e o pedido normal. */
+    public boolean aguardarPagamento(long id, UUID correlationId, String gatilho, String traceparent) {
+        boolean mudou = repo.transicionar(
+                id, "RECEBIDO", "AGUARDANDO_PAGAMENTO", null, gatilho, correlationId,
+                "prazo_pagamento = now() + make_interval(secs => " + regras.prazoPagamentoSeg + ")", null);
+        if (!mudou) return false;
+        Pedido p = repo.buscar(id).orElseThrow();
+        outbox.publicar(
+                "pagamento.cobrar", correlationId.toString(),
+                Map.of("pedidoId", id, "expiraEm", p.prazoPagamento().toString()), traceparent);
+        return true;
     }
 }

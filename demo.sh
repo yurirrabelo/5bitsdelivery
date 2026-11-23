@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Atalhos para tudo o que a demonstração precisa. No Windows, rode pelo Git Bash.
 #
-#   ./demo.sh subir        sobe o sistema inteiro e espera ficar pronto
+#   ./demo.sh subir        sobe o sistema inteiro, liga a aba Testes do painel de gestão e espera ficar pronto
 #   ./demo.sh link         liga o túnel HTTPS e mostra os links para o celular (obrigatório para o GPS do celular)
 #   ./demo.sh reset [N]    repõe as unidades da promoção (padrão: o valor do .env)
 #   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga os pedidos e as entregas de teste, repõe as unidades e libera os entregadores
@@ -9,7 +9,7 @@
 #   ./demo.sh unitarios    testes do código das bibliotecas e serviços, em containers (~3 min)
 #   ./demo.sh simular [1|2] [km/h]   plano B do GPS: aceita o pedido que está esperando e reproduz a rota do ensaio (padrão: entregador 2)
 #   ./demo.sh falha [N]    cenário de falha do professor: 1 a 8 (ou 6b), ou "todas"; sem número, mostra a lista e pergunta
-#   ./demo.sh testes       abre a tela com botões para acionar esses cenários (só neste notebook: http://localhost:8099)
+#   ./demo.sh testes       liga (se preciso) e abre a tela de testes: os mesmos botões da aba Testes do painel de gestão (http://localhost:8099)
 #   ./demo.sh estado       containers, filas, pedidos, estoque e segredos
 #   ./demo.sh parar        para tudo e guarda os dados
 #   ./demo.sh apagar       para tudo e apaga os dados (recomeço do zero)
@@ -21,6 +21,25 @@ export MSYS_NO_PATHCONV=1
 var() { grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'; }
 
 uso() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+achar_python() { # no Windows, "python3" pode ser só o atalho da Loja: confere se roda de verdade
+  PY=""
+  for c in python3 python py; do
+    if "$c" -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" >/dev/null 2>&1; then PY="$c"; return 0; fi
+  done
+  return 1
+}
+
+# A aba Testes do painel de gestão fala com uma tela local (scripts/testes), que roda os cenários de falha. Liga em segundo
+# plano; sem Python, a aba avisa como ligar. Ela só atende páginas de localhost: o painel aberto pelo link público não a alcança.
+TESTES_URL=http://localhost:8099
+testes_ligada() { curl -s -o /dev/null --max-time 2 "$TESTES_URL/api/cenarios"; }
+iniciar_testes() {
+  testes_ligada && return 0
+  achar_python || return 0
+  TESTES_ABRIR=0 nohup "$PY" scripts/testes/servidor.py >/dev/null 2>&1 &
+}
+parar_testes() { curl -s -o /dev/null --max-time 2 -X POST -H 'Content-Type: application/json' "$TESTES_URL/api/encerrar"; }
 
 menu_falhas() {
   cat <<'MENU'
@@ -62,11 +81,12 @@ case "${1:-}" in
     echo
     echo "Pronto."
     echo "  Entrada:             http://localhost:$P            (admin ou entregador1, senha admin)"
-    echo "  Painel do operador:  http://localhost:$P/painel/"
-    echo "  Cliente (QR):        http://localhost:$P/cliente/?codigo=$(var EVENTO_CODIGO)"
+    echo "  Painel de gestão:    http://localhost:$P/painel/"
+    echo "  Pedidos (QR):        http://localhost:$P/cliente/?codigo=$(var EVENTO_CODIGO)"
     echo "  Grafana:             http://localhost:3000"
     echo "Para usar o celular como entregador (GPS real): ./demo.sh link"
-    echo "Para acionar os testes de falha do professor, com botões: ./demo.sh testes"
+    iniciar_testes
+    echo "Testes de falha do professor: aba Testes do painel de gestão (abra por http://localhost:$P/painel/)"
     ;;
   link)
     docker compose --profile tunnel up -d cloudflared || exit 1
@@ -74,9 +94,9 @@ case "${1:-}" in
     URL=$(./scripts/tunnel-url.sh) || exit 1
     echo
     echo "Entrada (qualquer um entra e vai para a sua tela):  $URL/"
-    echo "Abra no navegador do notebook:   $URL/painel/                    (admin / admin)"
-    echo "Abra no navegador do celular:    $URL/entregador/                (entregador1 / admin)"
-    echo "QR da plateia (cliente):         $URL/cliente/?codigo=$(var EVENTO_CODIGO)"
+    echo "Painel de gestão (notebook):     $URL/painel/                    (admin / admin)"
+    echo "Entregador (celular):            $URL/entregador/                (entregador1 / admin)"
+    echo "Pedidos (QR da plateia):         $URL/cliente/?codigo=$(var EVENTO_CODIGO)"
     echo
     echo "Não reinicie o túnel depois: a URL muda a cada reinício."
     ;;
@@ -111,15 +131,16 @@ case "${1:-}" in
     esac
     ;;
   testes)
-    PY=""
-    for c in python3 python py; do # no Windows, "python3" pode ser só o atalho da Loja: confere se roda de verdade
-      if "$c" -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" >/dev/null 2>&1; then PY="$c"; break; fi
-    done
-    [ -n "$PY" ] || { echo "A tela de testes precisa do Python 3. Sem ele, use: ./demo.sh falha N"; exit 1; }
-    exec "$PY" scripts/testes/servidor.py ;;
+    achar_python || { echo "A tela de testes precisa do Python 3. Sem ele, use: ./demo.sh falha N"; exit 1; }
+    if testes_ligada; then
+      echo "A tela de testes já está ligada: $TESTES_URL (os mesmos botões estão na aba Testes do painel de gestão)."
+      "$PY" -c "import webbrowser; webbrowser.open('$TESTES_URL')"
+    else
+      exec "$PY" scripts/testes/servidor.py
+    fi ;;
   estado) ./scripts/estado.sh ;;
-  parar) docker compose --profile '*' down ;;
-  apagar) docker compose --profile '*' down -v ;;
+  parar) parar_testes; docker compose --profile '*' down ;;
+  apagar) parar_testes; docker compose --profile '*' down -v ;;
   -h|--help|help) uso 0 ;;
   *) uso 2 ;;
 esac
