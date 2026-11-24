@@ -89,9 +89,12 @@ case "${1:-}" in
     echo "Testes de falha do professor: botão \"Testes de falha\" do painel de gestão (abra por http://localhost:$P/painel/) ou $TESTES_URL"
     ;;
   link)
+    # se o túnel estava parado, o log ainda tem a URL da vez anterior: ela não vale mais e não pode ser mostrada
+    VELHA=""
+    [ -n "$(docker compose ps --status running -q cloudflared 2>/dev/null)" ] || VELHA=$(docker compose logs cloudflared 2>/dev/null | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true)
     docker compose --profile tunnel up -d cloudflared || exit 1
     echo "Esperando o túnel..."
-    URL=$(./scripts/tunnel-url.sh) || exit 1
+    URL=$(./scripts/tunnel-url.sh "$VELHA") || exit 1
     echo
     echo "Entrada (qualquer um entra e vai para a sua tela):  $URL/"
     echo "Painel de gestão (notebook):     $URL/painel/                    (admin / admin)"
