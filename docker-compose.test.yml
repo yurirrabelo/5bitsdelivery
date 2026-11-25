@@ -25,7 +25,8 @@ services:
       RABBITMQ_DEFAULT_USER: teste
       RABBITMQ_DEFAULT_PASS: teste
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # como usuário do RabbitMQ (su-exec): como root, uma sonda que chegasse antes do servidor derrubaria a primeira subida
+      test: ["CMD", "su-exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 3s
       timeout: 10s
       retries: 30

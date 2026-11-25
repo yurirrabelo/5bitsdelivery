@@ -341,7 +341,9 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # A sonda roda como o usuário do RabbitMQ (su-exec). Como root, se ela chegasse antes do servidor (partida lenta na
+      # primeira subida), criaria o cookie do Erlang com dono root e o servidor cairia sem conseguir lê-lo.
+      test: ["CMD", "su-exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 10s
       retries: 20

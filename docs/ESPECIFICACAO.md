@@ -414,7 +414,7 @@ Bucket `${S3_BUCKET_ROTAS}`: ao concluir uma entrega, o serviço de entregas gra
 
 ### 7.4 Ordem de subida
 
-- `pg-*`, `redis` e `rabbitmq` têm healthcheck (`pg_isready`, `redis-cli ping`, `rabbitmq-diagnostics -q ping`).
+- `pg-*`, `redis` e `rabbitmq` têm healthcheck (`pg_isready`, `redis-cli ping`, `rabbitmq-diagnostics -q ping`). A sonda do `rabbitmq` roda como o usuário do RabbitMQ (`su-exec rabbitmq …`): como root, se chegasse antes do servidor na primeira subida, criaria o cookie do Erlang com dono root e o servidor cairia sem conseguir lê-lo.
 - Os serviços dependem do próprio banco (`service_healthy`), do `rabbitmq` e do `infra` (`service_completed_successfully`).
 - Mesmo assim, todo serviço reconecta sozinho (5.6). Resiliência importa mais que ordem de boot.
 - Todo serviço expõe `GET /health` e tem healthcheck no compose.
