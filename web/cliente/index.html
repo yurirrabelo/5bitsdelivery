@@ -20,12 +20,12 @@
     </header>
 
     <main>
-      <!-- a promoção: sempre à vista -->
+      <!-- o item: sempre à vista -->
       <section class="hero">
-        <p class="selo">⚡ Promoção relâmpago</p>
-        <h1 id="promo">Poucas unidades. Peça agora.</h1>
+        <p class="selo">Peça agora</p>
+        <h1 id="item">Item</h1>
         <div id="restam" class="restam oculto">
-          <p>Com o cupom, restam <b id="restam-n">–</b> de <span id="restam-total">–</span></p>
+          <p>Restam <b id="restam-n">–</b> de <span id="restam-total">–</span></p>
           <div class="barra"><div id="restam-barra"></div></div>
         </div>
       </section>
@@ -48,12 +48,8 @@
       <!-- 2. pedir -->
       <section id="pedir" class="cartao oculto">
         <p class="ola">Olá, <b id="nome"></b>! <button class="link" id="trocar">não sou eu</button></p>
-        <!-- o cupom da promoção (opcional): com ele o pedido usa uma das unidades; sem ele, é um pedido normal -->
         <form id="form-pedido" autocomplete="off">
-          <label for="cupom">Cupom da promoção <span class="opc">(opcional)</span></label>
-          <input id="cupom" placeholder="#cupom" maxlength="30" autocapitalize="off" autocorrect="off" spellcheck="false">
-          <p class="dica" id="dica-cupom">Escreva o cupom para usar uma das unidades da promoção. Sem cupom, o pedido é normal.</p>
-          <button id="btn-pedir" type="submit" class="gigante">Fazer pedido normal</button>
+          <button id="btn-pedir" type="submit" class="gigante">Pedir item</button>
         </form>
         <p class="dica">Entregamos onde você está: o navegador vai pedir para usar a sua localização, é só tocar em <b>Permitir</b>. Você acompanha cada passo do pedido aqui mesmo.</p>
         <button class="link" id="btn-outro-lugar">📍 Quero receber em outro endereço (escolher no mapa)</button>
@@ -79,8 +75,6 @@
         <ol class="linha-do-tempo" id="passos"></ol>
         <p id="resultado" class="resultado"></p>
         <button id="de-novo" class="grande oculto">Pedir de novo</button>
-        <!-- o cupom não valeu (a promoção acabou): o caminho agora é o pedido normal, no mesmo endereço -->
-        <button id="pedido-normal" class="grande oculto">Fazer um pedido normal</button>
         <!-- enquanto o pedido não termina (por exemplo, esperando um entregador), dá para fazer outro, em outro endereço -->
         <button class="link" id="outro-pedido">Fazer outro pedido, em outro endereço</button>
       </section>

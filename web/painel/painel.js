@@ -1,5 +1,5 @@
 // Painel de gestão: a central da loja. Acompanha ao vivo as entregas (o GPS dos entregadores no mapa), os pedidos dos
-// clientes e o estoque da promoção, mostra o QR para a plateia pedir e deixa fazer um pedido manualmente pelo mapa.
+// clientes e o estoque do item, mostra o QR para a plateia pedir e deixa fazer um pedido manualmente pelo mapa.
 // Todo texto vindo do servidor entra na tela por textContent ou escapado (Auth.escapar).
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -17,7 +17,7 @@
   else {
     $('login').classList.remove('oculto');
     Auth.montarLogin($('login'), ['operador'], mostrarApp, {
-      icone: '🎛️', titulo: 'Painel de gestão', subtitulo: 'Acompanhe as entregas, os pedidos e a promoção ao vivo.',
+      icone: '🎛️', titulo: 'Painel de gestão', subtitulo: 'Acompanhe as entregas, os pedidos e o estoque ao vivo.',
       botao: 'Entrar no painel', rotuloUsuario: 'Usuário da gestão',
     });
   }
@@ -34,10 +34,12 @@
   let ws, wsTentativas = 0;
 
   async function iniciar() {
-    $('grafana').href = 'http://localhost:3000'; // o Grafana só abre no notebook, mesmo com o painel aberto pelo túnel
+    // o link do Grafana é o do notebook: com o painel aberto pelo link público ele não aparece (o Grafana público tem outro endereço)
+    $('grafana').href = 'http://localhost:3000';
+    if (!/^(localhost|127\.|\[::1\])/.test(location.hostname)) $('grafana').classList.add('oculto');
 
     const cfg = await (await Auth.api('/api/pedidos/config')).json();
-    $('promo-nome').textContent = cfg.promocao.nome;
+    $('item-nome').textContent = cfg.item.nome;
 
     mapa = L.map('mapa').setView([cfg.origem.lat, cfg.origem.lon], 15);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -108,7 +110,7 @@
     $('criar-ok').textContent = '';
     if (!destinoEscolhido) return;
     $('criar').disabled = true;
-    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng }, promocao: $('tipo-pedido').value === 'promocao' };
+    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng } };
     const pref = $('entregador').value;
     if (pref) corpo.entregadorPreferidoId = Number(pref);
     try {
@@ -169,9 +171,7 @@
     // telão: só o número e a situação de cada pedido, nunca o apelido de quem pediu
     tbody.innerHTML = lista.slice(0, 15).map((p) => {
       const [texto, classe] = situacao(p);
-      // 🎟️ = o pedido usou o cupom da promoção (uma das unidades do estoque)
-      const cupom = p.promocao === false ? '' : ' <span title="usou o cupom da promoção">🎟️</span>';
-      return '<tr><td>#' + Auth.escapar(p.id) + cupom + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
+      return '<tr><td>#' + Auth.escapar(p.id) + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
         '</span></td><td>' + Auth.escapar(nomeDoEntregador(p.entregadorId)) + '</td></tr>';
     }).join('') || '<tr><td colspan="3" class="vazio">Nenhum pedido ainda.</td></tr>';
 
@@ -304,31 +304,10 @@
   }
 
   // ---------------------------------------------------------------- testes de falha do professor
-  // Os testes derrubam serviços de verdade, então ficam numa tela própria, em tela cheia, que roda só neste notebook
-  // (./demo.sh testes; o ./demo.sh subir já liga) e só atende páginas de localhost. O botão do topo a abre numa janela nova,
-  // e só existe com o painel aberto por localhost: pelo link público (que a plateia também enxerga) ele nem aparece.
-  // Se a tela de testes estiver desligada, o botão fica apagado e avisa como ligar.
-  const TESTES_URL = 'http://localhost:8099/';
+  // Os testes derrubam serviços de verdade, então a tela deles roda só neste notebook (./demo.sh testes; o ./demo.sh subir já
+  // liga). O botão só aparece com o painel aberto por localhost: pelo link público (que a plateia também enxerga) ele não aparece.
   function configurarTestes() {
-    const botao = $('testes');
-    if (!/^(localhost|127\.|\[::1\])/.test(location.hostname)) { botao.classList.add('oculto'); return; }
-    const dica = botao.querySelector('small');
-    const textoDica = dica.textContent;
-    const sondar = async () => {
-      let ligada = false;
-      try { ligada = (await fetch(TESTES_URL + 'api/cenarios')).ok; } catch (e) { /* desligada */ }
-      botao.classList.toggle('apagado', !ligada);
-      botao.dataset.ligada = ligada ? '1' : '';
-      dica.textContent = ligada ? textoDica : 'Desligada. No terminal: ./demo.sh testes';
-    };
-    botao.addEventListener('click', (ev) => {
-      if (botao.dataset.ligada) return; // o próprio link abre a tela de testes numa janela nova
-      ev.preventDefault();
-      dica.textContent = 'Rode ./demo.sh testes no terminal e tente de novo';
-      setTimeout(sondar, 4000);
-    });
-    sondar();
-    setInterval(sondar, 10000);
+    if (!/^(localhost|127\.|\[::1\])/.test(location.hostname)) $('testes').classList.add('oculto');
   }
 
   // ---------------------------------------------------------------- QR code

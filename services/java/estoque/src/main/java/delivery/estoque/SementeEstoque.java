@@ -6,8 +6,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Dados iniciais: o produto 1 é a promoção, com PROMOCAO_QUANTIDADE unidades. Criado só se não existir
- * (reiniciar o serviço não repõe o estoque). Roda antes de o consumidor começar a receber mensagens.
+ * Dados iniciais: o produto 1 é o item que o cliente pede, com ITEM_QUANTIDADE unidades. Criado só se não existir
+ * (reiniciar o serviço não repõe o estoque; só o nome é atualizado). Roda antes de o consumidor começar a receber mensagens.
  */
 @Component
 public class SementeEstoque implements InitializingBean {
@@ -19,8 +19,8 @@ public class SementeEstoque implements InitializingBean {
 
     public SementeEstoque(
             JdbcTemplate jdbc,
-            @Value("${PROMOCAO_NOME:Promoção relâmpago}") String nome,
-            @Value("${PROMOCAO_QUANTIDADE:10}") int quantidade) {
+            @Value("${ITEM_NOME:Item}") String nome,
+            @Value("${ITEM_QUANTIDADE:10}") int quantidade) {
         this.jdbc = jdbc;
         this.nome = nome;
         this.quantidade = quantidade;
@@ -29,7 +29,8 @@ public class SementeEstoque implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         jdbc.update(
-                "INSERT INTO estoque (produto_id, nome, total, disponivel) VALUES (?, ?, ?, ?) ON CONFLICT (produto_id) DO NOTHING",
+                "INSERT INTO estoque (produto_id, nome, total, disponivel) VALUES (?, ?, ?, ?) "
+                        + "ON CONFLICT (produto_id) DO UPDATE SET nome = EXCLUDED.nome",
                 PRODUTO, nome, quantidade, quantidade);
     }
 }

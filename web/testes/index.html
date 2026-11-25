@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Testes de falha</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 16px; line-height: 1.4; }
+    section { border-top: 2px solid #ccc; margin-top: 18px; padding-top: 6px; }
+    button { font-size: 1rem; padding: 6px 14px; }
+    pre { display: none; background: #111; color: #ddd; padding: 10px; white-space: pre-wrap; max-height: 320px; overflow: auto; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>Testes de falha</h1>
+  <p id="aviso" style="display:none"><b>Só leitura.</b> Os botões só funcionam no notebook, em <code>http://localhost:8099</code>: os testes derrubam serviços de verdade.</p>
+  <p>Cada botão provoca uma falha de verdade no sistema e mostra o que aconteceu, no fim com PASSOU ou FALHOU.
+     Rode um de cada vez (leva até uns 3 minutos). Cada teste começa com o banco zerado e, ao terminar, devolve tudo ao normal.</p>
+
+  <section>
+    <h2>F1 · Compensação</h2>
+    <p><button onclick="acionar('1')">Acionar teste falha 1</button></p>
+    <p><b>Como o erro é provocado:</b> o gateway de pagamento (a operadora simulada) é recriado com <code>GATEWAY_TAXA_FALHA=100</code>: toda cobrança dá erro.</p>
+    <p><b>Onde o erro acontece:</b> no gateway de pagamento, quando o serviço de pagamento tenta cobrar.</p>
+    <p><b>O que acontece:</b> o estoque reserva 1 unidade, o pagamento tenta cobrar e o gateway falha, o pagamento avisa "recusado", o pedidos cancela o pedido e o estoque devolve a unidade.</p>
+    <p><b>Resultado esperado:</b> pedido CANCELADO (pagamento recusado), unidade devolvida (10 de 10) e pagamento RECUSADO no banco.</p>
+    <p><b>Tente novamente:</b> faça um pedido durante a falha: o cliente vê "Pagamento recusado. Cancelamos o pedido e devolvemos a unidade."</p>
+    <pre id="saida-1"></pre>
+  </section>
+
+  <section>
+    <h2>F2 · Serviço morre no meio</h2>
+    <p><button onclick="acionar('2')">Acionar teste falha 2</button></p>
+    <p><b>Como o erro é provocado:</b> o gateway fica lento (<code>GATEWAY_LATENCIA_MS=8000</code>) para dar tempo. O teste descobre, pelo log, qual cópia do pagamento pegou a mensagem e dá <code>docker kill</code> nela.</p>
+    <p><b>Onde o erro acontece:</b> no serviço de pagamento: uma das duas cópias morre no meio da cobrança, antes de confirmar a mensagem.</p>
+    <p><b>O que acontece:</b> a mensagem não foi confirmada, então o RabbitMQ entrega de novo à outra cópia. Ela chama o gateway com a mesma chave (o número do pedido) e o gateway cobra uma vez só.</p>
+    <p><b>Resultado esperado:</b> pedido CONFIRMADO, 1 pagamento gravado e 1 cobrança real no gateway (2 chamadas com a mesma chave).</p>
+    <p><b>Tente novamente:</b> faça um pedido logo depois: confirma normalmente (a cópia que morreu volta sozinha).</p>
+    <pre id="saida-2"></pre>
+  </section>
+
+  <section>
+    <h2>F3 · Mensagem duplicada</h2>
+    <p><button onclick="acionar('3')">Acionar teste falha 3</button></p>
+    <p><b>Como o erro é provocado:</b> o teste publica a mesma mensagem <code>estoque.reservar</code> (mesmo messageId) 5 vezes direto no RabbitMQ.</p>
+    <p><b>Onde o erro acontece:</b> na fila do estoque: a mensagem chega repetida. Quem se protege é o próprio estoque, com a caixa de entrada (tabela <code>mensagens_processadas</code>).</p>
+    <p><b>O que acontece:</b> a primeira reserva 1 unidade e anota o messageId na mesma transação. As outras 4 encontram o messageId já anotado e são descartadas.</p>
+    <p><b>Resultado esperado:</b> 1 reserva, 1 unidade consumida e 4 mensagens descartadas (aparece "mensagem duplicada descartada" no log).</p>
+    <p><b>Tente novamente:</b> faça um pedido: o estoque desce de 1 em 1, sem efeito duplicado.</p>
+    <pre id="saida-3"></pre>
+  </section>
+
+  <section>
+    <h2>F4 · Mensagem venenosa</h2>
+    <p><button onclick="acionar('4')">Acionar teste falha 4</button></p>
+    <p><b>Como o erro é provocado:</b> o teste publica no RabbitMQ uma mensagem <code>estoque.reservar</code> inválida (<code>pedidoId</code> = "isto-nao-e-um-numero") e, ao mesmo tempo, cria 3 pedidos normais.</p>
+    <p><b>Onde o erro acontece:</b> no estoque, ao conferir a mensagem com o contrato (JSON Schema): ela é recusada.</p>
+    <p><b>O que acontece:</b> a mensagem volta para a fila 3 vezes (<code>MAX_TENTATIVAS=3</code>) e depois vai para a fila de quarentena (DLQ) <code>estoque.entrada.dlq</code>. Os 3 pedidos seguem normalmente.</p>
+    <p><b>Resultado esperado:</b> 1 mensagem na DLQ, 3 tentativas no log do estoque, 3 pedidos CONFIRMADOS e a fila principal vazia.</p>
+    <p><b>Tente novamente:</b> faça um pedido: confirma normalmente, a mensagem ruim não trava ninguém.</p>
+    <pre id="saida-4"></pre>
+  </section>
+
+  <section>
+    <h2>F5 · Corrida pelo recurso</h2>
+    <p><button onclick="acionar('5')">Acionar teste falha 5</button></p>
+    <p><b>Como o erro é provocado:</b> o k6 (ferramenta de carga) cria 100 clientes, cada um com a própria sessão, e todos pedem ao mesmo tempo um item que só tem 10 unidades.</p>
+    <p><b>Onde o erro acontece:</b> no estoque: os 100 pedidos disputam a mesma linha do banco.</p>
+    <p><b>O que acontece:</b> cada reserva é um <code>UPDATE ... WHERE disponivel &gt; 0</code>. O banco atende um de cada vez: 10 conseguem e 90 recebem "esgotado".</p>
+    <p><b>Resultado esperado:</b> 10 pedidos CONFIRMADOS, 90 ESGOTADOS e estoque em 0, nunca negativo.</p>
+    <p><b>Tente novamente:</b> com o estoque zerado, o cliente vê "Item esgotado". (Ao terminar, o teste repõe as 10 unidades.)</p>
+    <pre id="saida-5"></pre>
+  </section>
+
+  <section>
+    <h2>F6 · Broker fora do ar</h2>
+    <p><button onclick="acionar('6')">Acionar teste falha 6</button></p>
+    <p><b>Como o erro é provocado:</b> com pedidos chegando sem parar (60 por minuto), o teste para o RabbitMQ por 30 s (<code>docker compose stop rabbitmq</code>) e liga de novo.</p>
+    <p><b>Onde o erro acontece:</b> no RabbitMQ (a mensageria): pedidos, estoque e pagamento não conseguem enviar nem receber mensagens.</p>
+    <p><b>O que acontece:</b> a API continua aceitando pedidos. As mensagens esperam na tabela <code>outbox</code> de cada serviço. Quando o RabbitMQ volta, os serviços reconectam sozinhos (sem reiniciar) e a outbox esvazia.</p>
+    <p><b>Resultado esperado:</b> nenhum erro da API, a outbox cresce durante a queda e volta a 0, nenhum serviço reiniciou e nenhum pedido ficou parado.</p>
+    <p><b>Tente novamente:</b> faça um pedido durante a queda: o número do pedido sai na hora, e ele só avança quando o RabbitMQ volta.</p>
+    <pre id="saida-6"></pre>
+  </section>
+
+  <section>
+    <h2>F6b · Nuvem (MiniStack) fora do ar</h2>
+    <p><button onclick="acionar('6b')">Acionar teste falha 6b</button></p>
+    <p><b>Como o erro é provocado:</b> o teste para o MiniStack (<code>docker compose stop ministack</code>: o S3 e o Secrets Manager emulados) antes de uma entrega.</p>
+    <p><b>Onde o erro acontece:</b> no MiniStack, na hora em que o serviço de entregas exporta a rota para o S3.</p>
+    <p><b>O que acontece:</b> o pedido é entregue normalmente (os segredos já tinham sido lidos). A rota fica pendente e o serviço tenta de novo a cada 10 s. Quando o MiniStack volta, a rota sobe para o S3.</p>
+    <p><b>Resultado esperado:</b> pedido ENTREGUE, rota pendente enquanto o S3 está fora, e depois o arquivo <code>rotas/pedido-N.geojson</code> no S3. Os 6 segredos continuam lá.</p>
+    <p><b>Tente novamente:</b> faça um pedido e deixe um entregador aceitar: a entrega termina mesmo com a nuvem fora.</p>
+    <pre id="saida-6b"></pre>
+  </section>
+
+  <section>
+    <h2>F7 · Resposta tardia</h2>
+    <p><button onclick="acionar('7')">Acionar teste falha 7</button></p>
+    <p><b>Como o erro é provocado:</b> o gateway fica mais lento que o prazo de pagamento: <code>GATEWAY_LATENCIA_MS=20000</code> (20 s) e o prazo é de 15 s (<code>PRAZO_PAGAMENTO_SEG</code>).</p>
+    <p><b>Onde o erro acontece:</b> no gateway de pagamento: ele aprova depois que o pedido já foi cancelado.</p>
+    <p><b>O que acontece:</b> aos 15 s o pedidos cancela (prazo expirado) e o estoque devolve a unidade. Aos 20 s chega a aprovação atrasada: o pedidos vê o pedido CANCELADO e manda estornar, e o pagamento estorna no gateway.</p>
+    <p><b>Resultado esperado:</b> CANCELADO no prazo, depois ESTORNADO, com 1 estorno no gateway e a unidade devolvida.</p>
+    <p><b>Tente novamente:</b> faça um pedido durante a lentidão: depois de 15 s o cliente vê "O pagamento demorou demais. Cancelamos o pedido e devolvemos a unidade."</p>
+    <pre id="saida-7"></pre>
+  </section>
+
+  <section>
+    <h2>F8 · Escala horizontal</h2>
+    <p><button onclick="acionar('8')">Acionar teste falha 8</button></p>
+    <p><b>Como o erro é provocado:</b> o teste sobe 3 cópias do pagamento (<code>docker compose up --scale pagamento=3</code>), deixa o gateway com 1 s por cobrança e manda 120 pedidos por minuto durante 45 s.</p>
+    <p><b>Onde o erro acontece:</b> não há erro, é a escala: as 3 cópias leem a mesma fila (<code>pagamento.entrada</code>) ao mesmo tempo.</p>
+    <p><b>O que acontece:</b> o RabbitMQ entrega cada mensagem a uma só cópia, então a carga se divide. Cada pagamento é gravado uma vez e o gateway cobra uma vez por pedido.</p>
+    <p><b>Resultado esperado:</b> as 3 cópias processam pedidos, a soma bate com os pedidos CONFIRMADOS e não há pagamento duplicado.</p>
+    <p><b>Tente novamente:</b> faça vários pedidos seguidos: todos confirmam, e cada cópia pega uma parte.</p>
+    <pre id="saida-8"></pre>
+  </section>
+
+  <script>
+    // só a página servida pelo servidor local do notebook (porta 8099) roda os testes; em qualquer outro endereço é só leitura
+    if (location.port !== '8099') {
+      document.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      document.getElementById('aviso').style.display = 'block';
+    }
+
+    let rodando = false;
+
+    async function acionar(id) {
+      if (rodando) return alert('Já tem um teste rodando. Espere ele terminar.');
+      rodando = true;
+      const saida = document.getElementById('saida-' + id);
+      saida.style.display = 'block';
+      saida.textContent = 'Rodando...\n';
+      try {
+        const resposta = await fetch('/executar/' + id, { method: 'POST', headers: { 'X-Teste': 'sim' } });
+        if (!resposta.ok) throw new Error('erro ' + resposta.status);
+        const leitor = resposta.body.getReader();
+        const texto = new TextDecoder();
+        for (;;) {
+          const { done, value } = await leitor.read();
+          if (done) break;
+          saida.textContent += texto.decode(value, { stream: true });
+          saida.scrollTop = saida.scrollHeight;
+        }
+        saida.textContent += '\n(fim)';
+      } catch (e) {
+        saida.textContent += 'Não consegui rodar o teste: ' + e.message;
+      }
+      rodando = false;
+    }
+  </script>
+</body>
+</html>

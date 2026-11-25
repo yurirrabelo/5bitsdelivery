@@ -17,11 +17,11 @@
       <a class="marca" href="/painel/"><img src="/comum/logo.svg" alt=""><span><span class="bits">5Bits</span> Delivery</span></a>
       <span class="papel">Painel de gestão</span>
 
-      <div class="promo-info">
-        <span class="rotulo-topo">Promoção</span>
-        <b id="promo-nome">…</b>
+      <div class="item-info">
+        <span class="rotulo-topo">Item</span>
+        <b id="item-nome">…</b>
       </div>
-      <div class="estoque" id="estoque" aria-label="Estoque da promoção"></div>
+      <div class="estoque" id="estoque" aria-label="Estoque do item"></div>
 
       <div class="acoes">
         <button class="secundario" id="telao" title="Mostra só o mapa, os pedidos e o QR, em letras grandes, para o telão">📺 Modo telão</button>
@@ -42,12 +42,12 @@
       </section>
 
       <aside class="lateral">
-        <p class="resumo so-operador">Aqui você <b>acompanha as entregas ao vivo, com o GPS dos entregadores</b>, vê os pedidos e o estoque da promoção e pode <b>fazer um pedido manualmente</b>.</p>
+        <p class="resumo so-operador">Aqui você <b>acompanha as entregas ao vivo, com o GPS dos entregadores</b>, vê os pedidos e o estoque do item e pode <b>fazer um pedido manualmente</b>.</p>
 
-        <!-- os testes de falha do professor abrem em tela cheia, numa janela própria (só no notebook: ver painel.js) -->
+        <!-- a tela dos testes de falha do professor abre numa janela própria (só no notebook: ver painel.js) -->
         <a id="testes" class="botao-testes so-operador" href="http://localhost:8099/" target="_blank" rel="noopener">
           <b>🧪 Testes de falha ↗</b>
-          <small>Abre em tela cheia os testes que o professor pede</small>
+          <small>Abre a tela dos testes que o professor pede</small>
         </a>
 
         <nav class="abas so-operador" role="tablist" aria-label="O que mostrar">
@@ -71,17 +71,11 @@
 
             <div id="form-criar" class="form-criar so-operador oculto">
               <p class="dica" id="destino-info">1. Clique no mapa onde o pedido deve chegar.</p>
-              <label>2. Tipo do pedido
-                <select id="tipo-pedido">
-                  <option value="normal">Pedido normal (sem cupom)</option>
-                  <option value="promocao">Com o cupom da promoção (usa 1 das unidades)</option>
-                </select>
-              </label>
-              <label>3. Para quem (opcional)
+              <label>2. Para quem (opcional)
                 <select id="entregador"><option value="">Qualquer entregador</option></select>
               </label>
               <div class="linha-botoes">
-                <button id="criar" disabled>4. Criar pedido</button>
+                <button id="criar" disabled>3. Criar pedido</button>
                 <button class="secundario" id="cancelar-criar">Fechar</button>
               </div>
               <p class="ok" id="criar-ok" role="status"></p>

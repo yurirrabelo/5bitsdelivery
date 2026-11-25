@@ -1,24 +1,9 @@
 apiVersion: 1
 
-# Substitui o arquivo da imagem: mantém os painéis originais e acrescenta "Apresentação" e "Detalhes técnicos"
+# Substitui o arquivo da imagem: só o nosso painel. A imagem traz outros três (JVM e RED) que só confundem.
 providers:
   - name: "Delivery"
     type: file
     options:
       path: /dashboards
-      foldersFromFilesStructure: false
-  - name: "RED Metrics (classic histogram)"
-    type: file
-    options:
-      path: /otel-lgtm/grafana-dashboard-red-metrics-classic.json
-      foldersFromFilesStructure: false
-  - name: "RED Metrics (exponential/native histogram)"
-    type: file
-    options:
-      path: /otel-lgtm/grafana-dashboard-red-metrics-native.json
-      foldersFromFilesStructure: false
-  - name: "JVM Metrics"
-    type: file
-    options:
-      path: /otel-lgtm/grafana-dashboard-jvm-metrics.json
       foldersFromFilesStructure: false

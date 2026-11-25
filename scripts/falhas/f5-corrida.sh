@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# F5: 100 clientes pedem ao mesmo tempo as 10 unidades da promoção (k6). Nenhuma unidade é vendida duas vezes:
+# F5: 100 clientes pedem ao mesmo tempo as 10 unidades do item (k6). Nenhuma unidade é vendida duas vezes:
 # exatamente 10 CONFIRMADO e 90 ESGOTADO, com a invariante do estoque intacta.
 source "$(dirname "$0")/lib.sh"
 trap 'repor_estoque; restaurar' EXIT
 
-QTD=$(var PROMOCAO_QUANTIDADE)
+QTD=$(var ITEM_QUANTIDADE)
 CLIENTES=100
 titulo "F5 - corrida pelo recurso escasso" "${CLIENTES} clientes simultâneos para ${QTD} unidades: ${QTD} CONFIRMADO e $((CLIENTES - QTD)) ESGOTADO"
 login_operador
@@ -30,4 +30,4 @@ verificar "reservas ativas (sem venda dupla)" "$QTD" "$(sql estoque "SELECT coun
 inv=$(sql estoque "SELECT (disponivel + reservado + vendido = total AND disponivel >= 0)::text FROM estoque WHERE produto_id = 1")
 verificar "invariante: disponivel + reservado + vendido = total e disponivel >= 0" true "$inv"
 
-finalizar F5 "Grafana → Apresentação: \"Unidades restantes\" zerou e \"Sem sucesso\" subiu. Escolha um 😕 Esgotado: a arquitetura do pedido mostra o Estoque em vermelho."
+finalizar F5 "Grafana: \"Unidades restantes\" zerou e \"Sem sucesso\" subiu."

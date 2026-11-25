@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deixa o sistema como no primeiro dia, SEM reiniciar nada (o link do túnel continua o mesmo): apaga os pedidos, os
-# pagamentos, as entregas, os trajetos e as posições de GPS de teste, repõe as unidades da promoção e deixa os entregadores livres.
+# pagamentos, as entregas, os trajetos e as posições de GPS de teste, repõe as unidades do item e deixa os entregadores livres.
 # Use com o sistema parado (nenhum pedido em andamento): depois do ensaio e antes da apresentação.
 # Os cenários de falha (./demo.sh falha N) rodam isto sozinhos antes de começar.
 # Opcional: ./scripts/limpar.sh 20   (outra quantidade de unidades)

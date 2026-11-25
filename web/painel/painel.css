@@ -23,9 +23,9 @@ body.tema-operador {
 .tema-operador .topo { display: flex; align-items: center; gap: 18px; padding: 10px 18px; background: var(--topo); color: #e2e8f0; flex-wrap: wrap; }
 .tema-operador .marca { color: #fff; font-size: 1.05rem; }
 .tema-operador .papel { font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: #1e3a8a; color: #bfdbfe; padding: 5px 12px; border-radius: 999px; }
-.promo-info { display: grid; line-height: 1.2; }
+.item-info { display: grid; line-height: 1.2; }
 .rotulo-topo { font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: #94a3b8; }
-.promo-info b { color: #fff; font-size: 1rem; }
+.item-info b { color: #fff; font-size: 1rem; }
 
 .estoque { display: flex; gap: 8px; margin: 0 auto 0 4px; }
 .estoque div { min-width: 82px; padding: 5px 12px; border-radius: 10px; background: #15213a; border: 1px solid #25365a; text-align: center; }
@@ -58,8 +58,6 @@ body.tema-operador {
 .botao-testes b { font-size: 1.02rem; }
 .botao-testes small { color: #bfdbfe; font-size: .8rem; }
 .botao-testes:hover { filter: brightness(1.08); }
-.botao-testes.apagado { background: #cbd5e1; color: #334155; box-shadow: 0 3px 0 #94a3b8; }
-.botao-testes.apagado small { color: #475569; }
 
 /* abas da lateral */
 .abas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px; border-radius: 14px; background: #dbe3ee; }

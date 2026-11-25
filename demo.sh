@@ -3,13 +3,13 @@
 #
 #   ./demo.sh subir        sobe o sistema inteiro, liga a tela de testes de falha e espera ficar pronto
 #   ./demo.sh link         liga o túnel HTTPS e mostra os links para o celular (obrigatório para o GPS do celular)
-#   ./demo.sh reset [N]    repõe as unidades da promoção (padrão: o valor do .env)
+#   ./demo.sh reset [N]    repõe as unidades do item (padrão: o valor do .env)
 #   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga pedidos, pagamentos, entregas e pontos de GPS de teste, repõe as unidades e libera os entregadores
 #   ./demo.sh teste        fluxo completo: o cliente pede, o entregador 2 aceita e "dirige" (termina com SMOKE: PASSOU)
 #   ./demo.sh unitarios    testes do código das bibliotecas e serviços, em containers (~3 min)
 #   ./demo.sh simular [1|2] [km/h]   plano B do GPS: aceita o pedido que está esperando e reproduz a rota do ensaio (padrão: entregador 2)
 #   ./demo.sh falha [N]    cenário de falha do professor: 1 a 8 (ou 6b), ou "todas"; sem número, mostra a lista e pergunta (cada um começa com o banco zerado)
-#   ./demo.sh testes       liga (se preciso) e abre a tela de testes de falha, em tela cheia (http://localhost:8099); o painel de gestão tem um botão para ela
+#   ./demo.sh testes       liga (se preciso) e abre a tela de testes de falha (http://localhost:8099): um botão por teste
 #   ./demo.sh estado       containers, filas, pedidos, estoque e segredos
 #   ./demo.sh parar        para tudo e guarda os dados
 #   ./demo.sh apagar       para tudo e apaga os dados (recomeço do zero)
@@ -30,16 +30,17 @@ achar_python() { # no Windows, "python3" pode ser só o atalho da Loja: confere 
   return 1
 }
 
-# O botão "Testes de falha" do painel de gestão abre uma tela local (scripts/testes), que roda os cenários de falha. Liga em
-# segundo plano; sem Python, o botão avisa como ligar. Ela só atende páginas de localhost: pelo link público o botão nem aparece.
+# A tela dos testes de falha (scripts/testes) roda os cenários F1 a F8 com um botão cada. Liga em segundo plano (precisa de
+# Python; sem ele use ./demo.sh falha N). Ela só atende páginas de localhost: o painel de gestão tem um botão para ela, mas só
+# com o painel aberto por localhost.
 TESTES_URL=http://localhost:8099
-testes_ligada() { curl -s -o /dev/null --max-time 2 "$TESTES_URL/api/cenarios"; }
+testes_ligada() { curl -s -o /dev/null --max-time 2 "$TESTES_URL/"; }
 iniciar_testes() {
   testes_ligada && return 0
   achar_python || return 0
   TESTES_ABRIR=0 nohup "$PY" scripts/testes/servidor.py >/dev/null 2>&1 &
 }
-parar_testes() { curl -s -o /dev/null --max-time 2 -X POST -H 'Content-Type: application/json' "$TESTES_URL/api/encerrar"; }
+parar_testes() { curl -s -o /dev/null --max-time 2 -X POST -H 'X-Teste: sim' "$TESTES_URL/encerrar"; }
 
 menu_falhas() {
   cat <<'MENU'
@@ -86,22 +87,27 @@ case "${1:-}" in
     echo "  Grafana:             http://localhost:3000"
     echo "Para usar o celular como entregador (GPS real): ./demo.sh link"
     iniciar_testes
-    echo "Testes de falha do professor: botão \"Testes de falha\" do painel de gestão (abra por http://localhost:$P/painel/) ou $TESTES_URL"
+    echo "Testes de falha do professor (só neste notebook): $TESTES_URL"
     ;;
   link)
-    # se o túnel estava parado, o log ainda tem a URL da vez anterior: ela não vale mais e não pode ser mostrada
-    VELHA=""
-    [ -n "$(docker compose ps --status running -q cloudflared 2>/dev/null)" ] || VELHA=$(docker compose logs cloudflared 2>/dev/null | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true)
-    docker compose --profile tunnel up -d cloudflared || exit 1
-    echo "Esperando o túnel..."
-    URL=$(./scripts/tunnel-url.sh "$VELHA") || exit 1
+    # se um túnel estava parado, o log ainda tem a URL da vez anterior: ela não vale mais e não pode ser mostrada
+    velha_url() { [ -n "$(docker compose ps --status running -q "$1" 2>/dev/null)" ] || docker compose logs "$1" 2>/dev/null | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1 || true; }
+    VELHA=$(velha_url cloudflared)
+    VELHA_G=$(velha_url cloudflared-grafana)
+    docker compose --profile tunnel up -d cloudflared cloudflared-grafana || exit 1
+    echo "Esperando os túneis..."
+    URL=$(./scripts/tunnel-url.sh cloudflared "$VELHA") || exit 1
+    URL_G=$(./scripts/tunnel-url.sh cloudflared-grafana "$VELHA_G") || exit 1
     echo
     echo "Entrada (qualquer um entra e vai para a sua tela):  $URL/"
     echo "Painel de gestão (notebook):     $URL/painel/                    (admin / admin)"
     echo "Entregador (celular):            $URL/entregador/                (entregador1 / admin)"
     echo "Pedidos (QR da plateia):         $URL/cliente/?codigo=$(var EVENTO_CODIGO)"
+    echo "Grafana (só leitura):            $URL_G/"
+    echo "Testes de falha (só leitura):    $URL/testes/"
     echo
-    echo "Não reinicie o túnel depois: a URL muda a cada reinício."
+    echo "Não reinicie os túneis depois: as URLs mudam a cada reinício."
+    echo "Os botões dos testes de falha e o RabbitMQ não vão para o link público: só funcionam neste notebook."
     ;;
   reset) shift; ./scripts/reset-estoque.sh "$@" ;;
   limpar) shift; ./scripts/limpar.sh "$@" ;;
@@ -136,7 +142,7 @@ case "${1:-}" in
   testes)
     achar_python || { echo "A tela de testes precisa do Python 3. Sem ele, use: ./demo.sh falha N"; exit 1; }
     if testes_ligada; then
-      echo "A tela de testes já está ligada: $TESTES_URL (o painel de gestão tem um botão que abre a mesma tela)."
+      echo "A tela de testes já está ligada: $TESTES_URL"
       "$PY" -c "import webbrowser; webbrowser.open('$TESTES_URL')"
     else
       exec "$PY" scripts/testes/servidor.py

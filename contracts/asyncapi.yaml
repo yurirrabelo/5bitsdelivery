@@ -123,7 +123,7 @@ components:
   messages:
     estoque.reservar:
       name: estoque.reservar
-      title: Comando - reservar uma unidade da promoção
+      title: Comando - reservar uma unidade do item
       payload: { $ref: 'schemas/estoque.reservar.v1.schema.json' }
     estoque.reservado:
       name: estoque.reservado
@@ -131,7 +131,7 @@ components:
       payload: { $ref: 'schemas/estoque.reservado.v1.schema.json' }
     estoque.esgotado:
       name: estoque.esgotado
-      title: Evento - promoção esgotada
+      title: Evento - item esgotado
       payload: { $ref: 'schemas/estoque.esgotado.v1.schema.json' }
     pagamento.cobrar:
       name: pagamento.cobrar

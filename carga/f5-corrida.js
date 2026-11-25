@@ -1,4 +1,4 @@
-// F5: N clientes (padrão 100) pedem a promoção ao mesmo tempo, cada um com a própria sessão do QR.
+// F5: N clientes (padrão 100) pedem o item ao mesmo tempo, cada um com a própria sessão do QR.
 // Com 10 unidades, o esperado é exatamente 10 pedidos CONFIRMADO e o resto ESGOTADO.
 //   docker compose --profile carga run --rm k6 run /carga/f5-corrida.js
 import http from 'k6/http';
@@ -8,7 +8,6 @@ import { Counter } from 'k6/metrics';
 const BASE = __ENV.BASE_URL || 'http://nginx';
 const CLIENTES = Number(__ENV.CLIENTES || 100);
 const JSON_H = { headers: { 'Content-Type': 'application/json' } };
-const CUPOM = '#' + (__ENV.PROMOCAO_CUPOM || 'promobcc'); // o cliente escreve o cupom; sem ele o pedido é normal e não disputa o estoque
 
 export const options = {
   scenarios: { corrida: { executor: 'per-vu-iterations', vus: CLIENTES, iterations: 1, maxDuration: '120s' } },
@@ -35,7 +34,7 @@ export default function (dados) {
   const falta = dados.largada - Date.now();
   if (falta > 0) sleep(falta / 1000);
 
-  const criado = http.post(`${BASE}/api/pedidos`, JSON.stringify({ cupom: CUPOM }), comCorpo);
+  const criado = http.post(`${BASE}/api/pedidos`, '{}', comCorpo);
   check(criado, { 'pedido aceito (202)': (r) => r.status === 202 });
   const id = criado.json('id');
 

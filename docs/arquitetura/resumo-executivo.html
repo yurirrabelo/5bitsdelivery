@@ -213,7 +213,7 @@ svg.dg { width: 100%; height: auto; display: block; }
     <h1 class="tp">Resumo executivo</h1>
     <p class="sub">O 5Bits Delivery em uma página</p>
 
-    <p class="lead">O <b>5Bits Delivery</b> é um sistema de delivery com <b>promoção relâmpago</b>: poucas unidades (10), muita gente pedindo ao mesmo tempo e o entregador acompanhado no mapa em tempo real. A regra de negócio é simples de propósito, porque o foco do trabalho é a <b>arquitetura</b>: como várias partes independentes cooperam e continuam corretas quando uma delas falha.</p>
+    <p class="lead">O <b>5Bits Delivery</b> é um sistema de delivery com <b>estoque limitado</b>: poucas unidades (10) de um item, muita gente pedindo ao mesmo tempo e o entregador acompanhado no mapa em tempo real. A regra de negócio é simples de propósito, porque o foco do trabalho é a <b>arquitetura</b>: como várias partes independentes cooperam e continuam corretas quando uma delas falha.</p>
 
     <div class="faixa" style="margin-bottom:4mm">
       <div class="numero"><b>6</b><span>serviços independentes, em Java e TypeScript</span></div>
@@ -228,8 +228,8 @@ svg.dg { width: 100%; height: auto; display: block; }
       <div>
         <h2 style="margin-top:0">Um pedido em um minuto</h2>
         <ol class="passos">
-          <li><b>Pede.</b> O cliente escreve o cupom <code>#promobcc</code> e recebe na hora o número do pedido, sem esperar o resto.</li>
-          <li><b>Separa.</b> O estoque reserva uma das 10 unidades da promoção. (O pedido normal, sem cupom, pula esta etapa.)</li>
+          <li><b>Pede.</b> O cliente toca em <i>Pedir item</i> e recebe na hora o número do pedido, sem esperar o resto.</li>
+          <li><b>Separa.</b> O estoque reserva uma das 10 unidades do item.</li>
           <li><b>Cobra.</b> O pagamento cobra num gateway externo (simulado), lento e instável de propósito.</li>
           <li><b>Oferece.</b> Confirmado, o pedido aparece no celular dos entregadores: o primeiro que tocar em <i>Aceitar</i> leva.</li>
           <li><b>Entrega.</b> O GPS do celular do entregador desenha o trajeto no mapa até o endereço do cliente.</li>
@@ -243,7 +243,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <h2 style="margin-top:0">Três interfaces, um sistema</h2>
         <div class="cartao" style="margin-bottom:3mm">
           <h3><span class="ic">📱</span> Pedidos <small>o cliente</small></h3>
-          <p class="mini" style="margin:0;color:#334155;font-size:9pt">Pelo QR code, no celular. Pede com o cupom e acompanha cada passo do pedido.</p>
+          <p class="mini" style="margin:0;color:#334155;font-size:9pt">Pelo QR code, no celular. Pede o item e acompanha cada passo do pedido.</p>
         </div>
         <div class="cartao" style="margin-bottom:3mm">
           <h3><span class="ic">🛵</span> Entregador</h3>
@@ -328,7 +328,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <text class="b w c h" x="359" y="256">estoque</text>
       <text class="wl c m" x="359" y="276">Java</text>
       <text class="wl c p" x="359" y="300">as 10 unidades</text>
-      <text class="wl c p" x="359" y="316">da promoção</text>
+      <text class="wl c p" x="359" y="316">do item</text>
       <use href="#cil" x="331" y="326" width="56" height="52"/>
       <text class="c p b" x="359" y="361" style="fill:#0b4f94">banco</text>
 
@@ -430,7 +430,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <tr><td>Nginx<br><span class="chip">porta de entrada</span></td><td>Recebe tudo que vem de fora, confere o login e encaminha ao serviço certo. Também entrega as páginas das telas.</td><td>Nginx</td><td>não tem</td></tr>
         <tr><td>Auth<br><span class="chip">identidade</span></td><td>Responde “quem é você?”. Faz o login da gestão e do entregador, deixa o cliente do QR entrar só com um apelido e entrega um <b>crachá digital</b> (token) que os outros serviços aceitam.</td><td>TypeScript</td><td>não tem (usuários fixos)</td></tr>
         <tr><td>Pedidos<br><span class="chip">o maestro</span></td><td>Recebe o pedido, <b>responde na hora</b> e conduz o fluxo passo a passo. Decide o próximo passo, controla o prazo do pagamento e <b>manda desfazer</b> quando algo falha.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de pedidos</td></tr>
-        <tr><td>Estoque<br><span class="chip">as 10 unidades</span></td><td>É o dono da promoção. Separa, devolve e dá baixa nas unidades, garantindo que <b>a mesma unidade nunca seja vendida duas vezes</b>, nem com muita gente pedindo junto.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de estoque</td></tr>
+        <tr><td>Estoque<br><span class="chip">as 10 unidades</span></td><td>É o dono do item. Separa, devolve e dá baixa nas unidades, garantindo que <b>a mesma unidade nunca seja vendida duas vezes</b>, nem com muita gente pedindo junto.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de estoque</td></tr>
         <tr><td>Pagamento<br><span class="chip">2 ou mais cópias</span></td><td>Cobra e estorna no gateway. Roda em <b>várias cópias</b> (réplicas) que dividem o trabalho da mesma fila: se uma cai, outra assume.</td><td>TypeScript</td><td>banco de pagamento</td></tr>
         <tr><td>Entregas<br><span class="chip">GPS e mapa</span></td><td>Oferece o pedido aos entregadores (o primeiro que aceita leva), recebe o <b>GPS</b> do celular, alimenta o mapa ao vivo da gestão e guarda a rota da entrega.</td><td>TypeScript</td><td>banco de entregas<br>+ Redis (posições)</td></tr>
         <tr><td>Gateway de pagamento<br><span class="chip">simulado</span></td><td>A “operadora de cartão” de mentira. Tem <b>lentidão e taxa de falha configuráveis</b>, para provar o que acontece quando um parceiro externo falha ou demora.</td><td>TypeScript</td><td>só memória</td></tr>
@@ -499,8 +499,8 @@ svg.dg { width: 100%; height: auto; display: block; }
       <text class="b w c g" x="805" y="82">Estoque</text>
       <text class="wl c m" x="805" y="104">Java</text>
       <text class="wl c p" x="805" y="140">guarda as 10</text>
-      <text class="wl c p" x="805" y="158">unidades da</text>
-      <text class="wl c p" x="805" y="176">promoção</text>
+      <text class="wl c p" x="805" y="158">unidades do</text>
+      <text class="wl c p" x="805" y="176">item</text>
 
       <rect class="serv" x="730" y="265" width="150" height="205" rx="14"/>
       <text class="b w c g" x="805" y="307">Pagamento</text>
@@ -519,7 +519,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <path class="seta" d="M172 85 H728"/>
       <circle class="bola" cx="192" cy="71" r="11"/><text class="tag" x="192" y="76">1</text>
       <text class="b" x="212" y="77">Reservar uma unidade</text>
-      <text class="m cz" x="212" y="104">só no pedido com cupom</text>
+      <text class="m cz" x="212" y="104">antes do pagamento</text>
 
       <path class="seta" d="M728 130 H172"/>
       <circle class="bola" cx="500" cy="116" r="11"/><text class="tag" x="500" y="121">2</text>
@@ -587,7 +587,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <li><b class="t">O cliente pede</b><span class="quem">Cliente → Pedidos</span>
         <p>O Pedidos grava o pedido como <b>RECEBIDO</b> e responde na hora: “recebi, seu número é #123”. O cliente acompanha o andamento depois (API assíncrona).</p></li>
       <li><b class="t">Separar uma unidade</b><span class="quem">Pedidos → Estoque</span>
-        <p>Só no pedido com cupom. O Estoque tenta reservar uma das 10 unidades. Se acabaram, responde “esgotado” e o cupom deixa de valer.</p></li>
+        <p>O Estoque tenta reservar uma das 10 unidades. Se acabaram, responde “esgotado”.</p></li>
       <li><b class="t">Cobrar</b><span class="quem">Pedidos → Pagamento → Gateway</span>
         <p>Com prazo de 15 s. O Pagamento cobra no gateway com uma <b>chave de idempotência</b>: se a chamada se repetir, cobra uma vez só.</p></li>
       <li><b class="t">Confirmar</b><span class="quem">Pagamento → Pedidos</span>
@@ -638,13 +638,12 @@ svg.dg { width: 100%; height: auto; display: block; }
       <path class="setaV" d="M362 203 H402"/>
       <text class="m vm c" x="383" y="254">aprovação tardia, estornada</text>
     </svg>
-    <p class="mini" style="margin:1mm 0 0">No pedido normal (sem cupom) não há reserva: ele vai direto de RECEBIDO para AGUARDANDO PAGAMENTO.</p>
 
     <h2>Quando algo dá errado, o sistema desfaz</h2>
     <div class="grade3" style="gap:3mm">
       <div class="cartao verm"><h3>Pagamento recusado</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido é cancelado e a unidade volta ao estoque. O cliente lê “pagamento recusado”.</p><span class="chip teste">Teste F1</span></div>
       <div class="cartao verm"><h3>Gateway demorou demais</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">Estourou o prazo: o pedido é cancelado e a unidade volta. Se a aprovação chegar depois, a cobrança é estornada.</p><span class="chip teste">Teste F7</span></div>
-      <div class="cartao verm"><h3>As 10 unidades acabaram</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido termina esgotado e a tela avisa “cupom inválido: a promoção acabou”. O cliente ainda pode fazer um pedido normal.</p><span class="chip teste">Teste F5</span></div>
+      <div class="cartao verm"><h3>As 10 unidades acabaram</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido termina esgotado e a tela avisa “item esgotado”.</p><span class="chip teste">Teste F5</span></div>
     </div>
     <p class="mini" style="margin:2.5mm 0 0">Toda mudança de estado só vale se o pedido ainda estiver no estado esperado: uma mensagem que chega fora de hora é ignorada com segurança.</p>
   </div>
@@ -897,7 +896,7 @@ svg.dg { width: 100%; height: auto; display: block; }
           <li><b>Três papéis.</b> A gestão vê tudo; o entregador só a própria entrega e a própria posição; o cliente só os próprios pedidos.</li>
           <li><b>Cliente sem senha.</b> Entra com um apelido e o código do evento, que vem no link do QR code.</li>
           <li><b>Segredos fora do código.</b> Senhas e a chave do login ficam no Secrets Manager.</li>
-          <li><b>Ferramentas só no notebook.</b> Grafana, RabbitMQ e a tela de testes de falha só abrem em <code>localhost</code>. O telão mostra só o número do pedido, nunca o apelido.</li>
+          <li><b>Ferramentas perigosas só no notebook.</b> O RabbitMQ e a tela de testes de falha só abrem em <code>localhost</code>; o Grafana abre também pelo link público, só para leitura. O telão mostra só o número do pedido, nunca o apelido.</li>
           <li><b>Limites.</b> Um pedido em andamento por cliente e limite de tentativas no login.</li>
         </ul>
       </div>
@@ -947,8 +946,8 @@ svg.dg { width: 100%; height: auto; display: block; }
         <ul class="pontos">
           <li>Cada serviço envia <b>métricas, logs e rastros</b> (OpenTelemetry) ao Grafana.</li>
           <li>Um pedido vira <b>um rastro só</b>, atravessando todos os serviços, inclusive pelas mensagens.</li>
-          <li>Painel <b>Apresentação</b>: números grandes, o caminho de cada pedido e a <b>arquitetura do pedido pintada de verde, vermelho ou cinza</b>, mostrando onde a falha começou.</li>
-          <li>Painel <b>Detalhes técnicos</b>: filas, quarentenas, caixas de saída e as cópias do pagamento.</li>
+          <li>Uma <b>tela só</b> no Grafana: quatro números grandes, quatro gráficos e o <b>caminho de cada pedido</b> pelos serviços, com o erro em vermelho.</li>
+          <li>Os gráficos mostram as <b>cópias do pagamento</b>, a <b>quarentena</b> (DLQ) e a <b>caixa de saída</b>.</li>
         </ul>
       </div>
       <div>
@@ -971,36 +970,41 @@ svg.dg { width: 100%; height: auto; display: block; }
       </div>
     </div>
 
-    <h2>A arquitetura do pedido, pintada no Grafana</h2>
-    <svg class="dg" viewBox="0 0 900 175" role="img" aria-label="Um pedido recusado visto no Grafana">
-      <text class="b vm" x="560" y="26" style="font-size:15px">onde a falha começou</text>
-      <path class="setaV" d="M640 34 V52"/>
+    <h2>O painel do Grafana: uma tela só</h2>
+    <svg class="dg" viewBox="0 0 900 175" role="img" aria-label="O painel do Grafana: quatro números, quatro gráficos e duas tabelas">
+      <rect x="10" y="6" width="210" height="56" rx="10" fill="#e7f0ff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="115" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#1e3a8a">Pedidos feitos</text>
+      <text x="115" y="51" text-anchor="middle" style="font-size:13px;fill:#1e3a8a">quantos chegaram</text>
+      <rect x="235" y="6" width="210" height="56" rx="10" fill="#e6f6ea" stroke="#2b9348" stroke-width="2"/>
+      <text x="340" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#14532d">Confirmados</text>
+      <text x="340" y="51" text-anchor="middle" style="font-size:13px;fill:#14532d">reservaram e pagaram</text>
+      <rect x="460" y="6" width="210" height="56" rx="10" fill="#fff0f0" stroke="#c92a2a" stroke-width="2"/>
+      <text x="565" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#8a1f1f">Sem sucesso</text>
+      <text x="565" y="51" text-anchor="middle" style="font-size:13px;fill:#8a1f1f">o sistema desfez</text>
+      <rect x="685" y="6" width="205" height="56" rx="10" fill="#fff4e6" stroke="#f76707" stroke-width="2"/>
+      <text x="787" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#7a3a08">Unidades restantes</text>
+      <text x="787" y="51" text-anchor="middle" style="font-size:13px;fill:#7a3a08">ainda livres</text>
 
-      <rect class="mau" x="10" y="56" width="150" height="72" rx="12"/>
-      <text class="b c" x="85" y="88" style="font-size:19px;fill:#8a1f1f">Pedidos</text>
-      <text class="c p vm" x="85" y="110">registrou o erro</text>
-      <path class="seta" d="M160 92 H188"/>
-      <rect class="ok" x="190" y="56" width="150" height="72" rx="12"/>
-      <text class="b c vd" x="265" y="88" style="font-size:19px">Estoque</text>
-      <text class="c p vd" x="265" y="110">passou e devolveu</text>
-      <path class="seta" d="M340 92 H368"/>
-      <rect class="mau" x="370" y="56" width="150" height="72" rx="12"/>
-      <text class="b c" x="445" y="88" style="font-size:19px;fill:#8a1f1f">Pagamento</text>
-      <text class="c p vm" x="445" y="110">registrou o erro</text>
-      <path class="seta" d="M520 92 H548"/>
-      <rect class="mau" x="550" y="56" width="180" height="72" rx="12" style="stroke-width:3.5"/>
-      <text class="b c" x="640" y="88" style="font-size:19px;fill:#8a1f1f">Gateway</text>
-      <text class="c p vm" x="640" y="110">recusou a cobrança</text>
-      <path class="seta" d="M730 92 H758" style="stroke-dasharray:5 5"/>
-      <rect x="760" y="56" width="130" height="72" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
-      <text class="b c cz" x="825" y="88" style="font-size:19px">Entregas</text>
-      <text class="c p cz" x="825" y="110">não chegou</text>
+      <rect x="10" y="72" width="210" height="52" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="20" y="90" style="font-size:13px;font-weight:700;fill:#334155">Pedidos por minuto</text>
+      <path d="M22 116 L62 104 L102 110 L142 96 L182 102 L208 94" fill="none" stroke="#64748b" stroke-width="2"/>
+      <rect x="235" y="72" width="210" height="52" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="245" y="90" style="font-size:13px;font-weight:700;fill:#334155">Pagamentos por cópia</text>
+      <path d="M247 112 L287 100 L327 106 L367 98 L407 104 L433 96" fill="none" stroke="#64748b" stroke-width="2"/>
+      <path d="M247 118 L287 108 L327 112 L367 106 L407 110 L433 104" fill="none" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="460" y="72" width="210" height="52" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="470" y="90" style="font-size:13px;font-weight:700;fill:#334155">Quarentena (DLQ)</text>
+      <path d="M472 116 H560 V100 H658" fill="none" stroke="#64748b" stroke-width="2"/>
+      <rect x="685" y="72" width="205" height="52" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="695" y="90" style="font-size:13px;font-weight:700;fill:#334155">Esperando envio (outbox)</text>
+      <path d="M697 116 H740 L770 98 L800 116 H878" fill="none" stroke="#64748b" stroke-width="2"/>
 
-      <rect x="10" y="148" width="14" height="14" rx="3" fill="#e6f6ea" stroke="#2b9348" stroke-width="2"/><text class="m" x="30" y="160">verde: o serviço passou</text>
-      <rect x="230" y="148" width="14" height="14" rx="3" fill="#fff0f0" stroke="#c92a2a" stroke-width="2"/><text class="m" x="250" y="160">vermelho: registrou o erro</text>
-      <rect x="470" y="148" width="14" height="14" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/><text class="m" x="490" y="160">cinza: o pedido não chegou lá</text>
+      <rect x="10" y="134" width="330" height="34" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="175" y="156" text-anchor="middle" style="font-size:14px;font-weight:700;fill:#334155">1. Pedidos recentes: clique no número</text>
+      <rect x="350" y="134" width="540" height="34" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="620" y="156" text-anchor="middle" style="font-size:14px;font-weight:700;fill:#334155">2. O caminho do pedido, serviço por serviço (o erro em vermelho)</text>
     </svg>
-    <p class="mini" style="margin:1.5mm 0 0">Exemplo de um pedido recusado: o erro nasce no gateway e volta pelos outros serviços. Cada pedido ganha o seu desenho.</p>
+    <p class="mini" style="margin:1.5mm 0 0">Ilustração do painel: os números e gráficos mostram o que acontece agora, e as duas tabelas mostram o caminho de cada pedido.</p>
   </div>
   <div class="rod"><span>Sistemas Distribuídos · FURB</span><span class="pg"></span></div>
 </section>
@@ -1027,8 +1031,8 @@ svg.dg { width: 100%; height: auto; display: block; }
     </table>
 
     <div class="cartao azul" style="margin-top:4mm">
-      <h3>Uma tela própria para os testes</h3>
-      <p style="margin:0;font-size:9pt">Cada cenário tem um botão. A tela mostra o que o professor pede, o <b>passo a passo com o porquê</b> de cada passo, o <b>resultado esperado</b> (a previsão, dita em voz alta antes de provocar), o que o cliente vê, o <b>estado dos bancos ao vivo</b> e, no fim, o esperado × o obtido. Cada teste começa com o banco zerado, e a tela só abre no notebook.</p>
+      <h3>Uma tela simples para os testes</h3>
+      <p style="margin:0;font-size:9pt">Cada cenário tem um botão, <b>Acionar teste</b>. Ao lado, a tela diz <b>como o erro é provocado</b>, <b>onde ele acontece</b>, <b>o que acontece</b> e o <b>resultado esperado</b> (a previsão, dita em voz alta antes de provocar). Ao clicar, a saída do teste aparece na própria página, com o esperado × o obtido. Cada teste começa com o banco zerado, e os botões só funcionam no notebook (pelo link público a página abre só para leitura).</p>
     </div>
 
     <h2>Falha surpresa: o que prevemos</h2>

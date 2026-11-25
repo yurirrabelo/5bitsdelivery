@@ -52,7 +52,7 @@ class EstoqueTest {
         r.add("CONTRACTS_DIR", () -> env("CONTRACTS_DIR", "../../../contracts"));
         r.add("RABBITMQ_EXCHANGE", () -> "ex.teste.estoque");
         r.add("FILA_ESTOQUE", () -> "q.teste.estoque");
-        r.add("PROMOCAO_QUANTIDADE", () -> String.valueOf(UNIDADES));
+        r.add("ITEM_QUANTIDADE", () -> String.valueOf(UNIDADES));
         r.add("delivery.outbox.intervalo-ms", () -> "3600000");
     }
 
@@ -93,7 +93,7 @@ class EstoqueTest {
     }
 
     @Test
-    void sementeCriaOProdutoComAQuantidadeDaPromocao() {
+    void sementeCriaOItemComAQuantidadeConfigurada() {
         assertEquals(UNIDADES, n("total"));
         assertEquals(UNIDADES, n("disponivel"));
     }

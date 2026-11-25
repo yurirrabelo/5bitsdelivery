@@ -62,4 +62,4 @@ echo
 echo "Pedidos desta carga por status final:"
 sql pedidos "SELECT status || ': ' || count(*) FROM pedidos WHERE id >= $primeiro GROUP BY status ORDER BY 1" | sed 's/^/   /'
 
-finalizar F6 "Grafana → Detalhes técnicos → \"Outbox pendente por serviço\" e \"Mensagens prontas nas filas\": subiram durante a queda e voltaram a zero."
+finalizar F6 "Grafana: \"Esperando envio (outbox)\" subiu durante a queda e voltou a zero."

@@ -7,9 +7,9 @@ sequenceDiagram
     participant GW as gateway de pagamento
     participant ENT as entregas
     actor M as Entregador
-    C->>P: POST /api/pedidos (endereço e cupom)
+    C->>P: POST /api/pedidos (endereço)
     P-->>C: 202 Accepted + id
-    Note over P,E: com cupom: reserva uma das 10 unidades. Sem cupom (pedido normal): vai direto ao pagamento
+    Note over P,E: o estoque reserva uma das 10 unidades antes do pagamento
     P--)E: estoque.reservar
     E--)P: estoque.reservado
     P--)PG: pagamento.cobrar

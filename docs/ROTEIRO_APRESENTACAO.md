@@ -8,7 +8,7 @@ Dúvida sobre uma tela? [GUIA_DAS_TELAS.md](GUIA_DAS_TELAS.md). Como subir tudo:
 
 | Pessoa | Papel | Fala sobre |
 |---|---|---|
-| **1** | Abertura | o problema (promoção relâmpago, muita gente pedindo, nada pode ser vendido a mais) e o **C4 nível 1** (cliente, gestão, entregador, operadora de pagamento) |
+| **1** | Abertura | o problema (poucas unidades de um item, muita gente pedindo, nada pode ser vendido a mais) e o **C4 nível 1** (cliente, gestão, entregador, operadora de pagamento) |
 | **2** | Arquitetura | **C4 nível 2**: os 6 serviços, em que linguagem, e o que é "nuvem" (tabela abaixo) |
 | **3** | Comunicação | REST na borda, RabbitMQ entre os serviços, saga do pedido, outbox/inbox, DLQ, o que acontece quando algo falha |
 | **4** | Demonstração | faz o pedido, conduz o Grafana, chama o grande final e depois abre o QR code |
@@ -43,14 +43,14 @@ Como se comunicam (pessoa 3): o cliente fala com o sistema por **HTTP (REST)**; 
 | 0:00 | 1 | Abertura e C4 nível 1 |
 | 2:00 | 2 | C4 nível 2: serviços, onde roda cada um |
 | 5:00 | 3 | Comunicação, saga, outbox/inbox, DLQ |
-| 8:00 | 4 | **Pedido de verdade.** No painel de gestão: **＋ Pedido pelo mapa** → clica no destino (a porta da sala) → **Criar pedido** (tipo normal: não gasta nenhuma das 10 unidades do cupom). Mostra o `202` na hora e o pedido andando até "Aguardando entregador". **Lá fora o celular do colega avisa** (tela, vibração e som): ele toca em **Aceitar** e começa a vir |
-| 9:00 | 4 | Grafana: abre o pedido na tabela "O caminho do pedido" (pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um). O marcador 🛵 vem andando no mapa do painel |
+| 8:00 | 4 | **Pedido de verdade.** No painel de gestão: **＋ Pedido pelo mapa** → clica no destino (a porta da sala) → **Criar pedido** (usa 1 das 10 unidades do item). Mostra o `202` na hora e o pedido andando até "Aguardando entregador". **Lá fora o celular do colega avisa** (tela, vibração e som): ele toca em **Aceitar** e começa a vir |
+| 9:00 | 4 | Grafana: clica no pedido na tabela "Pedidos recentes" e mostra o caminho dele (pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um). O marcador 🛵 vem andando no mapa do painel |
 | 12:00 | 4 | "Alguém pediu um pedido?" **A pessoa 5 entra na sala.** O sistema marca **ENTREGUE** sozinho (menos de 50 m do destino) ou ele toca em **Confirmar entrega** |
 | 13:00 | 5 | Explica o GPS: o navegador do celular manda a posição a cada 3 s → túnel → serviço de entregas → Redis → WebSocket → mapa. Fala da latência do 4G |
-| 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Quem pede **escreve o cupom `#promobcc`** e toca no botão (o celular pede a localização). Os 10 primeiros levam a promoção |
-| 15:30 | 2 | Narra o Grafana enquanto a plateia pede: pessoas que entraram, pedidos por minuto, tempo do pagamento, "Unidades restantes" caindo, o caminho de um pedido e a arquitetura dele |
-| 18:00 | todos | Quando as 10 unidades acabam: quem escreve o cupom lê **"Cupom inválido: a promoção acabou"** e faz um **pedido normal**; "Sem sucesso" sobe sem o estoque ficar negativo. É o cenário F5 acontecendo ao vivo |
-| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): no painel de gestão (aberto por http://localhost:8080/painel/) clique em **🧪 Testes de falha**, escolha o cenário pedido, **leia em voz alta o resultado esperado** (o professor quer a previsão antes), aperte **Provocar a falha** e mostre o resultado e o que aparece em "Mostre agora" (ou `./demo.sh falha N` no terminal). Cada teste zera o banco antes: faça isto depois da parte do QR, não no meio dela. A cola está em [FALHAS.md](FALHAS.md) |
+| 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Quem pede toca em **Pedir item** (o celular pede a localização). Os 10 primeiros levam o item |
+| 15:30 | 2 | Narra o Grafana enquanto a plateia pede: pedidos feitos, pedidos por minuto, "Unidades restantes" caindo e o caminho de um pedido |
+| 18:00 | todos | Quando as 10 unidades acabam: quem pede lê **"Item esgotado"**; "Pedidos sem sucesso" sobe sem o estoque ficar negativo. É o cenário F5 acontecendo ao vivo |
+| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): no painel de gestão (aberto por http://localhost:8080/painel/) clique em **🧪 Testes de falha** (ou abra http://localhost:8099), ache o cenário pedido, **leia em voz alta o resultado esperado** (o professor quer a previsão antes), aperte **Acionar teste falha N** e mostre a saída e o que aparece em "Mostre agora" (ou `./demo.sh falha N` no terminal). Cada teste zera o banco antes: faça isto depois da parte do QR, não no meio dela. A cola está em [FALHAS.md](FALHAS.md) |
 
 Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que não se corta: o pedido, a chegada e o QR.
 
@@ -63,7 +63,7 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 5. **O QR em tela cheia, com a URL em texto embaixo** (alguns celulares não leem o QR da tela). Use o **Modo telão** do painel.
 6. **Grafana em tela cheia no telão** com o endereço `http://localhost:3000/d/apresentacao/apresentacao?kiosk`. Mostre o painel de gestão e o Grafana em duas abas, e troque entre elas.
 7. **Quem narra o Grafana não é quem opera.** A pessoa 4 mexe nas telas e a pessoa 2 explica o que aparece.
-8. **Mostre o vermelho de propósito.** Com a turma pedindo, ligue uma taxa de falha no gateway (`GATEWAY_TAXA_FALHA=30 docker compose up -d gateway-pagamento`). Cerca de 3 em cada 10 pedidos passam a ser recusados: a tabela mostra "Recusado", o caminho do pedido mostra em vermelho onde falhou e, escolhendo um pedido recusado, a arquitetura mostra o Pagamento e o Gateway em vermelho. Depois volte: `docker compose up -d gateway-pagamento`. Ensaie isso: é a parte que mais impressiona.
+8. **Mostre o vermelho de propósito.** Com a turma pedindo, ligue uma taxa de falha no gateway (`GATEWAY_TAXA_FALHA=30 docker compose up -d gateway-pagamento`). Cerca de 3 em cada 10 pedidos passam a ser recusados: "Pedidos sem sucesso" sobe e, clicando em um pedido recusado na tabela, o caminho dele mostra em vermelho onde falhou. Depois volte: `docker compose up -d gateway-pagamento`. Ensaie isso: é a parte que mais impressiona.
 9. **Plano B pronto e ensaiado** (veja "Ensaio"): se o GPS real falhar, `./demo.sh simular` entra como o entregador 2, aceita o pedido que estiver esperando (ou segue o que ele já aceitou) e reproduz a rota do ensaio: a plateia não percebe a diferença.
 10. **A disputa pelo pedido (opcional, 1 minuto).** Com o `entregador1` (tela da sala) e o `entregador2` (celular) Disponíveis, faça um pedido: os dois recebem o aviso, o primeiro a tocar em **Aceitar** leva e o outro lê "já foi aceito por outro entregador". É a concorrência resolvida no banco (UPDATE condicional), a mesma ideia da corrida pelo estoque.
 

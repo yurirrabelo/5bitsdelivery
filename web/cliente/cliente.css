@@ -24,7 +24,7 @@ body.tema-cliente {
 
 .tema-cliente main { max-width: 520px; margin: 0 auto; padding: 4px 16px 24px; display: grid; gap: 16px; }
 
-/* ---------- a promoção ---------- */
+/* ---------- o item ---------- */
 .hero {
   border-radius: 28px;
   padding: 22px 22px 20px;
@@ -60,13 +60,7 @@ button.gigante {
 button.gigante:active { transform: translateY(5px); box-shadow: 0 3px 0 #c2410c; animation: none; }
 button.gigante:disabled { animation: none; }
 @keyframes pulsa-botao { 50% { transform: scale(1.02); } }
-/* o cupom: um campo grande para escrever #promobcc, e o aviso de que ele deixou de valer quando as unidades acabam */
-#form-pedido label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-weight: 700; }
 #btn-pedir { font-size: 1.55rem; padding: 22px 14px; }
-#form-pedido .opc { color: var(--suave); font-weight: 500; }
-#cupom { font-size: 1.3rem; padding: 14px 16px; border-radius: 14px; text-align: center; letter-spacing: .02em; }
-#cupom:disabled { opacity: .55; }
-.tema-cliente .dica.ruim { color: var(--erro); font-weight: 700; }
 button.link { background: none; color: var(--suave); text-decoration: underline; padding: 0 4px; font-weight: 500; font-size: .88rem; }
 button.link:hover { filter: none; color: var(--texto); }
 

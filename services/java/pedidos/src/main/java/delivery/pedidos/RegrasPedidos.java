@@ -21,19 +21,7 @@ public class RegrasPedidos {
     @Value("${ORIGEM_LON}")
     double origemLon;
 
-    @Value("${PROMOCAO_NOME:Promoção relâmpago}")
-    String promocaoNome;
-
-    /** O cupom da promoção (sem o #). O cliente escreve #promobcc; vale com ou sem o #, em maiúsculas ou minúsculas. */
-    @Value("${PROMOCAO_CUPOM:promobcc}")
-    String promocaoCupom;
-
-    boolean cupomValido(String digitado) {
-        return normalizar(digitado).equals(normalizar(promocaoCupom));
-    }
-
-    private static String normalizar(String cupom) {
-        String s = cupom == null ? "" : cupom.strip().toLowerCase();
-        return s.startsWith("#") ? s.substring(1).strip() : s;
-    }
+    /** O item que o cliente pede (só o nome que aparece nas telas). */
+    @Value("${ITEM_NOME:Item}")
+    String itemNome;
 }

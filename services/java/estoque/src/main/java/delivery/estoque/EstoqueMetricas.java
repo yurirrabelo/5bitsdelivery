@@ -19,7 +19,7 @@ public class EstoqueMetricas {
         GlobalOpenTelemetry.getMeter("delivery.estoque")
                 .gaugeBuilder("delivery_estoque_unidades")
                 .ofLongs()
-                .setDescription("Unidades da promoção por estado")
+                .setDescription("Unidades do item por estado")
                 .buildWithCallback(m -> {
                     try {
                         Map<String, Object> l = jdbc.queryForMap(

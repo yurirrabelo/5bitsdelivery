@@ -75,14 +75,10 @@ class PedidosTest {
 
     // ---------------------------------------------------------------- utilidades
 
-    /** Pedido com cupom (usa a promoção): vai ao estoque antes do pagamento. */
+    /** Todo pedido vai ao estoque antes do pagamento. */
     private long novoPedido(String cliente, boolean limitar, boolean comDestino) {
-        return novoPedido(cliente, limitar, comDestino, true);
-    }
-
-    private long novoPedido(String cliente, boolean limitar, boolean comDestino, boolean promocao) {
         return new TransactionTemplate(transacoes).execute(s -> servico.criar(
-                cliente, limitar, comDestino ? new PedidoServico.Destino(-26.91, -49.07, "Rua A") : null, comDestino ? 2 : null, promocao));
+                cliente, limitar, comDestino ? new PedidoServico.Destino(-26.91, -49.07, "Rua A") : null, comDestino ? 2 : null));
     }
 
     /** Entrega uma mensagem ao manipulador do tipo, como o consumidor faria (dentro de uma transação). */
@@ -328,7 +324,7 @@ class PedidosTest {
 
     @Test
     void postDoOperadorResponde202ComIdELocation() throws Exception {
-        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"destino\":{\"lat\":-26.9,\"lon\":-49.0,\"endereco\":\"Rua B\"},\"entregadorPreferidoId\":1,\"promocao\":true}",
+        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"destino\":{\"lat\":-26.9,\"lon\":-49.0,\"endereco\":\"Rua B\"},\"entregadorPreferidoId\":1}",
                 "X-User-Id", "operador", "X-User-Role", "operador");
         assertEquals(202, r.statusCode());
         JsonNode j = Json.MAPPER.readTree(r.body());
@@ -379,61 +375,16 @@ class PedidosTest {
         assertEquals(202, http("POST", "/api/pedidos", "{}", "X-User-Id", "c-c", "X-User-Role", "cliente").statusCode()); // sem endereço continua valendo
     }
 
-    // ---------------------------------------------------------------- cupom da promoção e pedido normal
+    // ---------------------------------------------------------------- todo pedido reserva uma unidade do item
 
     @Test
-    void pedidoComCupomUsaAPromocaoEReservaAUnidade() throws Exception {
-        // o cupom vale com ou sem o #, em maiúsculas ou minúsculas
-        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"cupom\":\"#PromoBCC\"}", "X-User-Id", "c-cupom", "X-User-Role", "cliente");
+    void pedidoDoClienteReservaAUnidadeAntesDoPagamento() throws Exception {
+        HttpResponse<String> r = http("POST", "/api/pedidos", "{}", "X-User-Id", "c-item", "X-User-Role", "cliente");
         assertEquals(202, r.statusCode());
         JsonNode j = Json.MAPPER.readTree(r.body());
         long id = j.get("id").asLong();
         assertEquals("RECEBIDO", j.get("status").asString());
-        assertTrue(j.get("promocao").asBoolean());
-        assertTrue(repo.buscar(id).orElseThrow().promocao());
-        assertEquals(List.of("estoque.reservar"), mensagens(id));
-    }
-
-    @Test
-    void pedidoSemCupomEhNormalEVaiDiretoParaOPagamentoSemUsarOEstoque() throws Exception {
-        HttpResponse<String> r = http("POST", "/api/pedidos", "{}", "X-User-Id", "c-normal", "X-User-Role", "cliente");
-        assertEquals(202, r.statusCode());
-        JsonNode j = Json.MAPPER.readTree(r.body());
-        long id = j.get("id").asLong();
-        assertEquals("AGUARDANDO_PAGAMENTO", j.get("status").asString());
-        assertFalse(j.get("promocao").asBoolean());
-
-        Pedido p = repo.buscar(id).orElseThrow();
-        assertEquals("AGUARDANDO_PAGAMENTO", p.status());
-        assertFalse(p.promocao());
-        assertTrue(p.prazoPagamento().isAfter(Instant.now()));
-        assertEquals(List.of("pagamento.cobrar"), mensagens(id)); // nada de estoque.reservar
-        assertEquals(2, historico(id)); // RECEBIDO, AGUARDANDO_PAGAMENTO
-    }
-
-    @Test
-    void pedidoNormalConfirmaSemPassarPeloEstoque() {
-        long id = novoPedido("c1", true, true, false);
-        receber("pagamento.aprovado", id, Map.of("referencia", "ref-n"));
-        assertEquals("CONFIRMADO", status(id));
-        assertEquals(List.of("pagamento.cobrar", "pedido.confirmado"), mensagens(id));
-    }
-
-    @Test
-    void cupomErradoRecebe422ENaoCriaPedido() throws Exception {
-        assertEquals(422, http("POST", "/api/pedidos", "{\"cupom\":\"#outro\"}", "X-User-Id", "c-x", "X-User-Role", "cliente").statusCode());
-        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM pedidos", Integer.class));
-    }
-
-    @Test
-    void gestaoEscolheSeOPedidoUsaAPromocao() throws Exception {
-        String corpo = "{\"destino\":{\"lat\":-26.9,\"lon\":-49.0},\"promocao\":%s}";
-        long normal = Json.MAPPER.readTree(http("POST", "/api/pedidos", corpo.formatted("false"), "X-User-Id", "operador", "X-User-Role", "operador").body()).get("id").asLong();
-        long promo = Json.MAPPER.readTree(http("POST", "/api/pedidos", corpo.formatted("true"), "X-User-Id", "operador", "X-User-Role", "operador").body()).get("id").asLong();
-        assertFalse(repo.buscar(normal).orElseThrow().promocao());
-        assertTrue(repo.buscar(promo).orElseThrow().promocao());
-        assertEquals(List.of("pagamento.cobrar"), mensagens(normal));
-        assertEquals(List.of("estoque.reservar"), mensagens(promo));
+        assertEquals(List.of("estoque.reservar"), mensagens(id)); // o pagamento só é pedido depois que o estoque reserva
     }
 
     @Test
@@ -450,8 +401,9 @@ class PedidosTest {
     }
 
     @Test
-    void configDevolveOrigemEPromocao() throws Exception {
+    void configDevolveOrigemEItem() throws Exception {
         JsonNode j = Json.MAPPER.readTree(http("GET", "/api/pedidos/config", null, "X-User-Id", "c-1", "X-User-Role", "cliente").body());
         assertEquals(-26.9194, j.get("origem").get("lat").asDouble());
+        assertEquals("Item", j.get("item").get("nome").asString());
     }
 }

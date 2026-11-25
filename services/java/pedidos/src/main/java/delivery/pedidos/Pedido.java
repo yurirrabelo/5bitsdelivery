@@ -16,7 +16,6 @@ public record Pedido(
         String destinoEndereco,
         Integer entregadorPreferidoId,
         Integer entregadorId,
-        boolean promocao,
         UUID correlationId,
         String traceparent,
         Instant prazoPagamento,

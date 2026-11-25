@@ -7,7 +7,6 @@ import { Counter } from 'k6/metrics';
 
 const BASE = __ENV.BASE_URL || 'http://nginx';
 const JSON_H = { headers: { 'Content-Type': 'application/json' } };
-const CUPOM = '#' + (__ENV.PROMOCAO_CUPOM || 'promobcc'); // pedidos com cupom: passam pelo estoque, como os da plateia
 
 export const options = {
   scenarios: {
@@ -31,7 +30,7 @@ export default function () {
     recusados.add(1);
     return;
   }
-  const r = http.post(`${BASE}/api/pedidos`, JSON.stringify({ cupom: CUPOM }), { headers: { Authorization: `Bearer ${sessao.json('token')}`, 'Content-Type': 'application/json' } });
+  const r = http.post(`${BASE}/api/pedidos`, '{}', { headers: { Authorization: `Bearer ${sessao.json('token')}`, 'Content-Type': 'application/json' } });
   const ok = check(r, { 'pedido aceito (202)': (x) => x.status === 202 });
   (ok ? aceitos : recusados).add(1);
 }

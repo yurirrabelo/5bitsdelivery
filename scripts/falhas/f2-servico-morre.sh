@@ -47,4 +47,4 @@ for c in $(docker ps -a --filter "label=com.docker.compose.service=pagamento" --
   echo "   $c: $(docker logs "$c" 2>&1 | grep -c "\"pedidoId\":$id.*chamando o gateway") chamada(s) ao gateway"
 done
 
-finalizar F2 "Grafana → Detalhes técnicos → \"Mensagens processadas por réplica do pagamento\": uma réplica parou e a outra assumiu. O pedido terminou com uma cobrança só."
+finalizar F2 "Grafana: \"Pagamentos por cópia\": uma cópia parou e a outra assumiu. O pedido terminou com uma cobrança só."

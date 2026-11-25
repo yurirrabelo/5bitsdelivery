@@ -1,6 +1,6 @@
 # Guia das telas: o que cada site e cada painel mostra
 
-Para quem não sabe o que está olhando. Começa pelo que é real e o que é simulado, depois cada site, depois cada painel do Grafana.
+Para quem não sabe o que está olhando. Começa pelo que é real e o que é simulado, depois cada site, depois o Grafana.
 
 ---
 
@@ -24,46 +24,48 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 | Endereço | Quem usa | Para que serve |
 |---|---|---|
 | **http://localhost:8080** (Entrada) | gestão e entregador | Um login só: quem é da gestão vai para o painel e quem é entregador vai para a tela do entregador. Mostra também os links das 3 interfaces (Gestão, Entregador, Pedidos). Útil para abrir só o endereço do túnel no celular. |
-| **http://localhost:8080/painel/** (Painel de gestão) | quem apresenta, no notebook, e o telão | A central da loja: as **entregas ao vivo, com o GPS**, e os pedidos manuais. Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Só aparece no mapa quem está mandando GPS agora (nos últimos 2 minutos): a posição de um celular que saiu, ou de um teste antigo, não fica lá como se fosse um entregador de verdade. Ao lado, o botão **🧪 Testes de falha** (abre a tela de testes, veja abaixo; só aparece com o painel aberto por `localhost`) e duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR** (o QR code que leva ao pedido e o link do entregador; o campo do túnel só aparece se o painel foi aberto por `localhost`). **＋ Pedido pelo mapa** é o pedido manual: o formulário fica aberto, então dá para criar vários seguidos (clique no mapa, escolha o **tipo** (normal ou com o cupom da promoção) e o entregador, **Criar pedido**). Um 🎟️ ao lado do número mostra os pedidos que usaram o cupom. **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
-| **/cliente/?codigo=promo** (Pedidos) | a plateia, pelo QR code | O campo do **cupom** (`#promobcc`, opcional) e o botão de pedir: com o cupom o pedido usa uma das 10 unidades da promoção; sem cupom é um pedido normal. O navegador pergunta a localização e a entrega vai até onde o cliente está. Quando as 10 unidades acabam, a tela avisa "Cupom inválido" e só deixa fazer o pedido normal. Para entregar em **outro endereço**, ele toca em "Quero receber em outro endereço" e marca o ponto no mapa (o mesmo mapa aparece se o GPS não funcionar). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para pedir de novo. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade da promoção reservada (só com cupom) → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
+| **http://localhost:8080/painel/** (Painel de gestão) | quem apresenta, no notebook, e o telão | A central da loja: as **entregas ao vivo, com o GPS**, e os pedidos manuais. Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Só aparece no mapa quem está mandando GPS agora (nos últimos 2 minutos): a posição de um celular que saiu, ou de um teste antigo, não fica lá como se fosse um entregador de verdade. Ao lado, o botão **🧪 Testes de falha** (abre a tela de testes, veja abaixo; só aparece com o painel aberto por `localhost`) e duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR** (o QR code que leva ao pedido e o link do entregador; o campo do túnel só aparece se o painel foi aberto por `localhost`). **＋ Pedido pelo mapa** é o pedido manual: o formulário fica aberto, então dá para criar vários seguidos (clique no mapa, escolha o entregador, se quiser, e **Criar pedido**). **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
+| **/cliente/?codigo=promo** (Pedidos) | a plateia, pelo QR code | O botão **Pedir item**. O navegador pergunta a localização e a entrega vai até onde o cliente está. Quando as 10 unidades acabam, o pedido termina como "Item esgotado". Para entregar em **outro endereço**, ele toca em "Quero receber em outro endereço" e marca o ponto no mapa (o mesmo mapa aparece se o GPS não funcionar). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para pedir de novo. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
 | **/entregador/** (Entregador) | `entregador1` na tela da aula e `entregador2` no celular de um integrante (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Os pedidos prontos para entrega aparecem em **Pedidos para entregar** (faixa, vibração e som), com a distância: quem tocar primeiro em **Aceitar** leva, e o outro entregador lê "já foi aceito". Aceito, a tela mostra o mapa com o endereço do cliente, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
-| **http://localhost:3000** (Grafana) | o telão e quem apresenta | A tela **Apresentação** (números, caminho de cada pedido, mapa dos serviços) e a **Detalhes técnicos** (para perguntas). Sem login. |
-| **http://localhost:8099** (Testes de falha) | quem apresenta, no notebook | Tela cheia, aberta pelo botão **🧪 Testes de falha** do painel de gestão. À esquerda, os cenários que o professor pode pedir (F1 a F8). No centro, a história do cenário escolhido: **o que o professor pede**, o **passo a passo com o porquê de cada passo**, o **resultado esperado** (para dizer em voz alta antes de provocar) e **"agora faça um pedido"** (o que o cliente vê, por exemplo "Não foi possível: pagamento recusado"). O botão **▶ Provocar a falha** faz os passos acenderem um a um e, no fim, mostra o PASSOU ou FALHOU, a tabela **esperado × obtido** e o que abrir no Grafana. À direita, ao vivo: o relógio, o **estado dos bancos** (estoque, pedidos, pagamentos, outbox) e os logs. Cada teste começa com o banco zerado. Só abre no notebook; o `./demo.sh subir` já liga (ou `./demo.sh testes`). |
-| http://localhost:15672 (RabbitMQ) | ninguém, em condições normais | **Não precisa abrir.** O Grafana já mostra as filas, as DLQs e os traces. Só serve para mostrar uma mensagem parada numa DLQ com as próprias mãos (`admin` / `admin`). |
+| **http://localhost:3000** (Grafana) | o telão e quem apresenta | Uma tela só, **5Bits Delivery** (veja a seção 3). Só leitura, sem login. Também abre pelo link público: o `./demo.sh link` mostra o endereço. |
+| **http://localhost:8099** (Testes de falha) | quem apresenta, no notebook | Uma página simples, aberta pelo botão **🧪 Testes de falha** do painel de gestão. Para cada falha (F1 a F8): o botão **Acionar teste falha N**, **como o erro é provocado**, **onde ele acontece**, **o que acontece**, o **resultado esperado** e **o que tentar de novo**. O botão roda o teste e mostra a saída (logs, estado dos bancos, esperado × obtido e PASSOU ou FALHOU). Cada teste começa com o banco zerado. Os botões só funcionam no notebook; o `./demo.sh subir` já liga (ou `./demo.sh testes`). A mesma página abre só para leitura em `/testes/`, inclusive pelo link público. |
+| http://localhost:15672 (RabbitMQ) | ninguém, em condições normais | **Não precisa abrir.** O Grafana já mostra as DLQs e a outbox. Só serve para mostrar uma mensagem parada numa DLQ com as próprias mãos (`admin` / `admin`). |
 | http://localhost:4566 (MiniStack) | ninguém | Não é uma tela: é a API da "nuvem" simulada. |
 
 ### Como um pedido passa pelas telas
 
 | O que acontece | Tela Pedidos (cliente) | Tela do entregador | Painel de gestão |
 |---|---|---|---|
-| O cliente pede (com o cupom) | "Recebido", "Unidade da promoção reservada" e "Pagando…" (sem cupom, o pedido normal pula a reserva) | (nada ainda) | o pedido entra na lista: "Recebido", depois "Pagando" |
+| O cliente pede o item | "Recebido", "Unidade reservada para você" e "Pagando…" | (nada ainda) | o pedido entra na lista: "Recebido", depois "Pagando" |
 | O pagamento é aprovado | "🔎 Procurando um entregador…" | o pedido aparece em **Pedidos para entregar**, para todo entregador Disponível | "Aguardando entregador" e o destino no mapa |
 | Um entregador toca em **Aceitar** | "🛵 Entregador a caminho" | o mapa com a entrega; para o outro entregador o pedido some da lista | "Em entrega" e o 🛵 andando |
 | O entregador chega (menos de 50 m) ou toca em **Confirmar entrega** | "🎉 Entregue!" | "Entrega concluída. Bom trabalho!" | "Entregue" |
 
 ---
 
-## 3. Grafana: tela "Apresentação" (a página inicial)
+## 3. Grafana: uma tela só
 
-Pensada para a plateia. Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
+Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
 
-### Os seis números do topo
+### Os quatro números do topo
 | Número | O que conta |
 |---|---|
-| **Pessoas que entraram** | quantas pessoas abriram o link do QR e entraram (uma por celular/aba) |
 | **Pedidos feitos** | quantos pedidos chegaram ao sistema |
-| **Pedidos confirmados** | os que reservaram a unidade **e** pagaram |
+| **Confirmados** | os que reservaram a unidade **e** pagaram |
 | **Sem sucesso** | esgotado, pagamento recusado ou demorou demais (o sistema desfez o que fez). Zero é normal |
-| **Unidades restantes** | quantas da promoção ainda estão livres. Nunca passa de 10 nem fica negativo, mesmo com todos pedindo juntos |
-| **Tempo do pagamento** | quanto o gateway demora, em média, para responder |
+| **Unidades restantes** | quantas unidades do item ainda estão livres. Nunca passa do total nem fica negativo, mesmo com todos pedindo juntos |
 
 Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 
-### Os dois gráficos
-- **Pedidos por minuto:** sobe quando a turma pede. É a "onda" da plateia.
-- **Quanto cada serviço demora (média):** tempo que cada serviço leva para tratar uma mensagem. O pagamento é o mais lento porque chama o gateway.
+### Os quatro gráficos
+| Gráfico | O que mostra | Quando olhar |
+|---|---|---|
+| **Pedidos por minuto** | sobe quando a turma pede: é a "onda" da plateia | F5 e F8 (carga) |
+| **Pagamentos por cópia** | uma linha por cópia do serviço de pagamento | F2 (uma cópia morre) e F8 (escala): a carga se divide |
+| **Quarentena (DLQ)** | mensagens que falharam várias vezes e foram separadas para não travar as outras | F4 (mensagem venenosa): sobe para 1 |
+| **Esperando envio (outbox)** | mensagens gravadas no banco que ainda não saíram para o RabbitMQ | F6 (RabbitMQ fora): sobe e volta a zero sozinho |
 
-### "O caminho do pedido" (o painel principal)
+### As duas tabelas: o caminho do pedido
 - **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram. **A lista e o caminho escolhido guardam as últimas 24 horas**, para dar tempo de analisar (o período do canto superior direito só vale para os números e gráficos de cima).
 - **2. O caminho do pedido escolhido:** o mesmo pedido, serviço por serviço, na ordem em que aconteceu e quanto cada um demorou. É a versão "de dentro" da tela do cliente:
 
@@ -78,62 +80,22 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | 📦 Estoque dá baixa (venda) | Estoque | a unidade reservada vira vendida |
 | 🛵 Entregas recebe o pedido | Entregas | o pedido com endereço vira uma entrega que espera: aparece na lista dos entregadores até um tocar em Aceitar (o pedido sem endereço termina aqui, confirmado) |
 
-Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ registrou o erro, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento, o Gateway e o veredito do Pedidos; numa promoção esgotada, o Estoque e o Pedidos.
-
-- **Detalhe técnico do pedido escolhido (fechado):** a cascata completa do trace, com cada chamada (HTTP, banco, fila). Para quem pergunta "e dentro do serviço?".
-
-### "A arquitetura do pedido escolhido" e "Onde a falha começou"
-O desenho da arquitetura **só para o pedido que você escolheu** na tabela (a mesma escolha do caminho do pedido). Cada caixa é um serviço e as setas mostram quem fala com quem: as ligadas ao RabbitMQ são mensagens e as outras são chamadas HTTP.
-
-| Cor | O que quer dizer |
-|---|---|
-| 🟩 verde | o pedido passou por esse serviço sem erro |
-| 🟥 vermelho | o serviço **registrou o erro** (foi onde ele nasceu ou o serviço que recebeu o erro e reagiu) |
-| ⬜ cinza | o pedido não chegou até esse serviço |
-
-**Como ler o vermelho.** Um erro nasce em um serviço e **volta pelo caminho por onde o pedido veio**; cada serviço que recebe o erro e reage (avisa, cancela, desfaz) também fica vermelho. Por isso há mais de uma caixa vermelha. A faixa **"Onde a falha começou"**, logo acima do desenho, diz em qual serviço o erro **nasceu** (o primeiro erro a terminar):
-
-| Pedido | Onde a falha começou | O resto do vermelho |
-|---|---|---|
-| ❌ Recusado | Gateway de pagamento (a operadora recusou a cobrança) | o Pagamento avisou e o Pedidos cancelou o pedido; o Estoque ficou verde porque devolveu a unidade sem erro |
-| 😕 Esgotado | Estoque (não havia mais unidades) | o Pedidos registrou o "esgotado" e encerrou o pedido |
-| ⏱️ Demorou demais / ↩️ Estornado | Pedidos (o prazo do pagamento venceu e o pedido foi cancelado) | o estorno da aprovação que chegou atrasada |
-
-Sem falha, a faixa mostra "Sem falha neste pedido". O desenho muda na hora em que você clica em outro pedido. A visão de **todos os pedidos somados** (com os bancos e o Redis) fica em "Detalhes técnicos", no último bloco.
+Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ registrou o erro, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento e o Gateway; num item esgotado, o Estoque.
 
 ---
 
-## 4. Grafana: tela "Detalhes técnicos"
+## 4. Perguntas rápidas
 
-Abre pelo botão no topo da Apresentação. É para quando alguém pergunta algo específico ou para as falhas do professor.
-
-| Painel | O que mostra | Quando olhar |
-|---|---|---|
-| **Pedidos por status** | quantas vezes cada status foi alcançado | confirmar que "recebidos" bate com "confirmados + sem sucesso" |
-| **Estoque da promoção** | disponível + reservado + vendido = total | F5 (corrida): a soma nunca muda e nada fica negativo |
-| **Pagamentos por resultado** | aprovado, recusado, estornado, por minuto | F1 (falha do pagamento) e F7 (aprovação tardia, estorno) |
-| **Latência do gateway** | tempo de resposta da operadora | F7: passa do prazo e o pedido é cancelado |
-| **Mensagens prontas nas filas** | fila de cada serviço esperando ser tratada | carga alta: se a fila cresce, o serviço está lento |
-| **Mensagens nas DLQs** | mensagens que falharam várias vezes e foram para a fila de "mortas" | F4 (mensagem venenosa): sobe para 1 |
-| **Outbox pendente** | mensagens gravadas no banco que ainda não saíram para o RabbitMQ | F6 (RabbitMQ fora): sobe e volta a zero sozinho |
-| **Mensagens por réplica do pagamento** | uma linha por cópia do serviço de pagamento | F2 (uma cópia morre) e F8 (escala): a carga se divide |
-| **Duplicadas descartadas e erros** | mensagens repetidas que o serviço reconheceu e ignorou | F3: mesma mensagem 5 vezes, um efeito só |
-| **Compensações, recusas e erros (logs)** | as linhas de log de tudo que deu errado | achar o que aconteceu. Clique numa linha para ver o `correlationId` |
-
----
-
-## 5. Perguntas rápidas
-
-**Preciso abrir o RabbitMQ?** Não. O Grafana mostra filas, DLQs e traces.
+**Preciso abrir o RabbitMQ?** Não. O Grafana mostra a quarentena (DLQ) e a outbox.
 
 **Qual tela eu mostro para provar o quê?**
 | Quero provar | Mostro |
 |---|---|
-| que o pedido passa por todos os serviços | Apresentação → clique no pedido |
-| a arquitetura funcionando, com o erro em vermelho e onde ele começou | Apresentação → escolha um pedido recusado ou esgotado → "Onde a falha começou" e "A arquitetura do pedido escolhido" |
+| que o pedido passa por todos os serviços | Grafana → clique no pedido na tabela |
+| onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: o caminho mostra em vermelho onde deu erro |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
-| que não vende mais que o estoque | "Unidades restantes" (e "Estoque da promoção" em Detalhes técnicos) |
-| que o sistema se recupera de falhas | os scripts F1–F8 com "Detalhes técnicos" aberto |
+| que não vende mais que o estoque | "Unidades restantes" |
+| que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto |
 | o GPS | Painel de gestão (marcador e "última posição há X s") e a página do entregador (cartão do GPS) |
 
 **Por que um pedido não aparece na tabela?** Espere uns 20 segundos e confira o período no canto superior direito.

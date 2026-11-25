@@ -126,12 +126,11 @@ publicar_mensagem() { # publicar_mensagem type messageId payload_json
 }
 
 # ---------------------------------------------------------------- clientes do QR e carga
-criar_pedido_cliente() { # sessão nova de cliente + pedido com o cupom da promoção (termina em CONFIRMADO, sem entrega). Escreve o id.
-  local t r cupom
-  cupom=$(var PROMOCAO_CUPOM); cupom=${cupom:-promobcc}
+criar_pedido_cliente() { # sessão nova de cliente + pedido do item (termina em CONFIRMADO, sem entrega). Escreve o id.
+  local t r
   t=$(campo "$(curl -s -X POST "$BASE/api/auth/cliente" -H 'Content-Type: application/json' \
     -d "{\"apelido\":\"teste$RANDOM\",\"codigo\":\"$(var EVENTO_CODIGO)\"}")" token)
-  r=$(curl -s -X POST "$BASE/api/pedidos" -H "Authorization: Bearer $t" -H 'Content-Type: application/json' -d "{\"cupom\":\"#$cupom\"}")
+  r=$(curl -s -X POST "$BASE/api/pedidos" -H "Authorization: Bearer $t" -H 'Content-Type: application/json' -d '{}')
   campo "$r" id
 }
 

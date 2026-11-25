@@ -30,4 +30,4 @@ echo
 echo "Histórico do pedido (para ver no trace: reservar -> recusado -> cancelado):"
 api GET "/api/pedidos/$id/historico" | grep -o '"para":"[A-Z_]*"' | sed 's/"para":/   -> /'
 
-finalizar F1 "Grafana → Apresentação: escolha o pedido ❌ Recusado mais recente. A arquitetura do pedido pinta Pagamento, Gateway e Pedidos de vermelho e a tabela mostra \"Estoque devolve a unidade\"."
+finalizar F1 "Grafana: \"Sem sucesso\" subiu 1. Na tabela \"Pedidos recentes\", clique no pedido recusado: o caminho dele mostra o erro em vermelho e o estoque devolvendo a unidade."

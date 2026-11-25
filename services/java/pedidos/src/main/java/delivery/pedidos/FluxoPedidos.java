@@ -67,7 +67,7 @@ public class FluxoPedidos {
         return ManipuladorMensagem.de("entrega.concluida", this::aoConcluir);
     }
 
-    // RECEBIDO -> AGUARDANDO_PAGAMENTO: o estoque reservou a unidade (pedido com cupom); o pedidos manda cobrar
+    // RECEBIDO -> AGUARDANDO_PAGAMENTO: o estoque reservou a unidade; o pedidos manda cobrar
     void aoReservar(Envelope e) {
         long id = e.payloadLong("pedidoId");
         String traceparent = repo.buscar(id).map(Pedido::traceparent).orElse(null);

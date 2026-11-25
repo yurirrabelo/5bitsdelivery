@@ -140,7 +140,7 @@ async function smoke(a: Record<string, string>): Promise<boolean> {
   });
   const tokenCliente = ((await rc.json().catch(() => ({}))) as { token?: string }).token ?? '';
   verificar('o cliente entra com o código do evento', !!tokenCliente);
-  const criado = await api(tokenCliente, 'POST', '/api/pedidos', { destino: { lat: destino[1], lon: destino[0] }, cupom: '#' + env('PROMOCAO_CUPOM', 'promobcc') });
+  const criado = await api(tokenCliente, 'POST', '/api/pedidos', { destino: { lat: destino[1], lon: destino[0] } });
   verificar('POST /api/pedidos responde 202', criado.status === 202, `(#${criado.json?.id})`);
   const id = criado.json.id as number;
 

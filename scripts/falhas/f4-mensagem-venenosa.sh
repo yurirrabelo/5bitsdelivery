@@ -32,4 +32,4 @@ echo
 echo "Conteúdo da DLQ (para mostrar no painel do RabbitMQ: http://localhost:15672):"
 rabbit_api POST "/api/queues/%2F/$DLQ/get" '{"count":1,"ackmode":"ack_requeue_true","encoding":"auto"}' | grep -o '"payload":"[^}]*}' | head -1 | cut -c1-200
 
-finalizar F4 "Grafana → Detalhes técnicos → \"Mensagens nas DLQs\": uma mensagem na DLQ do estoque, e os outros pedidos seguiram normalmente."
+finalizar F4 "Grafana: \"Quarentena (DLQ)\" mostra a mensagem, e os outros pedidos seguiram normalmente. No RabbitMQ (http://localhost:15672) a fila ${DLQ} guarda o conteúdo dela."

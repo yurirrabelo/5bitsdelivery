@@ -17,7 +17,7 @@ public class EstoqueController {
         this.jdbc = jdbc;
     }
 
-    /** Qualquer usuário autenticado pode ver o contador da promoção. */
+    /** Qualquer usuário autenticado pode ver quantas unidades do item restam. */
     @GetMapping("/api/estoque")
     public Map<String, Object> estoque(@RequestHeader(value = "X-User-Id", required = false) String userId) {
         if (userId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
