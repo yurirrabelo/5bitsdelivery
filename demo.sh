@@ -4,7 +4,7 @@
 #   ./demo.sh subir        sobe o sistema inteiro, liga a tela de testes de falha e espera ficar pronto
 #   ./demo.sh link         liga o túnel HTTPS e mostra os links para o celular (obrigatório para o GPS do celular)
 #   ./demo.sh reset [N]    repõe as unidades do item (padrão: o valor do .env)
-#   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga pedidos, pagamentos, entregas e pontos de GPS de teste, repõe as unidades e libera os entregadores
+#   ./demo.sh limpar [N]   começa limpo, sem reiniciar (o link do túnel não muda): apaga pedidos, pagamentos, entregas, pontos de GPS e DLQs de teste, repõe as unidades e libera os entregadores
 #   ./demo.sh teste        fluxo completo: o cliente pede, o entregador 2 aceita e "dirige" (termina com SMOKE: PASSOU)
 #   ./demo.sh unitarios    testes do código das bibliotecas e serviços, em containers (~3 min)
 #   ./demo.sh simular [1|2] [km/h]   plano B do GPS: aceita o pedido que está esperando e reproduz a rota do ensaio (padrão: entregador 2)

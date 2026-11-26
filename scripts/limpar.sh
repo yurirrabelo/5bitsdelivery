@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deixa o sistema como no primeiro dia, SEM reiniciar nada (o link do túnel continua o mesmo): apaga os pedidos, os
-# pagamentos, as entregas, os trajetos e as posições de GPS de teste, repõe as unidades do item e deixa os entregadores livres.
+# pagamentos, as entregas, os trajetos e as posições de GPS de teste, esvazia as filas de quarentena (DLQ), repõe as unidades
+# do item e deixa os entregadores livres.
 # Use com o sistema parado (nenhum pedido em andamento): depois do ensaio e antes da apresentação.
 # Os cenários de falha (./demo.sh falha N) rodam isto sozinhos antes de começar.
 # Opcional: ./scripts/limpar.sh 20   (outra quantidade de unidades)
@@ -32,6 +33,13 @@ SQL
 # no mapa do painel como se fossem entregadores de verdade.
 ./scripts/limpar-gps.sh || exit 1
 
+# As filas de quarentena (DLQ) só têm mensagens de teste (a mensagem venenosa do F4 fica lá para mostrar): esvazia todas.
+RB_USUARIO=$(grep -E '^RABBITMQ_USUARIO=' .env | head -1 | cut -d= -f2- | tr -d '\r')
+RB_SENHA=$(grep -E '^RABBITMQ_SENHA=' .env | head -1 | cut -d= -f2- | tr -d '\r')
+for fila in $(curl -s -u "$RB_USUARIO:$RB_SENHA" http://127.0.0.1:15672/api/queues | grep -oE '"name":"[^"]*\.dlq"' | cut -d'"' -f4); do
+  curl -s -u "$RB_USUARIO:$RB_SENHA" -X DELETE "http://127.0.0.1:15672/api/queues/%2F/$fila/contents" >/dev/null
+done
+
 # Bônus CQRS: a visão dos pedidos fica no DynamoDB (serviço "consultas"). Se ele estiver no ar, zera a visão também.
 if [ -n "$(docker compose ps -q consultas 2>/dev/null)" ]; then
   docker compose exec -T consultas node - <<'JS' || exit 1
@@ -54,4 +62,4 @@ const tabela = process.env.DYNAMODB_TABELA_VISAO;
 })().catch((e) => { console.error(e.message); process.exit(1); });
 JS
 fi
-echo "Pedidos, pagamentos, entregas, trajetos e posições de GPS apagados. Entregadores livres."
+echo "Pedidos, pagamentos, entregas, trajetos, posições de GPS e DLQs apagados. Entregadores livres."

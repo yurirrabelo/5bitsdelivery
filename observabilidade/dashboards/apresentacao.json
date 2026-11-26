@@ -7,7 +7,7 @@
  ],
  "timezone": "browser",
  "schemaVersion": 39,
- "version": 6,
+ "version": 7,
  "refresh": "5s",
  "time": {
   "from": "now-15m",
@@ -389,7 +389,7 @@
    "id": 8,
    "type": "timeseries",
    "title": "Quarentena (DLQ)",
-   "description": "Mensagens inválidas que o sistema separou depois de 3 tentativas, para não travar as outras.",
+   "description": "Mensagens inválidas que o sistema separou depois de 3 tentativas, para não travar as outras. Uma linha por fila. No teste F4 sobe para 1 e continua em 1 até o próximo F4 ou ./demo.sh limpar.",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -417,12 +417,17 @@
      "custom": {
       "drawStyle": "line",
       "lineWidth": 2,
-      "fillOpacity": 15,
-      "showPoints": "never",
+      "fillOpacity": 30,
+      "showPoints": "always",
       "stacking": {
        "mode": "none"
-      }
-     }
+      },
+      "axisSoftMax": 3,
+      "lineInterpolation": "stepAfter",
+      "pointSize": 7
+     },
+     "min": 0,
+     "decimals": 0
     },
     "overrides": []
    },
@@ -430,7 +435,10 @@
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
-     "showLegend": true
+     "showLegend": true,
+     "calcs": [
+      "lastNotNull"
+     ]
     },
     "tooltip": {
      "mode": "multi",
@@ -474,8 +482,11 @@
       "showPoints": "never",
       "stacking": {
        "mode": "none"
-      }
-     }
+      },
+      "axisSoftMax": 5
+     },
+     "min": 0,
+     "decimals": 0
     },
     "overrides": []
    },

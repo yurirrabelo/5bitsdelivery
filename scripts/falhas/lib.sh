@@ -111,7 +111,12 @@ rabbit_api() { # rabbit_api METODO caminho [corpo]
 }
 
 fila_prontas() { # fila_prontas nome  -> mensagens prontas (sem as não confirmadas)
-  campo "$(rabbit_api GET "/api/queues/%2F/$1")" messages_ready
+  local v
+  for _ in 1 2 3 4 5; do # logo depois de muita atividade a API de gestão pode demorar a trazer o número (já veio vazio uma vez)
+    v=$(campo "$(rabbit_api GET "/api/queues/%2F/$1")" messages_ready)
+    [ -n "$v" ] && { echo "$v"; return; }
+    sleep 1
+  done
 }
 
 uuid() { cat /proc/sys/kernel/random/uuid 2>/dev/null || python -c 'import uuid;print(uuid.uuid4())'; }

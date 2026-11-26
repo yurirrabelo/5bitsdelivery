@@ -11,7 +11,7 @@ O professor escolhe uma falha e o grupo a provoca ao vivo, **mostrando pelos log
 ./demo.sh falha 3      # roda direto o F3
 ```
 
-Cada teste começa com o banco zerado (pedidos, entregas, estoque nas 10 unidades, entregadores livres e sem posição de GPS) e, ao terminar, devolve o sistema ao normal. Leva de 1 a 3 minutos. **Não rode com pedidos de verdade em andamento** (por exemplo, no meio da plateia pedindo pelo QR): o teste os apaga.
+Cada teste começa com o banco zerado (pedidos, entregas, estoque nas 10 unidades, entregadores livres, sem posição de GPS e as DLQs vazias) e, ao terminar, devolve o sistema ao normal (a mensagem do F4 fica na DLQ, para mostrar). Leva de 1 a 3 minutos. **Não rode com pedidos de verdade em andamento** (por exemplo, no meio da plateia pedindo pelo QR): o teste os apaga.
 
 **Por que a tela dos testes só abre no notebook?** Os testes derrubam coisas de verdade (RabbitMQ, cópias do pagamento, nuvem), e isso só um comando na máquina faz. A tela é um servidor pequeno do notebook (`scripts/testes/servidor.py`) que só atende páginas de `localhost`. O painel de gestão também abre pelo link público e a plateia enxerga esse link: um botão que derruba o sistema ali seria um risco. Por isso a mesma página (`web/testes/index.html`) também abre pelo link público em `/testes/`, só para leitura, com os botões desligados.
 
@@ -51,7 +51,7 @@ Ao terminar, cada teste escreve em **"Mostre agora"** o que abrir no Grafana, e 
 | **F1** | "Sem sucesso" sobe 1; clique no pedido "Recusado": o desenho mostra em vermelho o gateway, o pagamento e o pedidos |
 | **F2** | "Pagamentos por cópia": uma cópia para e a outra assume; no pedido, 2 linhas do gateway (as 2 chamadas, mesma chave) e 1 cobrança |
 | **F3** | no fim da tela, "Duplicadas" sobe 4 e o registro mostra o mesmo `messageId` 4 vezes (o pedido não existe, então não aparece na tabela) |
-| **F4** | "Quarentena (DLQ)" sobe para 1 |
+| **F4** | "Quarentena (DLQ)" sobe para 1 e continua em 1: a mensagem fica na DLQ até o próximo F4 ou `./demo.sh limpar` |
 | **F5** | "Unidades restantes" cai a 0, "Sem sucesso" sobe 90 e "Pedidos por minuto" mostra o pico |
 | **F6** | "Esperando envio (outbox)" sobe durante a queda e volta a 0 |
 | **F6b** | nada específico (o MiniStack não tem painel): veja a saída do teste |

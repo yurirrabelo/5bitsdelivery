@@ -3,13 +3,16 @@
 # Os pedidos normais, feitos em paralelo, seguem sem ser afetados.
 source "$(dirname "$0")/lib.sh"
 DLQ="$(var FILA_ESTOQUE).dlq"
-limpar() { rabbit_api DELETE "/api/queues/%2F/$DLQ/contents" >/dev/null; repor_estoque; restaurar; }
-trap limpar EXIT
+# A mensagem venenosa FICA na DLQ depois do teste, para dar tempo de mostrar no Grafana e no RabbitMQ.
+# Quem a esvazia é o próximo F4 (mais abaixo) ou o ./demo.sh limpar.
+devolver_ao_normal() { repor_estoque; restaurar; }
+trap devolver_ao_normal EXIT
 
 titulo "F4 - mensagem venenosa" "payload inválido: 3 tentativas e depois ${DLQ}; os outros pedidos seguem"
 login_operador
 repor_estoque
 rabbit_api DELETE "/api/queues/%2F/$DLQ/contents" >/dev/null   # começa com a DLQ vazia
+esperar_ate "[ \"\$(fila_prontas $DLQ)\" = 0 ]" 20               # o número da API de gestão atrasa uns segundos depois de esvaziar
 inicio=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 primeiro=$(( $(maior_pedido) + 1 ))
 
@@ -32,4 +35,4 @@ echo
 echo "Conteúdo da DLQ (para mostrar no painel do RabbitMQ: http://localhost:15672):"
 rabbit_api POST "/api/queues/%2F/$DLQ/get" '{"count":1,"ackmode":"ack_requeue_true","encoding":"auto"}' | grep -o '"payload":"[^}]*}' | head -1 | cut -c1-200
 
-finalizar F4 "Grafana: \"Quarentena (DLQ)\" mostra a mensagem, e os outros pedidos seguiram normalmente. No RabbitMQ (http://localhost:15672) a fila ${DLQ} guarda o conteúdo dela."
+finalizar F4 "Grafana: \"Quarentena (DLQ)\" subiu para 1 e continua em 1, e os outros pedidos seguiram normalmente. No RabbitMQ (http://localhost:15672) a fila ${DLQ} guarda o conteúdo dela. A mensagem fica lá até o próximo F4 ou ./demo.sh limpar."

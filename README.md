@@ -112,7 +112,7 @@ docker compose up -d gateway-pagamento    # volta ao que está no .env
 ## 5. Antes de apresentar
 
 ```bash
-./demo.sh limpar       # começa limpo: apaga os pedidos, as entregas e os pontos de GPS do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
+./demo.sh limpar       # começa limpo: apaga os pedidos, as entregas, os pontos de GPS e as DLQs do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
 ./demo.sh estado       # confere que está tudo no ar
 ```
 

@@ -62,7 +62,7 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 |---|---|---|
 | **Pedidos por minuto** | sobe quando a turma pede: é a "onda" da plateia | F5 e F8 (carga) |
 | **Pagamentos por cópia** | uma linha por cópia do serviço de pagamento | F2 (uma cópia morre) e F8 (escala): a carga se divide |
-| **Quarentena (DLQ)** | mensagens que falharam várias vezes e foram separadas para não travar as outras | F4 (mensagem venenosa): sobe para 1 |
+| **Quarentena (DLQ)** | mensagens que falharam várias vezes e foram separadas para não travar as outras | F4 (mensagem venenosa): sobe para 1 e continua em 1 até o próximo F4 ou `./demo.sh limpar` |
 | **Esperando envio (outbox)** | mensagens gravadas no banco que ainda não saíram para o RabbitMQ | F6 (RabbitMQ fora): sobe e volta a zero sozinho |
 
 ### As duas tabelas: o caminho do pedido

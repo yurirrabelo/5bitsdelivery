@@ -60,7 +60,7 @@
     <p><b>Onde o erro acontece:</b> no estoque, ao conferir a mensagem com o contrato (JSON Schema): ela é recusada.</p>
     <p><b>O que acontece:</b> a mensagem volta para a fila 3 vezes (<code>MAX_TENTATIVAS=3</code>) e depois vai para a fila de quarentena (DLQ) <code>estoque.entrada.dlq</code>. Os 3 pedidos seguem normalmente.</p>
     <p><b>Resultado esperado:</b> 1 mensagem na DLQ, 3 tentativas no log do estoque, 3 pedidos CONFIRMADOS e a fila principal vazia.</p>
-    <p><b>No Grafana:</b> "Quarentena (DLQ)" sobe para 1 (a fila <code>estoque.entrada.dlq</code>) e os 3 pedidos normais aparecem na tabela como "Sucesso".</p>
+    <p><b>No Grafana:</b> "Quarentena (DLQ)" sobe para 1 (a fila <code>estoque.entrada.dlq</code>) e continua em 1: a mensagem fica lá até o próximo F4 ou <code>./demo.sh limpar</code>. Os 3 pedidos normais aparecem na tabela como "Sucesso".</p>
     <p><b>Tente novamente:</b> faça um pedido: confirma normalmente, a mensagem ruim não trava ninguém.</p>
     <pre id="saida-4"></pre>
   </section>
