@@ -97,7 +97,8 @@
     <p><b>Onde o erro acontece:</b> no MiniStack, na hora em que o serviço de entregas exporta a rota para o S3.</p>
     <p><b>O que acontece:</b> o pedido é entregue normalmente (os segredos já tinham sido lidos). A rota fica pendente e o serviço tenta de novo a cada 10 s. Quando o MiniStack volta, a rota sobe para o S3.</p>
     <p><b>Resultado esperado:</b> pedido ENTREGUE, rota pendente enquanto o S3 está fora, e depois o arquivo <code>rotas/pedido-N.geojson</code> no S3. Os 6 segredos continuam lá.</p>
-    <p><b>No Grafana:</b> o pedido entra na tabela como "Sucesso". A rota no S3 só aparece na saída do teste (o MiniStack não tem painel).</p>
+    <p><b>No Grafana:</b> o pedido entra na tabela como "Sucesso". No fim da tela, o registro mostra o serviço de entregas avisando "exportação da rota pendente (S3 indisponível?); tento de novo" enquanto o MiniStack está fora e, quando ele volta, "rota exportada para o S3".</p>
+    <p><b>No MiniStack:</b> ele só tem API, não tem tela. O arquivo da rota abre no navegador em <code>http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson</code> (N é o número do pedido que o teste mostra).</p>
     <p><b>Tente novamente:</b> faça um pedido e deixe um entregador aceitar: a entrega termina mesmo com a nuvem fora.</p>
     <pre id="saida-6b"></pre>
   </section>

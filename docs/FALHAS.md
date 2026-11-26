@@ -54,7 +54,7 @@ Ao terminar, cada teste escreve em **"Mostre agora"** o que abrir no Grafana, e 
 | **F4** | "Quarentena (DLQ)" sobe para 1 e continua em 1: a mensagem fica na DLQ até o próximo F4 ou `./demo.sh limpar` |
 | **F5** | "Unidades restantes" cai a 0, "Sem sucesso" sobe 90 e "Pedidos por minuto" mostra o pico |
 | **F6** | "Esperando envio (outbox)" sobe durante a queda e volta a 0; a faixa "RabbitMQ: no ar ou fora" fica vermelha e, no fim da tela, o registro mostra os serviços perdendo e retomando a conexão. No RabbitMQ a tela dele fica fora do ar durante a queda; depois, o "Uptime" do nó zera e a aba Connections mostra as conexões novas |
-| **F6b** | nada específico (o MiniStack não tem painel): veja a saída do teste |
+| **F6b** | no fim da tela, o registro mostra "exportação da rota pendente (S3 indisponível?)" enquanto o MiniStack está fora e "rota exportada para o S3" quando ele volta; o arquivo da rota abre em `http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson` |
 | **F7** | "Sem sucesso" sobe; clique no pedido "Estornado": o gateway demorando e, depois, o estorno |
 | **F8** | "Pagamentos por cópia" mostra 3 linhas dividindo a carga |
 

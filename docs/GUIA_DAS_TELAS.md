@@ -45,7 +45,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 ## 3. Grafana: uma tela só
 
-Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, a faixa do RabbitMQ (no ar ou fora), as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, o registro das mensagens repetidas descartadas e das quedas do RabbitMQ. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
+Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, a faixa do RabbitMQ (no ar ou fora), as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, o registro das mensagens repetidas descartadas, das quedas do RabbitMQ e da rota pendente com a nuvem fora. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
 
 ### Os quatro números do topo
 | Número | O que conta |
@@ -95,6 +95,9 @@ O número **Duplicadas** conta as mensagens que chegaram repetidas e foram desca
 ### RabbitMQ fora do ar (teste F6)
 A faixa **RabbitMQ: no ar ou fora**, logo abaixo dos gráficos, fica verde enquanto o Prometheus consegue falar com o RabbitMQ e **vermelha** enquanto ele está parado (o teste desliga por 30 s; a faixa fica vermelha um pouco mais, porque o Prometheus olha de 15 em 15 s). Embaixo, o registro mostra cada serviço avisando "desconectado do RabbitMQ; reconectando" e depois "conectado ao RabbitMQ": eles reconectam sozinhos, sem reiniciar. Junto com "Esperando envio (outbox)", que sobe e volta a zero, é a causa (RabbitMQ fora) e o efeito (mensagens esperando). **No próprio RabbitMQ** (`http://localhost:15672`) não dá para ver o erro: a tela dele cai junto. Depois que volta, a página inicial mostra o "Uptime" do nó zerado e a aba **Connections** mostra as conexões novas.
 
+### Nuvem (S3) fora do ar (teste F6b)
+O MiniStack é a "AWS em uma caixa" (Secrets Manager e S3). Se ele cair, o pedido continua e é **entregue normalmente**: os segredos já foram lidos quando os serviços subiram. O que não dá é guardar a rota no S3. O serviço de entregas tenta a cada 10 s e, enquanto o S3 está fora, o registro no fim da tela mostra "exportação da rota pendente (S3 indisponível?); tento de novo". Quando o MiniStack volta, aparece "rota exportada para o S3". O MiniStack não tem tela: o arquivo da rota abre no navegador em `http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson` (N é o número do pedido que o teste mostra). Os 6 segredos continuam lá porque o MiniStack guarda o estado (`PERSIST_STATE=1`).
+
 ---
 
 ## 4. Perguntas rápidas
@@ -108,6 +111,7 @@ A faixa **RabbitMQ: no ar ou fora**, logo abaixo dos gráficos, fica verde enqua
 | onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: a faixa diz onde a falha começou e o desenho mostra em vermelho por onde o erro passou |
 | que uma mensagem repetida vale uma vez só | Grafana → "Duplicadas" e o registro no fim da tela (teste F3) |
 | que o sistema aguenta o RabbitMQ cair | Grafana → a faixa "RabbitMQ: no ar ou fora" (vermelha na queda), "Esperando envio (outbox)" subindo e voltando a 0 e o registro das reconexões (teste F6) |
+| que a entrega termina mesmo com a nuvem (MiniStack) fora | Grafana → no fim da tela, o registro da rota pendente e depois exportada (teste F6b) |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" |
 | que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto |
