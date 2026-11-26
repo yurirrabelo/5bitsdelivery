@@ -47,4 +47,4 @@ for c in $(docker ps -a --filter "label=com.docker.compose.service=pagamento" --
   echo "   $c: $(docker logs "$c" 2>&1 | grep -c "\"pedidoId\":$id.*chamando o gateway") chamada(s) ao gateway"
 done
 
-finalizar F2 "Grafana: \"Pagamentos por cópia\": uma cópia parou e a outra assumiu. Na tabela, clique no pedido: 2 linhas do gateway (as duas chamadas, com a mesma chave) e uma cobrança só."
+finalizar F2 "Grafana, na linha «F2 · Serviço morre»: \"Refeitos\" = 1 e o registro do gateway mostra \"cobrança repetida (mesma chave)\", sem cobrar de novo. Em cima, \"Pagamentos por cópia\": uma cópia parou e a outra assumiu; na tabela, clique no pedido: 2 linhas do gateway (a mesma chave) e uma cobrança só."

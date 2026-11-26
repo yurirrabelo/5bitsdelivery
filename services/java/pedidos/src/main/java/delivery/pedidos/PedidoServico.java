@@ -29,11 +29,11 @@ public class PedidoServico {
     }
 
     /**
-     * Grava o pedido como RECEBIDO, na mesma transação do comando estoque.reservar (a unidade do item).
-     * O correlationId nasce aqui e acompanha todas as mensagens do pedido.
+     * Grava o pedido como RECEBIDO, na mesma transação do comando estoque.reservar. Com o cupom (promocao) a unidade vem dos
+     * itens com cupom; sem o cupom, dos itens normais. O correlationId nasce aqui e acompanha todas as mensagens do pedido.
      */
     @Transactional
-    public long criar(String clienteId, boolean aplicarLimite, Destino destino, Integer entregadorPreferidoId) {
+    public long criar(String clienteId, boolean aplicarLimite, Destino destino, Integer entregadorPreferidoId, boolean promocao) {
         if (aplicarLimite) {
             repo.travarCliente(clienteId);
             if (repo.contarEmAndamento(clienteId) >= regras.limiteClienteEmAndamento) {
@@ -50,10 +50,12 @@ public class PedidoServico {
                 destino == null ? null : destino.lon(),
                 destino == null ? null : destino.endereco(),
                 entregadorPreferidoId,
+                promocao,
                 correlationId,
                 traceparent);
-        // o clienteId é opcional no contrato: o serviço consultas (CQRS) o usa para o cliente ver só os próprios pedidos
-        outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id, "clienteId", clienteId), traceparent);
+        // o clienteId é opcional no contrato: o serviço consultas (CQRS) o usa para o cliente ver só os próprios pedidos;
+        // cupom diz de qual grupo de itens o estoque tira a unidade
+        outbox.publicar("estoque.reservar", correlationId.toString(), Map.of("pedidoId", id, "clienteId", clienteId, "cupom", promocao), traceparent);
         return id;
     }
 

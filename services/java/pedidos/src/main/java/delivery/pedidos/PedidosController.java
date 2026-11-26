@@ -20,8 +20,11 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 public class PedidosController {
-    /** destino: onde entregar. entregadorPreferidoId: só a gestão pode escolher o entregador. */
-    public record CriarPedido(PedidoServico.Destino destino, Integer entregadorPreferidoId) {}
+    /**
+     * destino: onde entregar. cupom: o que o cliente escreve (#promobcc). promocao: o que a gestão marca ao criar um pedido
+     * à mão (sem digitar o cupom). entregadorPreferidoId: só a gestão.
+     */
+    public record CriarPedido(PedidoServico.Destino destino, Integer entregadorPreferidoId, String cupom, Boolean promocao) {}
 
     private final PedidoServico servico;
     private final PedidoRepositorio repo;
@@ -48,18 +51,27 @@ public class PedidosController {
             @RequestBody(required = false) CriarPedido corpo) {
         exigirLogin(userId, role);
         long id;
+        boolean promocao;
         try {
             if ("operador".equals(role)) {
-                // a gestão cria o pedido à mão, sempre com o endereço (e, se quiser, escolhe o entregador)
+                // a gestão cria o pedido à mão, sempre com o endereço: marca se usa o cupom (sem digitar) e, se quiser, escolhe o entregador
                 PedidoServico.Destino d = corpo == null ? null : corpo.destino();
                 validarDestino(d);
-                id = servico.criar(userId, false, d, corpo.entregadorPreferidoId());
+                promocao = Boolean.TRUE.equals(corpo.promocao());
+                id = servico.criar(userId, false, d, corpo.entregadorPreferidoId(), promocao);
             } else if ("cliente".equals(role)) {
-                // O cliente manda onde quer receber (o GPS do celular dele). Com endereço o pedido vira uma entrega que um
-                // entregador aceita; sem endereço, termina em CONFIRMADO. O cliente nunca escolhe o entregador.
+                // O cliente manda onde quer receber (o GPS do celular dele) e, se tiver, o cupom. Com cupom o pedido usa um dos
+                // itens com cupom; sem cupom, um dos itens normais. Cupom errado: 422, e nenhum pedido é criado.
+                // Com endereço o pedido vira uma entrega que um entregador aceita; sem endereço, termina em CONFIRMADO.
+                // O cliente nunca escolhe o entregador.
                 PedidoServico.Destino d = corpo == null ? null : corpo.destino();
                 if (d != null) validarDestino(d);
-                id = servico.criar(userId, true, d, null);
+                String cupom = corpo == null ? null : corpo.cupom();
+                promocao = cupom != null && !cupom.isBlank();
+                if (promocao && !regras.cupomValido(cupom)) {
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cupom inválido");
+                }
+                id = servico.criar(userId, true, d, null, promocao);
             } else {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "papel sem permissão para criar pedido");
             }
@@ -67,10 +79,11 @@ public class PedidosController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
         Span.current().setAttribute("pedido.id", id); // o trace do pedido começa nesta requisição
+        Span.current().setAttribute("pedido.promocao", promocao);
         String statusUrl = "/api/pedidos/" + id;
         return ResponseEntity.accepted()
                 .header("Location", statusUrl)
-                .body(Map.of("id", id, "status", "RECEBIDO", "statusUrl", statusUrl));
+                .body(Map.of("id", id, "status", "RECEBIDO", "promocao", promocao, "statusUrl", statusUrl));
     }
 
     @GetMapping("/api/pedidos/{id}")
@@ -143,6 +156,7 @@ public class PedidosController {
             m.put("destino", null);
         }
         m.put("entregadorId", p.entregadorId());
+        m.put("promocao", p.promocao());
         m.put("criadoEm", p.criadoEm().toString());
         m.put("atualizadoEm", p.atualizadoEm().toString());
         return m;

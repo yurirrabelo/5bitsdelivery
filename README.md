@@ -2,7 +2,7 @@
 
 Sistema de delivery com **estoque limitado** e **entregador no mapa em tempo real**. Trabalho final de Sistemas Distribuídos (FURB).
 
-O cliente pede o item na interface **Pedidos** (a entrega vai para onde ele está, pelo GPS do celular dele). O item tem **10 unidades**: cada pedido reserva uma e, quando elas acabam, o pedido termina como esgotado. O sistema cobra num gateway lento e instável e, se tudo der certo, o pedido aparece para os entregadores: **o primeiro que tocar em Aceitar leva**. O celular do entregador manda o **GPS real pelo navegador** e o **painel de gestão** mostra a moto andando até o cliente. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
+O cliente pede o item na interface **Pedidos** (a entrega vai para onde ele está, pelo GPS do celular dele). São **30 itens** no estoque: **10 só saem com o cupom** (`#promobcc`, é o que o F5 disputa) e **20 são normais**. Cada pedido reserva um item do seu grupo e, quando o grupo acaba, o pedido termina como esgotado. O sistema cobra num gateway lento e instável e, se tudo der certo, o pedido aparece para os entregadores: **o primeiro que tocar em Aceitar leva**. O celular do entregador manda o **GPS real pelo navegador** e o **painel de gestão** mostra a moto andando até o cliente. Se o pagamento falha ou demora, o sistema desfaz o que já fez (devolve a unidade, estorna a cobrança).
 
 | As 3 interfaces | Quem usa | O que faz |
 |---|---|---|
@@ -55,7 +55,7 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 
 Um cliente pede (com endereço), o entregador 2 aceita e "dirige" até o destino (o teste faz o papel do celular) e o pedido termina `ENTREGUE` (a rota fica no S3). No fim: **`SMOKE: PASSOU`**. Deixe o painel aberto para ver a moto 🛵 andar e rode com os celulares dos entregadores fechados.
 
-Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Pedir item** e permita a localização: recebido → unidade reservada → pagando → procurando um entregador. Depois das 10 unidades, o pedido termina como "Item esgotado". Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparecem o caminho dele por cada serviço e, embaixo, o desenho da arquitetura com o erro em vermelho (espere uns 20 s).
+Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Pedir item** (ou escreva antes o cupom `#promobcc`, para levar um dos 10 itens com cupom) e permita a localização: recebido → item reservado → pagando → procurando um entregador. Quando acaba o grupo do pedido, ele termina como "Item esgotado" (com o cupom: "Itens com cupom esgotados"). Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparecem o caminho dele por cada serviço e, embaixo, o desenho da arquitetura com o erro em vermelho (espere uns 20 s).
 
 ## 3. Celular do entregador (GPS real)
 
@@ -89,7 +89,7 @@ Mantenha a página aberta e a tela ligada: é ela que envia o GPS (o navegador p
 ./demo.sh estado         # containers, filas, DLQs, pedidos, estoque e outbox
 ```
 
-Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora**. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, abra http://localhost:8099 (o `./demo.sh subir` já liga essa tela; o painel de gestão aberto por localhost tem um botão para ela). Para cada falha a tela mostra **como o erro é provocado**, **onde ele acontece**, **o que acontece** e o **resultado esperado**, e o botão roda o teste e mostra o que aconteceu. A mesma página abre só para leitura em `/testes/` (inclusive pelo link público): os botões ficam desligados, porque os testes derrubam serviços de verdade e só funcionam em http://localhost:8099. Cada teste começa com o banco zerado. A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
+Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **FALHOU** e diz o que **mostrar agora**. No fim da tela do Grafana há uma linha recolhida para cada teste (F1 a F8): clique no nome do teste que está rodando. Rode **um de cada vez**; `./demo.sh falha` sem número mostra a lista e pergunta qual. Para acionar com **botões**, abra http://localhost:8099 (o `./demo.sh subir` já liga essa tela; o painel de gestão aberto por localhost tem um botão para ela). Para cada falha a tela mostra **como o erro é provocado**, **onde ele acontece**, **o que acontece** e o **resultado esperado**, e o botão roda o teste e mostra o que aconteceu. A mesma página abre só para leitura em `/testes/` (inclusive pelo link público): os botões ficam desligados, porque os testes derrubam serviços de verdade e só funcionam em http://localhost:8099. Cada teste começa com o banco zerado. A cola para o dia em que o professor escolher está em [docs/FALHAS.md](docs/FALHAS.md).
 
 | # | Cenário | O que o script faz | Resultado esperado |
 |---|---|---|---|
@@ -97,7 +97,7 @@ Cada cenário mostra o **esperado** e o **obtido**, termina com **PASSOU** ou **
 | F2 | Serviço morre no meio | `docker kill` na réplica do pagamento que pegou a mensagem | a outra réplica assume, uma cobrança só |
 | F3 | Mensagem duplicada | mesma mensagem 5 vezes | um efeito só |
 | F4 | Mensagem venenosa | payload inválido | 3 tentativas e DLQ; as demais seguem |
-| F5 | Corrida pelo estoque | 100 clientes para 10 unidades | exatamente 10 confirmados e 90 esgotados |
+| F5 | Corrida pelo estoque | 100 clientes com o cupom para os 10 itens com cupom | exatamente 10 confirmados e 90 esgotados |
 | F6 | Broker fora | RabbitMQ parado por 30 s com carga | API segue aceitando, outbox drena, nada se perde |
 | F7 | Resposta tardia | gateway mais lento que o prazo | cancela no prazo e depois estorna |
 | F8 | Escala | 3 réplicas do pagamento | carga dividida, sem pagamento duplicado |
@@ -112,11 +112,11 @@ docker compose up -d gateway-pagamento    # volta ao que está no .env
 ## 5. Antes de apresentar
 
 ```bash
-./demo.sh limpar       # começa limpo: apaga os pedidos, as entregas, os pontos de GPS e as DLQs do ensaio e repõe as 10 unidades (nada reinicia: o link do túnel não muda)
+./demo.sh limpar       # começa limpo: apaga os pedidos, as entregas, os pontos de GPS e as DLQs do ensaio e repõe os 30 itens (10 com cupom e 20 normais) (nada reinicia: o link do túnel não muda)
 ./demo.sh estado       # confere que está tudo no ar
 ```
 
-Durante a apresentação, `./demo.sh reset [N]` só repõe as unidades (por exemplo `./demo.sh reset 25` antes do QR).
+Durante a apresentação, `./demo.sh reset [N]` só repõe os itens (por exemplo `./demo.sh reset 25` antes do QR: 25 no total, 10 deles com cupom).
 
 Suba tudo **uma vez com boa internet antes do dia** (a primeira subida baixa imagens, Maven, npm e os providers do Terraform; depois fica tudo em cache). No dia, os mapas e o túnel precisam de internet.
 

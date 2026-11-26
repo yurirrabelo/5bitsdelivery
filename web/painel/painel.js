@@ -110,7 +110,7 @@
     $('criar-ok').textContent = '';
     if (!destinoEscolhido) return;
     $('criar').disabled = true;
-    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng } };
+    const corpo = { destino: { lat: destinoEscolhido.lat, lon: destinoEscolhido.lng }, promocao: $('tipo-pedido').value === 'promocao' };
     const pref = $('entregador').value;
     if (pref) corpo.entregadorPreferidoId = Number(pref);
     try {
@@ -171,7 +171,9 @@
     // telão: só o número e a situação de cada pedido, nunca o apelido de quem pediu
     tbody.innerHTML = lista.slice(0, 15).map((p) => {
       const [texto, classe] = situacao(p);
-      return '<tr><td>#' + Auth.escapar(p.id) + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
+      // 🎟️ = o pedido usou o cupom (um dos itens com cupom)
+      const cupom = p.promocao ? ' <span title="usou o cupom">🎟️</span>' : '';
+      return '<tr><td>#' + Auth.escapar(p.id) + cupom + '</td><td><span class="badge ' + Auth.escapar(classe) + '">' + Auth.escapar(texto) +
         '</span></td><td>' + Auth.escapar(nomeDoEntregador(p.entregadorId)) + '</td></tr>';
     }).join('') || '<tr><td colspan="3" class="vazio">Nenhum pedido ainda.</td></tr>';
 
@@ -193,7 +195,9 @@
 
   function renderEstoque(e) {
     const caixa = (n, rotulo) => '<div><b>' + Auth.escapar(n) + '</b><span>' + rotulo + '</span></div>';
-    $('estoque').innerHTML = caixa(e.disponivel, 'disponíveis') + caixa(e.reservado, 'reservadas') + caixa(e.vendido, 'vendidas') + caixa(e.total, 'total');
+    // os números são do item todo (itens normais + itens com cupom); a última caixa é só dos itens com cupom: restam / total
+    $('estoque').innerHTML = caixa(e.disponivel, 'disponíveis') + caixa(e.reservado, 'reservadas') + caixa(e.vendido, 'vendidas') + caixa(e.total, 'total') +
+      caixa(e.cupom.disponivel + '/' + e.cupom.total, 'com cupom');
   }
 
   // ---------------------------------------------------------------- entregadores e mapa ao vivo

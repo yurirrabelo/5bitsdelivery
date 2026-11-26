@@ -9,7 +9,7 @@ sequenceDiagram
     actor M as Entregador
     C->>P: POST /api/pedidos (endereço)
     P-->>C: 202 Accepted + id
-    Note over P,E: o estoque reserva uma das 10 unidades antes do pagamento
+    Note over P,E: o estoque reserva um item (com cupom ou normal) antes do pagamento
     P--)E: estoque.reservar
     E--)P: estoque.reservado
     P--)PG: pagamento.cobrar

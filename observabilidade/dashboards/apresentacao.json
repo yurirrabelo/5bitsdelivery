@@ -7,7 +7,7 @@
  ],
  "timezone": "browser",
  "schemaVersion": 39,
- "version": 10,
+ "version": 16,
  "refresh": "5s",
  "time": {
   "from": "now-15m",
@@ -15,7 +15,7 @@
  },
  "editable": true,
  "graphTooltip": 1,
- "description": "Tela única da apresentação: os números de agora, os gráficos, o caminho de cada pedido pelos serviços e o desenho da arquitetura.",
+ "description": "Tela única da apresentação: os números de agora, os gráficos, o caminho de cada pedido, o desenho da arquitetura e uma linha para cada teste de falha.",
  "panels": [
   {
    "id": 1,
@@ -29,7 +29,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "**Os números** mostram o que está acontecendo agora. **Os gráficos** mostram os pedidos por minuto, o que cada cópia do pagamento processou, as mensagens na quarentena (DLQ) e as que esperam para ser enviadas (outbox). **Nas tabelas e no desenho**, clique no número de um pedido: veja por onde ele passou, quanto cada serviço demorou e onde deu errado (vermelho). **No fim**, os registros: mensagens repetidas descartadas, RabbitMQ caindo e voltando e rota pendente com a nuvem fora."
+    "content": "**Os números** mostram o que está acontecendo agora. **Os gráficos** mostram os pedidos por minuto, o que cada cópia do pagamento processou, as mensagens na quarentena (DLQ) e as que esperam para ser enviadas (outbox). **Nas tabelas e no desenho**, clique no número de um pedido: veja por onde ele passou, quanto cada serviço demorou e onde deu errado (vermelho). **No fim da tela**, uma linha para cada teste de falha (F1 a F8): clique no nome do teste que está rodando."
    },
    "transparent": true
   },
@@ -223,7 +223,7 @@
    "id": 5,
    "type": "stat",
    "title": "Unidades restantes",
-   "description": "Quantas unidades do item ainda estão livres. Nunca passa do total nem fica negativo, mesmo com todo mundo pedindo ao mesmo tempo.",
+   "description": "Quantos itens ainda estão livres, somando os itens normais e os itens com cupom. Nunca passa do total nem fica negativo, mesmo com todo mundo pedindo ao mesmo tempo.",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -240,7 +240,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "max(delivery_estoque_unidades{estado=\"disponivel\"}) or vector(0)",
+     "expr": "sum(max by (tipo) (delivery_estoque_unidades{estado=\"disponivel\"})) or vector(0)",
      "refId": "A",
      "instant": true,
      "range": false
@@ -510,7 +510,7 @@
     "type": "tempo",
     "uid": "tempo"
    },
-   "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Ficam aqui por 24 horas. Clique no número para ver, ao lado e embaixo, o caminho dele.",
+   "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Ficam aqui por 1 hora. Clique no número para ver, ao lado e embaixo, o caminho dele.",
    "gridPos": {
     "x": 0,
     "y": 17,
@@ -526,7 +526,7 @@
      "refId": "A",
      "queryType": "traceql",
      "tableType": "spans",
-     "limit": 60,
+     "limit": 500,
      "spss": 5,
      "query": "{ span.pedido.resultado =~ \".+\" } | select(span.pedido.id, span.pedido.resultado)"
     }
@@ -723,7 +723,7 @@
     "showHeader": true,
     "cellHeight": "md"
    },
-   "timeFrom": "24h"
+   "timeFrom": "1h"
   },
   {
    "id": 11,
@@ -2434,105 +2434,6 @@
    }
   },
   {
-   "id": 14,
-   "type": "stat",
-   "title": "Duplicadas",
-   "description": "Mensagens que chegaram repetidas e foram descartadas sem repetir o efeito: cada serviço guarda o messageId das que já tratou (caixa de entrada). No teste F3 a mesma mensagem é publicada 5 vezes: 1 vale e 4 são descartadas, então sobe 4.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 50,
-    "w": 5,
-    "h": 7
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "sum(delivery_mensagens_total{resultado=\"duplicada\"}) or vector(0)",
-     "refId": "A",
-     "instant": true,
-     "range": false
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "noValue": "0",
-     "color": {
-      "mode": "fixed",
-      "fixedColor": "purple"
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "purple",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "value",
-    "justifyMode": "center",
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    }
-   }
-  },
-  {
-   "id": 15,
-   "type": "logs",
-   "title": "Mensagens repetidas descartadas (o mesmo messageId chegou mais de uma vez)",
-   "description": "Cada linha é uma mensagem que chegou repetida e foi descartada pela caixa de entrada do serviço, sem repetir o efeito. No teste F3 a mesma mensagem é publicada 5 vezes no RabbitMQ: 1 vale e 4 aparecem aqui. Clique numa linha para ver o messageId.",
-   "datasource": {
-    "type": "loki",
-    "uid": "loki"
-   },
-   "timeFrom": "24h",
-   "gridPos": {
-    "x": 5,
-    "y": 50,
-    "w": 19,
-    "h": 7
-   },
-   "targets": [
-    {
-     "datasource": {
-      "type": "loki",
-      "uid": "loki"
-     },
-     "refId": "A",
-     "queryType": "range",
-     "maxLines": 30,
-     "expr": "{service_name=~\".+\"} |= \"duplicada descartada\""
-    }
-   ],
-   "options": {
-    "showTime": true,
-    "wrapLogMessage": true,
-    "sortOrder": "Descending",
-    "enableLogDetails": true,
-    "dedupStrategy": "none",
-    "prettifyLogMessage": false
-   }
-  },
-  {
    "id": 16,
    "type": "state-timeline",
    "title": "RabbitMQ: no ar ou fora",
@@ -2613,78 +2514,1491 @@
    }
   },
   {
-   "id": 17,
-   "type": "logs",
-   "title": "RabbitMQ caiu e voltou: o que os serviços registraram (teste F6)",
-   "description": "Cada serviço avisa quando perde a conexão com o RabbitMQ (\"desconectado do RabbitMQ; reconectando\" ou \"connection driver error\") e quando ela volta (\"conectado ao RabbitMQ\"). Eles reconectam sozinhos, sem reiniciar.",
-   "datasource": {
-    "type": "loki",
-    "uid": "loki"
+   "id": 100,
+   "type": "row",
+   "title": "F1 · Compensação: o pagamento é recusado e o sistema desfaz tudo",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 50,
+    "w": 24,
+    "h": 1
    },
-   "timeFrom": "24h",
+   "panels": [
+    {
+     "id": 111,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 51,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** o gateway (a operadora simulada) passa a recusar 100% das cobranças. **Esperado:** o pedido é cancelado e a unidade volta ao estoque. **Veja aqui:** os pagamentos recusados, os pedidos cancelados e o registro do pagamento. Em cima, clique no pedido \"Recusado\" para ver o caminho."
+     }
+    },
+    {
+     "id": 112,
+     "type": "stat",
+     "title": "Recusados",
+     "description": "Pagamentos recusados: quantas cobranças o gateway recusou no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_pagamentos_total{resultado=\"recusado\"}) or vector(0)) - (sum(delivery_pagamentos_total{resultado=\"recusado\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 55,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "red"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "red",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 113,
+     "type": "stat",
+     "title": "Cancelados",
+     "description": "Pedidos cancelados: pedidos que o sistema cancelou no período (a unidade volta ao estoque).",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_pedidos_transicoes_total{status=\"CANCELADO\"}) or vector(0)) - (sum(delivery_pedidos_transicoes_total{status=\"CANCELADO\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 5,
+      "y": 55,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "orange",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 114,
+     "type": "logs",
+     "title": "O que o pagamento registrou",
+     "description": "Uma linha por cobrança que o gateway recusou.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 10,
+      "y": 55,
+      "w": 14,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=\"pagamento\"} |= \"gateway falhou; pagamento recusado\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 101,
+   "type": "row",
+   "title": "F2 · Serviço morre: uma cópia do pagamento cai no meio e a outra refaz",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 51,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 115,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 52,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** com o gateway lento, mata a cópia do pagamento que pegou a mensagem. **Esperado:** a outra cópia recebe a mesma mensagem e chama o gateway com a mesma chave: o gateway reconhece a chave e cobra uma vez só. **Veja aqui:** quantas cobranças repetidas o gateway reconheceu e o registro dele. Em cima, \"Pagamentos por cópia\" mostra uma cópia parando e a outra assumindo."
+     }
+    },
+    {
+     "id": 116,
+     "type": "stat",
+     "title": "Refeitos",
+     "description": "Cobranças repetidas: vezes que o gateway recebeu a mesma chave de novo (a primeira cópia morreu e a segunda refez) e não cobrou de novo.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "expr": "sum(count_over_time({service_name=\"gateway-pagamento\"} |= \"cobrança repetida\" [$__range])) or vector(0)",
+       "queryType": "instant"
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 56,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "purple"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "purple",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 117,
+     "type": "logs",
+     "title": "Cobrança repetida: o gateway reconhece a chave e não cobra de novo",
+     "description": "O gateway registra o pedido e quantas vezes a mesma chave chegou (requisicoes=2): duas chamadas, uma cobrança.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 5,
+      "y": 56,
+      "w": 19,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=\"gateway-pagamento\"} |= \"cobrança repetida\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "type": "row",
+   "title": "F3 · Mensagem duplicada: a mesma mensagem chega 5 vezes e vale uma só",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 52,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 118,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 53,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** publica a mesma mensagem (mesmo messageId) 5 vezes no RabbitMQ. **Esperado:** 1 reserva e 4 descartadas. **Veja aqui:** o número de duplicadas descartadas e o registro, com o mesmo messageId. Esse teste usa um pedido que não existe: ele não aparece nas tabelas."
+     }
+    },
+    {
+     "id": 119,
+     "type": "stat",
+     "title": "Duplicadas",
+     "description": "Mensagens do estoque que chegaram repetidas e foram descartadas sem repetir o efeito, no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_mensagens_total{service_name=\"estoque\",resultado=\"duplicada\"}) or vector(0)) - (sum(delivery_mensagens_total{service_name=\"estoque\",resultado=\"duplicada\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 57,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "purple"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "purple",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 120,
+     "type": "logs",
+     "title": "Mensagens repetidas descartadas (o mesmo messageId chegou mais de uma vez)",
+     "description": "Cada linha é uma mensagem repetida descartada pela caixa de entrada. Clique numa linha para ver o messageId.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 5,
+      "y": 57,
+      "w": 19,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=\"estoque\"} |= \"duplicada descartada\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "type": "row",
+   "title": "F4 · Mensagem venenosa: a mensagem inválida vai para a quarentena (DLQ)",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 53,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 121,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 54,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** publica uma mensagem inválida (pedidoId que não é número) junto com 3 pedidos normais. **Esperado:** 3 tentativas e a mensagem vai para a quarentena (DLQ); os pedidos seguem. **Veja aqui:** a mensagem na quarentena, as tentativas com erro e o registro do estoque. Ela fica na DLQ até o próximo F4 ou ./demo.sh limpar."
+     }
+    },
+    {
+     "id": 122,
+     "type": "stat",
+     "title": "Na DLQ",
+     "description": "Na quarentena (DLQ): mensagens paradas nas filas de quarentena agora.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "sum(rabbitmq_queue_messages_ready{queue=~\".*dlq\"})",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 58,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "red"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "red",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 123,
+     "type": "stat",
+     "title": "Erros",
+     "description": "Tentativas com erro: vezes que uma mensagem falhou no período escolhido (a inválida falha 3 vezes).",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_mensagens_total{resultado=\"erro\"}) or vector(0)) - (sum(delivery_mensagens_total{resultado=\"erro\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 5,
+      "y": 58,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "orange",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 124,
+     "type": "logs",
+     "title": "O que o estoque registrou de cada tentativa",
+     "description": "Uma linha por tentativa com erro: a mensagem volta para a fila até o limite e vai para a DLQ.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 10,
+      "y": 58,
+      "w": 14,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=\"estoque\"} |= \"erro na mensagem estoque.reservar\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 104,
+   "type": "row",
+   "title": "F5 · Corrida pelo estoque: 100 pedidos com cupom disputam 10 itens",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 54,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 125,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 55,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** 100 clientes pedem ao mesmo tempo com o cupom, mas só existem 10 itens com cupom (os outros 20 itens do estoque não entram na disputa). **Esperado:** exatamente 10 confirmados e 90 esgotados, e os itens com cupom nunca ficam negativos. **Veja aqui:** os dois números e os itens com cupom restantes ao longo do tempo (chegam a 0, nunca abaixo). O teste repõe os itens ao terminar."
+     }
+    },
+    {
+     "id": 126,
+     "type": "stat",
+     "title": "Confirmados",
+     "description": "Pedidos que reservaram a unidade e pagaram, no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_pedidos_transicoes_total{status=\"CONFIRMADO\"}) or vector(0)) - (sum(delivery_pedidos_transicoes_total{status=\"CONFIRMADO\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 59,
+      "w": 6,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "green"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "green",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 127,
+     "type": "stat",
+     "title": "Esgotados",
+     "description": "Pedidos que chegaram depois que acabaram os itens com cupom, no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_pedidos_transicoes_total{status=\"ESGOTADO\"}) or vector(0)) - (sum(delivery_pedidos_transicoes_total{status=\"ESGOTADO\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 6,
+      "y": 59,
+      "w": 6,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "orange",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 128,
+     "type": "timeseries",
+     "title": "Itens com cupom restantes ao longo do tempo (nunca abaixo de 0)",
+     "description": "Os itens com cupom caem até 0 e param: a reserva é um UPDATE ... WHERE disponivel > 0, então nunca fica negativo.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "gridPos": {
+      "x": 12,
+      "y": 59,
+      "w": 12,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "max(delivery_estoque_unidades{estado=\"disponivel\",tipo=\"cupom\"})",
+       "legendFormat": "itens com cupom livres",
+       "range": true,
+       "instant": false
+      }
+     ],
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "min": 0,
+       "custom": {
+        "drawStyle": "line",
+        "lineWidth": 2,
+        "fillOpacity": 25,
+        "showPoints": "never",
+        "lineInterpolation": "stepAfter",
+        "axisSoftMax": 10
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "legend": {
+       "displayMode": "list",
+       "placement": "bottom",
+       "showLegend": false
+      },
+      "tooltip": {
+       "mode": "single"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": 105,
+   "type": "row",
+   "title": "F6 · RabbitMQ fora do ar: as mensagens esperam e nada se perde",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 55,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 129,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 56,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** com pedidos chegando, para o RabbitMQ por 30 s e liga de novo. **Esperado:** a API continua aceitando, as mensagens esperam na outbox e, quando ele volta, os serviços reconectam sozinhos. **Veja aqui:** o pico da outbox e o registro de cada serviço perdendo e retomando a conexão. A faixa \"RabbitMQ\" fica logo abaixo dos gráficos."
+     }
+    },
+    {
+     "id": 130,
+     "type": "stat",
+     "title": "Pico outbox",
+     "description": "Pico da outbox: maior número de mensagens esperando para ser enviadas no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "max_over_time(sum(delivery_outbox_pendentes)[$__range:15s])",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 60,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "orange",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 131,
+     "type": "logs",
+     "title": "RabbitMQ caiu e voltou: o que os serviços registraram",
+     "description": "Cada serviço avisa que a mensagem espera na outbox, que perdeu a conexão com o RabbitMQ e que ela voltou. Eles reconectam sozinhos, sem reiniciar.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 5,
+      "y": 60,
+      "w": 19,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=~\".+\"} |~ \"outbox: não consegui publicar|desconectado do RabbitMQ|conectado ao RabbitMQ|connection driver error\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "type": "row",
+   "title": "F6b · Nuvem (S3) fora do ar: a entrega termina e a rota espera",
+   "collapsed": true,
+   "gridPos": {
+    "x": 0,
+    "y": 56,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [
+    {
+     "id": 132,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 57,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** para o MiniStack (a nuvem: S3 e Secrets Manager) antes de uma entrega. **Esperado:** o pedido é entregue normalmente; a rota fica pendente e sai para o S3 quando ele volta. **Veja aqui:** as tentativas com a nuvem fora, as rotas exportadas e o registro. O arquivo abre em http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson."
+     }
+    },
+    {
+     "id": 133,
+     "type": "stat",
+     "title": "Pendentes",
+     "description": "Tentativas com a nuvem fora: vezes que o serviço de entregas tentou exportar a rota e o S3 não respondeu.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "expr": "sum(count_over_time({service_name=\"entregas\"} |= \"exportação da rota pendente\" [$__range])) or vector(0)",
+       "queryType": "instant"
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 61,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "red"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "red",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 134,
+     "type": "stat",
+     "title": "Exportadas",
+     "description": "Rotas exportadas: rotas que chegaram ao S3 no período escolhido.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "expr": "sum(count_over_time({service_name=\"entregas\"} |= \"rota exportada para o S3\" [$__range])) or vector(0)",
+       "queryType": "instant"
+      }
+     ],
+     "gridPos": {
+      "x": 5,
+      "y": 61,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "green"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "green",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 135,
+     "type": "logs",
+     "title": "Nuvem (S3) fora: a rota fica pendente e sai quando ele volta",
+     "description": "\"exportação da rota pendente\" enquanto o MiniStack está fora; \"rota exportada para o S3\" quando ele volta. A entrega termina normalmente.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 10,
+      "y": 61,
+      "w": 14,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=\"entregas\"} |~ \"exportação da rota pendente|rota exportada para o S3\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 107,
+   "type": "row",
+   "title": "F7 · Resposta tardia: o pagamento demora mais que o prazo",
+   "collapsed": true,
    "gridPos": {
     "x": 0,
     "y": 57,
     "w": 24,
-    "h": 7
+    "h": 1
    },
-   "targets": [
+   "panels": [
     {
+     "id": 136,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 58,
+      "w": 24,
+      "h": 4
+     },
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** o gateway demora 20 s e o prazo do pagamento é 15 s. **Esperado:** o pedido é cancelado no prazo e a unidade volta; quando a aprovação chega atrasada, ela é estornada. **Veja aqui:** os cancelamentos por prazo, os estornos e o registro dos dois serviços. Em cima, clique no pedido \"Estornado\"."
+     }
+    },
+    {
+     "id": 137,
+     "type": "stat",
+     "title": "Por prazo",
+     "description": "Cancelados por prazo: pedidos cancelados porque o pagamento não respondeu a tempo.",
      "datasource": {
       "type": "loki",
       "uid": "loki"
      },
-     "refId": "A",
-     "queryType": "range",
-     "maxLines": 30,
-     "expr": "{service_name=~\".+\"} |~ \"desconectado do RabbitMQ|conectado ao RabbitMQ|connection driver error\""
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "expr": "sum(count_over_time({service_name=\"pedidos\"} |= \"prazo de pagamento vencido\" [$__range])) or vector(0)",
+       "queryType": "instant"
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 62,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "orange"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "orange",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 138,
+     "type": "stat",
+     "title": "Estornados",
+     "description": "Pagamentos que chegaram atrasados e foram devolvidos, no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "(sum(delivery_pagamentos_total{resultado=\"estornado\"}) or vector(0)) - (sum(delivery_pagamentos_total{resultado=\"estornado\"} offset $__range) or vector(0))",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 5,
+      "y": 62,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "purple"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "purple",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 139,
+     "type": "logs",
+     "title": "Prazo vencido e estorno",
+     "description": "Cada pedido cancelado por prazo e cada pagamento estornado.",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "gridPos": {
+      "x": 10,
+      "y": 62,
+      "w": 14,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "refId": "A",
+       "queryType": "range",
+       "maxLines": 30,
+       "expr": "{service_name=~\"pedidos|pagamento\"} |~ \"prazo de pagamento vencido|cobrança vencida|pagamento estornado\""
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     }
     }
-   ],
-   "options": {
-    "showTime": true,
-    "wrapLogMessage": true,
-    "sortOrder": "Descending",
-    "enableLogDetails": true,
-    "dedupStrategy": "none",
-    "prettifyLogMessage": false
-   }
+   ]
   },
   {
-   "id": 18,
-   "type": "logs",
-   "title": "Nuvem (S3) fora: a rota fica pendente e sai quando ele volta (teste F6b)",
-   "description": "O serviço de entregas exporta a rota de cada entrega concluída para o S3 a cada 10 s. Com o MiniStack (a nuvem) fora, ele registra \"exportação da rota pendente (S3 indisponível?); tento de novo\"; quando o MiniStack volta, registra \"rota exportada para o S3\". A entrega em si termina normalmente.",
-   "datasource": {
-    "type": "loki",
-    "uid": "loki"
-   },
-   "timeFrom": "24h",
+   "id": 108,
+   "type": "row",
+   "title": "F8 · Escala: 3 cópias do pagamento dividem a carga",
+   "collapsed": true,
    "gridPos": {
     "x": 0,
-    "y": 64,
+    "y": 58,
     "w": 24,
-    "h": 7
+    "h": 1
    },
-   "targets": [
+   "panels": [
     {
-     "datasource": {
-      "type": "loki",
-      "uid": "loki"
+     "id": 140,
+     "type": "text",
+     "title": "",
+     "gridPos": {
+      "x": 0,
+      "y": 59,
+      "w": 24,
+      "h": 4
      },
-     "refId": "A",
-     "queryType": "range",
-     "maxLines": 30,
-     "expr": "{service_name=\"entregas\"} |~ \"exportação da rota pendente|rota exportada para o S3\""
+     "options": {
+      "mode": "markdown",
+      "content": "**O que o teste faz:** sobe 3 cópias do pagamento e manda 120 pedidos por minuto. **Esperado:** cada mensagem vai para uma cópia só, então a carga se divide, sem pagamento duplicado. **Veja aqui:** quantos pedidos cada cópia processou e quantas cópias trabalharam. O gráfico \"Pagamentos por cópia\" mostra o mesmo ao longo do tempo."
+     }
+    },
+    {
+     "id": 141,
+     "type": "stat",
+     "title": "Cópias",
+     "description": "Cópias que trabalharam: quantas cópias do pagamento processaram pedidos no período escolhido.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "count(sum by (service_instance_id) (increase(delivery_mensagens_total{service_name=\"pagamento\",resultado=\"processada\",type=\"pagamento.cobrar\"}[$__range])) > 0)",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "gridPos": {
+      "x": 0,
+      "y": 63,
+      "w": 5,
+      "h": 6
+     },
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "fixed",
+        "fixedColor": "blue"
+       },
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "blue",
+          "value": null
+         }
+        ]
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "colorMode": "background",
+      "graphMode": "none",
+      "textMode": "value",
+      "justifyMode": "center",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
+    },
+    {
+     "id": 142,
+     "type": "bargauge",
+     "title": "Pedidos que cada cópia processou",
+     "description": "Uma barra por cópia do pagamento: a carga se divide entre elas.",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "gridPos": {
+      "x": 5,
+      "y": 63,
+      "w": 19,
+      "h": 6
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "refId": "A",
+       "expr": "sum by (service_instance_id) (increase(delivery_mensagens_total{service_name=\"pagamento\",resultado=\"processada\",type=\"pagamento.cobrar\"}[$__range]))",
+       "legendFormat": "cópia {{service_instance_id}}",
+       "instant": true,
+       "range": false
+      }
+     ],
+     "fieldConfig": {
+      "defaults": {
+       "unit": "short",
+       "decimals": 0,
+       "min": 0,
+       "noValue": "0",
+       "color": {
+        "mode": "palette-classic"
+       }
+      },
+      "overrides": []
+     },
+     "options": {
+      "orientation": "horizontal",
+      "displayMode": "gradient",
+      "showUnfilled": true,
+      "valueMode": "color",
+      "namePlacement": "left",
+      "reduceOptions": {
+       "calcs": [
+        "lastNotNull"
+       ],
+       "fields": "",
+       "values": false
+      }
+     }
     }
-   ],
-   "options": {
-    "showTime": true,
-    "wrapLogMessage": true,
-    "sortOrder": "Descending",
-    "enableLogDetails": true,
-    "dedupStrategy": "none",
-    "prettifyLogMessage": false
-   }
+   ]
   }
  ],
  "templating": {

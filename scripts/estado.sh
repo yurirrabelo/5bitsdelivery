@@ -31,9 +31,9 @@ echo "== Pedidos por status"
 sql pedidos "SELECT status, count(*) FROM pedidos GROUP BY status ORDER BY status"
 
 echo
-echo "== Estoque (disponivel | reservado | vendido | total)"
-sql estoque "SELECT disponivel, reservado, vendido, total FROM estoque WHERE produto_id = 1"
-echo "   invariante (disponivel + reservado + vendido = total): $(sql estoque "SELECT (disponivel + reservado + vendido = total AND disponivel >= 0) FROM estoque WHERE produto_id = 1")"
+echo "== Estoque (grupo | disponivel | reservado | vendido | total)"
+sql estoque "SELECT CASE produto_id WHEN 2 THEN 'com cupom' ELSE 'normal' END, disponivel, reservado, vendido, total FROM estoque ORDER BY produto_id DESC"
+echo "   invariante (disponivel + reservado + vendido = total, nos dois grupos): $(sql estoque "SELECT bool_and(disponivel + reservado + vendido = total AND disponivel >= 0) FROM estoque")"
 
 echo
 echo "== Outbox pendente (mensagens esperando para serem publicadas)"

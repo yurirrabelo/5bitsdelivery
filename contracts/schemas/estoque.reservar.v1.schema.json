@@ -6,6 +6,7 @@
   "required": ["pedidoId"],
   "properties": {
     "pedidoId": { "type": "integer", "minimum": 1 },
-    "clienteId": { "type": "string" }
+    "clienteId": { "type": "string" },
+    "cupom": { "type": "boolean", "description": "true: o pedido usa um dos itens com cupom; false ou ausente: um item normal" }
   }
 }

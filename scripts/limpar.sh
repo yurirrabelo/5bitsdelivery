@@ -39,6 +39,8 @@ RB_SENHA=$(grep -E '^RABBITMQ_SENHA=' .env | head -1 | cut -d= -f2- | tr -d '\r'
 for fila in $(curl -s -u "$RB_USUARIO:$RB_SENHA" http://127.0.0.1:15672/api/queues | grep -oE '"name":"[^"]*\.dlq"' | cut -d'"' -f4); do
   curl -s -u "$RB_USUARIO:$RB_SENHA" -X DELETE "http://127.0.0.1:15672/api/queues/%2F/$fila/contents" >/dev/null
 done
+# A fila do bônus CQRS recebe todas as mensagens e, com o serviço consultas desligado, ninguém a esvazia: os eventos dos testes ficam lá.
+curl -s -u "$RB_USUARIO:$RB_SENHA" -X DELETE "http://127.0.0.1:15672/api/queues/%2F/consultas.entrada/contents" >/dev/null
 
 # Bônus CQRS: a visão dos pedidos fica no DynamoDB (serviço "consultas"). Se ele estiver no ar, zera a visão também.
 if [ -n "$(docker compose ps -q consultas 2>/dev/null)" ]; then

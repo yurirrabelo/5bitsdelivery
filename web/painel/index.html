@@ -71,11 +71,17 @@
 
             <div id="form-criar" class="form-criar so-operador oculto">
               <p class="dica" id="destino-info">1. Clique no mapa onde o pedido deve chegar.</p>
-              <label>2. Para quem (opcional)
+              <label>2. Tipo do pedido
+                <select id="tipo-pedido">
+                  <option value="normal">Sem cupom (usa 1 dos itens normais)</option>
+                  <option value="promocao">Com cupom (usa 1 dos itens com cupom)</option>
+                </select>
+              </label>
+              <label>3. Para quem (opcional)
                 <select id="entregador"><option value="">Qualquer entregador</option></select>
               </label>
               <div class="linha-botoes">
-                <button id="criar" disabled>3. Criar pedido</button>
+                <button id="criar" disabled>4. Criar pedido</button>
                 <button class="secundario" id="cancelar-criar">Fechar</button>
               </div>
               <p class="ok" id="criar-ok" role="status"></p>

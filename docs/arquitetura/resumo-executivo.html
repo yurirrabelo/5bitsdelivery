@@ -213,7 +213,7 @@ svg.dg { width: 100%; height: auto; display: block; }
     <h1 class="tp">Resumo executivo</h1>
     <p class="sub">O 5Bits Delivery em uma página</p>
 
-    <p class="lead">O <b>5Bits Delivery</b> é um sistema de delivery com <b>estoque limitado</b>: poucas unidades (10) de um item, muita gente pedindo ao mesmo tempo e o entregador acompanhado no mapa em tempo real. A regra de negócio é simples de propósito, porque o foco do trabalho é a <b>arquitetura</b>: como várias partes independentes cooperam e continuam corretas quando uma delas falha.</p>
+    <p class="lead">O <b>5Bits Delivery</b> é um sistema de delivery com <b>estoque limitado</b>: poucas unidades (30, e só 10 delas com cupom) de um item, muita gente pedindo ao mesmo tempo e o entregador acompanhado no mapa em tempo real. A regra de negócio é simples de propósito, porque o foco do trabalho é a <b>arquitetura</b>: como várias partes independentes cooperam e continuam corretas quando uma delas falha.</p>
 
     <div class="faixa" style="margin-bottom:4mm">
       <div class="numero"><b>6</b><span>serviços independentes, em Java e TypeScript</span></div>
@@ -228,8 +228,8 @@ svg.dg { width: 100%; height: auto; display: block; }
       <div>
         <h2 style="margin-top:0">Um pedido em um minuto</h2>
         <ol class="passos">
-          <li><b>Pede.</b> O cliente toca em <i>Pedir item</i> e recebe na hora o número do pedido, sem esperar o resto.</li>
-          <li><b>Separa.</b> O estoque reserva uma das 10 unidades do item.</li>
+          <li><b>Pede.</b> O cliente toca em <i>Pedir item</i> (escrevendo o cupom <code>#promobcc</code>, se tiver) e recebe na hora o número do pedido, sem esperar o resto.</li>
+          <li><b>Separa.</b> O estoque reserva um dos 30 itens (um dos 10 com cupom, se o cliente escreveu o cupom).</li>
           <li><b>Cobra.</b> O pagamento cobra num gateway externo (simulado), lento e instável de propósito.</li>
           <li><b>Oferece.</b> Confirmado, o pedido aparece no celular dos entregadores: o primeiro que tocar em <i>Aceitar</i> leva.</li>
           <li><b>Entrega.</b> O GPS do celular do entregador desenha o trajeto no mapa até o endereço do cliente.</li>
@@ -243,7 +243,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <h2 style="margin-top:0">Três interfaces, um sistema</h2>
         <div class="cartao" style="margin-bottom:3mm">
           <h3><span class="ic">📱</span> Pedidos <small>o cliente</small></h3>
-          <p class="mini" style="margin:0;color:#334155;font-size:9pt">Pelo QR code, no celular. Pede o item e acompanha cada passo do pedido.</p>
+          <p class="mini" style="margin:0;color:#334155;font-size:9pt">Pelo QR code, no celular. Pede o item (com ou sem o cupom) e acompanha cada passo do pedido.</p>
         </div>
         <div class="cartao" style="margin-bottom:3mm">
           <h3><span class="ic">🛵</span> Entregador</h3>
@@ -327,7 +327,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <rect class="serv" x="294" y="225" width="130" height="160" rx="12"/>
       <text class="b w c h" x="359" y="256">estoque</text>
       <text class="wl c m" x="359" y="276">Java</text>
-      <text class="wl c p" x="359" y="300">as 10 unidades</text>
+      <text class="wl c p" x="359" y="300">os 30 itens</text>
       <text class="wl c p" x="359" y="316">do item</text>
       <use href="#cil" x="331" y="326" width="56" height="52"/>
       <text class="c p b" x="359" y="361" style="fill:#0b4f94">banco</text>
@@ -430,7 +430,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <tr><td>Nginx<br><span class="chip">porta de entrada</span></td><td>Recebe tudo que vem de fora, confere o login e encaminha ao serviço certo. Também entrega as páginas das telas.</td><td>Nginx</td><td>não tem</td></tr>
         <tr><td>Auth<br><span class="chip">identidade</span></td><td>Responde “quem é você?”. Faz o login da gestão e do entregador, deixa o cliente do QR entrar só com um apelido e entrega um <b>crachá digital</b> (token) que os outros serviços aceitam.</td><td>TypeScript</td><td>não tem (usuários fixos)</td></tr>
         <tr><td>Pedidos<br><span class="chip">o maestro</span></td><td>Recebe o pedido, <b>responde na hora</b> e conduz o fluxo passo a passo. Decide o próximo passo, controla o prazo do pagamento e <b>manda desfazer</b> quando algo falha.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de pedidos</td></tr>
-        <tr><td>Estoque<br><span class="chip">as 10 unidades</span></td><td>É o dono do item. Separa, devolve e dá baixa nas unidades, garantindo que <b>a mesma unidade nunca seja vendida duas vezes</b>, nem com muita gente pedindo junto.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de estoque</td></tr>
+        <tr><td>Estoque<br><span class="chip">os 30 itens</span></td><td>É o dono do item. Separa, devolve e dá baixa nas unidades, garantindo que <b>a mesma unidade nunca seja vendida duas vezes</b>, nem com muita gente pedindo junto.</td><td>Java<br><span class="mini">Spring Boot</span></td><td>banco de estoque</td></tr>
         <tr><td>Pagamento<br><span class="chip">2 ou mais cópias</span></td><td>Cobra e estorna no gateway. Roda em <b>várias cópias</b> (réplicas) que dividem o trabalho da mesma fila: se uma cai, outra assume.</td><td>TypeScript</td><td>banco de pagamento</td></tr>
         <tr><td>Entregas<br><span class="chip">GPS e mapa</span></td><td>Oferece o pedido aos entregadores (o primeiro que aceita leva), recebe o <b>GPS</b> do celular, alimenta o mapa ao vivo da gestão e guarda a rota da entrega.</td><td>TypeScript</td><td>banco de entregas<br>+ Redis (posições)</td></tr>
         <tr><td>Gateway de pagamento<br><span class="chip">simulado</span></td><td>A “operadora de cartão” de mentira. Tem <b>lentidão e taxa de falha configuráveis</b>, para provar o que acontece quando um parceiro externo falha ou demora.</td><td>TypeScript</td><td>só memória</td></tr>
@@ -498,8 +498,8 @@ svg.dg { width: 100%; height: auto; display: block; }
       <rect class="serv" x="730" y="40" width="150" height="205" rx="14"/>
       <text class="b w c g" x="805" y="82">Estoque</text>
       <text class="wl c m" x="805" y="104">Java</text>
-      <text class="wl c p" x="805" y="140">guarda as 10</text>
-      <text class="wl c p" x="805" y="158">unidades do</text>
+      <text class="wl c p" x="805" y="140">guarda os 30</text>
+      <text class="wl c p" x="805" y="158">itens do</text>
       <text class="wl c p" x="805" y="176">item</text>
 
       <rect class="serv" x="730" y="265" width="150" height="205" rx="14"/>
@@ -587,7 +587,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <li><b class="t">O cliente pede</b><span class="quem">Cliente → Pedidos</span>
         <p>O Pedidos grava o pedido como <b>RECEBIDO</b> e responde na hora: “recebi, seu número é #123”. O cliente acompanha o andamento depois (API assíncrona).</p></li>
       <li><b class="t">Separar uma unidade</b><span class="quem">Pedidos → Estoque</span>
-        <p>O Estoque tenta reservar uma das 10 unidades. Se acabaram, responde “esgotado”.</p></li>
+        <p>O Estoque tenta reservar um item do grupo do pedido (com cupom ou normal). Se acabaram, responde “esgotado”.</p></li>
       <li><b class="t">Cobrar</b><span class="quem">Pedidos → Pagamento → Gateway</span>
         <p>Com prazo de 15 s. O Pagamento cobra no gateway com uma <b>chave de idempotência</b>: se a chamada se repetir, cobra uma vez só.</p></li>
       <li><b class="t">Confirmar</b><span class="quem">Pagamento → Pedidos</span>
@@ -631,7 +631,7 @@ svg.dg { width: 100%; height: auto; display: block; }
       <text class="b c" x="470" y="209" style="font-size:16px;fill:#8a1f1f">ESTORNADO</text>
 
       <path class="setaV" d="M85 86 V172"/>
-      <text class="m vm" x="95" y="148">unidades acabaram</text>
+      <text class="m vm" x="95" y="148">itens acabaram</text>
       <path class="setaV" d="M277 86 V172"/>
       <text class="m vm" x="287" y="140">pagamento recusado</text>
       <text class="m vm" x="287" y="157">ou prazo vencido</text>
@@ -643,7 +643,7 @@ svg.dg { width: 100%; height: auto; display: block; }
     <div class="grade3" style="gap:3mm">
       <div class="cartao verm"><h3>Pagamento recusado</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido é cancelado e a unidade volta ao estoque. O cliente lê “pagamento recusado”.</p><span class="chip teste">Teste F1</span></div>
       <div class="cartao verm"><h3>Gateway demorou demais</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">Estourou o prazo: o pedido é cancelado e a unidade volta. Se a aprovação chegar depois, a cobrança é estornada.</p><span class="chip teste">Teste F7</span></div>
-      <div class="cartao verm"><h3>As 10 unidades acabaram</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido termina esgotado e a tela avisa “item esgotado”.</p><span class="chip teste">Teste F5</span></div>
+      <div class="cartao verm"><h3>Os 10 itens com cupom acabaram</h3><p style="margin:0 0 1.5mm;font-size:8.8pt">O pedido termina esgotado e a tela avisa “itens com cupom esgotados”.</p><span class="chip teste">Teste F5</span></div>
     </div>
     <p class="mini" style="margin:2.5mm 0 0">Toda mudança de estado só vale se o pedido ainda estiver no estado esperado: uma mensagem que chega fora de hora é ignorada com segurança.</p>
   </div>
@@ -741,7 +741,7 @@ svg.dg { width: 100%; height: auto; display: block; }
           <text class="c p cz" x="170" y="176">o estoque nunca fica negativo.</text>
         </svg>
         <h3>Uma unidade, um dono <small>(concorrência)</small></h3>
-        <p>A reserva é <b>uma única operação atômica</b> no banco do estoque. Com 100 pedidos para 10 unidades, exatamente 10 conseguem e nenhuma é vendida duas vezes.</p>
+        <p>A reserva é <b>uma única operação atômica</b> no banco do estoque. Com 100 pedidos com cupom para os 10 itens com cupom, exatamente 10 conseguem e nenhuma é vendida duas vezes.</p>
         <span class="chip teste">Teste F5</span>
       </div>
 
@@ -946,7 +946,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <ul class="pontos">
           <li>Cada serviço envia <b>métricas, logs e rastros</b> (OpenTelemetry) ao Grafana.</li>
           <li>Um pedido vira <b>um rastro só</b>, atravessando todos os serviços, inclusive pelas mensagens.</li>
-          <li>Uma <b>tela só</b> no Grafana: números, gráficos, o <b>caminho de cada pedido</b> e o <b>desenho da arquitetura</b>, com o erro em vermelho.</li>
+          <li>Uma <b>tela só</b> no Grafana: números, gráficos, o <b>caminho de cada pedido</b>, o <b>desenho da arquitetura</b> e uma <b>linha para cada teste de falha</b>.</li>
           <li>Os gráficos mostram as <b>cópias do pagamento</b>, a <b>quarentena</b> (DLQ) e a <b>caixa de saída</b>.</li>
         </ul>
       </div>
@@ -971,7 +971,7 @@ svg.dg { width: 100%; height: auto; display: block; }
     </div>
 
     <h2>O painel do Grafana: uma tela só</h2>
-    <svg class="dg" viewBox="0 0 900 236" role="img" aria-label="O painel do Grafana: quatro números, quatro gráficos, duas tabelas, o desenho da arquitetura e as mensagens repetidas">
+    <svg class="dg" viewBox="0 0 900 236" role="img" aria-label="O painel do Grafana: quatro números, quatro gráficos, duas tabelas, o desenho da arquitetura e uma linha para cada teste de falha">
       <rect x="10" y="6" width="210" height="56" rx="10" fill="#e7f0ff" stroke="#3b82f6" stroke-width="2"/>
       <text x="115" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#1e3a8a">Pedidos feitos</text>
       <text x="115" y="51" text-anchor="middle" style="font-size:13px;fill:#1e3a8a">quantos chegaram</text>
@@ -1004,8 +1004,8 @@ svg.dg { width: 100%; height: auto; display: block; }
       <rect x="350" y="134" width="540" height="34" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
       <text x="620" y="156" text-anchor="middle" style="font-size:14px;font-weight:700;fill:#334155">2. O caminho do pedido, serviço por serviço (o erro em vermelho)</text>
 
-      <rect x="10" y="176" width="540" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-      <text x="20" y="193" style="font-size:13px;font-weight:700;fill:#334155">3. Desenho da arquitetura do pedido: verde passou · vermelho erro · cinza não chegou</text>
+      <rect x="10" y="176" width="880" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="20" y="193" style="font-size:13px;font-weight:700;fill:#334155">3. Desenho da arquitetura do pedido (verde passou · vermelho erro · cinza não chegou) e, embaixo, uma linha para cada teste de falha</text>
       <rect x="20" y="201" width="62" height="24" rx="5" fill="#a5d8ff" stroke="#4dabf7" stroke-width="1.5"/>
       <text x="51" y="217" text-anchor="middle" style="font-size:11px;fill:#1e3a8a">cliente</text>
       <rect x="94" y="201" width="62" height="24" rx="5" fill="#ff8787" stroke="#fa5252" stroke-width="1.5"/>
@@ -1019,12 +1019,16 @@ svg.dg { width: 100%; height: auto; display: block; }
       <text x="387" y="217" text-anchor="middle" style="font-size:11px;fill:#5c1111">gateway</text>
       <rect x="434" y="201" width="70" height="24" rx="5" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
       <text x="469" y="217" text-anchor="middle" style="font-size:11px;fill:#495057">entregas</text>
-
-      <rect x="560" y="176" width="330" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-      <text x="570" y="193" style="font-size:13px;font-weight:700;fill:#334155">4. Mensagens repetidas descartadas (teste F3)</text>
-      <rect x="570" y="200" width="58" height="26" rx="6" fill="#ae3ec9"/>
-      <text x="599" y="219" text-anchor="middle" style="font-size:17px;font-weight:700;fill:#fff">4</text>
-      <path d="M642 206 H880 M642 214 H862 M642 222 H872" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+      <text x="520" y="217" style="font-size:12px;font-weight:700;fill:#334155">F1</text>
+      <text x="546" y="217" style="font-size:12px;font-weight:700;fill:#334155">F2</text>
+      <text x="572" y="217" style="font-size:12px;font-weight:700;fill:#334155">F3</text>
+      <text x="598" y="217" style="font-size:12px;font-weight:700;fill:#334155">F4</text>
+      <text x="624" y="217" style="font-size:12px;font-weight:700;fill:#334155">F5</text>
+      <text x="650" y="217" style="font-size:12px;font-weight:700;fill:#334155">F6</text>
+      <text x="678" y="217" style="font-size:12px;font-weight:700;fill:#334155">F6b</text>
+      <text x="714" y="217" style="font-size:12px;font-weight:700;fill:#334155">F7</text>
+      <text x="740" y="217" style="font-size:12px;font-weight:700;fill:#334155">F8</text>
+      <text x="772" y="217" style="font-size:11px;fill:#475569">texto, números e logs</text>
     </svg>
   </div>
   <div class="rod"><span>Sistemas Distribuídos · FURB</span><span class="pg"></span></div>
@@ -1043,7 +1047,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <tr><td>F2 Serviço morre no meio</td><td>Derrubar a cópia do Pagamento que pegou a mensagem</td><td>A outra cópia assume e o pedido confirma com uma cobrança só.</td><td class="ok">passou</td></tr>
         <tr><td>F3 Mensagem duplicada</td><td>A mesma mensagem publicada 5 vezes</td><td>Um único efeito; as outras 4 são descartadas.</td><td class="ok">passou</td></tr>
         <tr><td>F4 Mensagem venenosa</td><td>Uma mensagem com conteúdo inválido</td><td>3 tentativas e ela vai para a quarentena (DLQ); os outros pedidos seguem.</td><td class="ok">passou</td></tr>
-        <tr><td>F5 Corrida pelo recurso</td><td>100 pedidos ao mesmo tempo para 10 unidades</td><td>Exatamente 10 confirmados e 90 esgotados; o estoque nunca fica negativo.</td><td class="ok">passou</td></tr>
+        <tr><td>F5 Corrida pelo recurso</td><td>100 pedidos com cupom ao mesmo tempo para os 10 itens com cupom</td><td>Exatamente 10 confirmados e 90 esgotados; o estoque nunca fica negativo.</td><td class="ok">passou</td></tr>
         <tr><td>F6 Broker fora do ar</td><td>RabbitMQ parado por 30 s, com pedidos chegando</td><td>A API segue aceitando; as mensagens esperam no banco e saem depois; nada se perde.</td><td class="ok">passou</td></tr>
         <tr><td>F6b Nuvem fora do ar</td><td>MiniStack parado durante uma entrega</td><td>O pedido é entregue; a rota fica pendente e sobe para o S3 quando a nuvem volta.</td><td class="ok">passou</td></tr>
         <tr><td>F7 Resposta tardia</td><td>Gateway mais lento que o prazo de pagamento</td><td>Cancela no prazo, devolve a unidade e estorna a aprovação que chega atrasada.</td><td class="ok">passou</td></tr>

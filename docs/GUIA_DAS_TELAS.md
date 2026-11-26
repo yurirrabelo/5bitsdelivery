@@ -25,7 +25,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 |---|---|---|
 | **http://localhost:8080** (Entrada) | gestão e entregador | Um login só: quem é da gestão vai para o painel e quem é entregador vai para a tela do entregador. Mostra também os links das 3 interfaces (Gestão, Entregador, Pedidos). Útil para abrir só o endereço do túnel no celular. |
 | **http://localhost:8080/painel/** (Painel de gestão) | quem apresenta, no notebook, e o telão | A central da loja: as **entregas ao vivo, com o GPS**, e os pedidos manuais. Mapa ao vivo com a loja, os entregadores 🛵 e os destinos dos pedidos. Só aparece no mapa quem está mandando GPS agora (nos últimos 2 minutos): a posição de um celular que saiu, ou de um teste antigo, não fica lá como se fosse um entregador de verdade. Ao lado, o botão **🧪 Testes de falha** (abre a tela de testes, veja abaixo; só aparece com o painel aberto por `localhost`) e duas abas: **Pedidos** (os entregadores, com a situação de cada um e há quanto tempo chegou o GPS dele, e a lista de pedidos com a situação em palavras simples) e **QR** (o QR code que leva ao pedido e o link do entregador; o campo do túnel só aparece se o painel foi aberto por `localhost`). **＋ Pedido pelo mapa** é o pedido manual: o formulário fica aberto, então dá para criar vários seguidos (clique no mapa, escolha o entregador, se quiser, e **Criar pedido**). **Modo telão** esconde as ferramentas e mostra tudo em letras grandes. |
-| **/cliente/?codigo=promo** (Pedidos) | a plateia, pelo QR code | O botão **Pedir item**. O navegador pergunta a localização e a entrega vai até onde o cliente está. Quando as 10 unidades acabam, o pedido termina como "Item esgotado". Para entregar em **outro endereço**, ele toca em "Quero receber em outro endereço" e marca o ponto no mapa (o mesmo mapa aparece se o GPS não funcionar). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para pedir de novo. Mostra quantas unidades restam e acompanha o pedido: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
+| **/cliente/?codigo=promo** (Pedidos) | a plateia, pelo QR code | O campo **Cupom (opcional)** (`#promobcc` leva um dos 10 itens com cupom; sem cupom, leva um dos 20 normais) e o botão **Pedir item**. O navegador pergunta a localização e a entrega vai até onde o cliente está. Quando acaba o grupo do pedido, ele termina como "Item esgotado" (com o cupom: "Itens com cupom esgotados", e o botão **Pedir sem cupom** refaz o pedido no mesmo endereço). Para entregar em **outro endereço**, ele toca em "Quero receber em outro endereço" e marca o ponto no mapa (o mesmo mapa aparece se o GPS não funcionar). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para pedir de novo. Mostra quantos itens restam (normais e com cupom) e acompanha o pedido: recebido → item reservado → pagando → procurando um entregador → entregador a caminho → entregue (ou o motivo da falha). |
 | **/entregador/** (Entregador) | `entregador1` na tela da aula e `entregador2` no celular de um integrante (link `https://…` do túnel) | Botões **Disponível** / **Offline** e o cartão do **GPS** (verde = enviando, com a precisão). Os pedidos prontos para entrega aparecem em **Pedidos para entregar** (faixa, vibração e som), com a distância: quem tocar primeiro em **Aceitar** leva, e o outro entregador lê "já foi aceito". Aceito, a tela mostra o mapa com o endereço do cliente, a distância e **Confirmar entrega**. **O GPS vem desta página**: ela precisa ficar aberta, com a tela ligada. |
 | **http://localhost:3000** (Grafana) | o telão e quem apresenta | Uma tela só, **5Bits Delivery** (veja a seção 3). Só leitura, sem login. Também abre pelo link público: o `./demo.sh link` mostra o endereço. |
 | **http://localhost:8099** (Testes de falha) | quem apresenta, no notebook | Uma página simples, aberta pelo botão **🧪 Testes de falha** do painel de gestão. Para cada falha (F1 a F8): o botão **Acionar teste falha N**, **como o erro é provocado**, **onde ele acontece**, **o que acontece**, o **resultado esperado** e **o que tentar de novo**. O botão roda o teste e mostra a saída (logs, estado dos bancos, esperado × obtido e PASSOU ou FALHOU). Cada teste começa com o banco zerado. Os botões só funcionam no notebook; o `./demo.sh subir` já liga (ou `./demo.sh testes`). A mesma página abre só para leitura em `/testes/`, inclusive pelo link público. |
@@ -36,7 +36,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 | O que acontece | Tela Pedidos (cliente) | Tela do entregador | Painel de gestão |
 |---|---|---|---|
-| O cliente pede o item | "Recebido", "Unidade reservada para você" e "Pagando…" | (nada ainda) | o pedido entra na lista: "Recebido", depois "Pagando" |
+| O cliente pede o item | "Recebido", "Item reservado para você" e "Pagando…" | (nada ainda) | o pedido entra na lista: "Recebido", depois "Pagando" |
 | O pagamento é aprovado | "🔎 Procurando um entregador…" | o pedido aparece em **Pedidos para entregar**, para todo entregador Disponível | "Aguardando entregador" e o destino no mapa |
 | Um entregador toca em **Aceitar** | "🛵 Entregador a caminho" | o mapa com a entrega; para o outro entregador o pedido some da lista | "Em entrega" e o 🛵 andando |
 | O entregador chega (menos de 50 m) ou toca em **Confirmar entrega** | "🎉 Entregue!" | "Entrega concluída. Bom trabalho!" | "Entregue" |
@@ -45,7 +45,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 ## 3. Grafana: uma tela só
 
-Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, a faixa do RabbitMQ (no ar ou fora), as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, o registro das mensagens repetidas descartadas, das quedas do RabbitMQ e da rota pendente com a nuvem fora. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
+Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, a faixa do RabbitMQ (no ar ou fora), as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, uma linha recolhida para cada teste de falha (F1 a F8). **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
 
 ### Os quatro números do topo
 | Número | O que conta |
@@ -53,7 +53,7 @@ Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (p
 | **Pedidos feitos** | quantos pedidos chegaram ao sistema |
 | **Confirmados** | os que reservaram a unidade **e** pagaram |
 | **Sem sucesso** | esgotado, pagamento recusado ou demorou demais (o sistema desfez o que fez). Zero é normal |
-| **Unidades restantes** | quantas unidades do item ainda estão livres. Nunca passa do total nem fica negativo, mesmo com todos pedindo juntos |
+| **Unidades restantes** | quantos itens ainda estão livres (normais e com cupom somados). Nunca passa do total nem fica negativo, mesmo com todos pedindo juntos |
 
 Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 
@@ -66,13 +66,13 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | **Esperando envio (outbox)** | mensagens gravadas no banco que ainda não saíram para o RabbitMQ | F6 (RabbitMQ fora): sobe e volta a zero sozinho |
 
 ### As duas tabelas: o caminho do pedido
-- **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram. **A lista e o caminho escolhido guardam as últimas 24 horas**, para dar tempo de analisar (o período do canto superior direito só vale para os números e gráficos de cima).
+- **1. Pedidos recentes:** um pedido por linha, já com o **resultado**: ✅ Sucesso, ❌ Recusado (o pagamento falhou), ⏱️ Demorou demais (o prazo de pagamento venceu), 😕 Esgotado ou ↩️ Estornado (a aprovação chegou atrasada e foi devolvida). **Clique no número.** Só aparecem pedidos que já terminaram. **A lista guarda a última hora** (até 500 pedidos; os mais velhos saem dela) e o **caminho escolhido, as últimas 24 horas**, para dar tempo de analisar (o período do canto superior direito só vale para os números e gráficos de cima).
 - **2. O caminho do pedido escolhido:** o mesmo pedido, serviço por serviço, na ordem em que aconteceu e quanto cada um demorou. É a versão "de dentro" da tela do cliente:
 
 | O que aconteceu | Quem fez | O que significa |
 |---|---|---|
 | 📝 Pedido recebido (API) | Pedidos | o cliente recebeu o "202" na hora |
-| 📦 Estoque separa a unidade | Estoque | a unidade foi reservada (tela do cliente: "Unidade reservada") |
+| 📦 Estoque separa a unidade | Estoque | a unidade foi reservada, do grupo certo (tela do cliente: "Item reservado") |
 | 🧭 Pedidos recebe a reserva | Pedidos | a saga avança |
 | 💳 Pagamento cobra | Pagamento | o serviço de Pagamento pega a mensagem da fila e cobra: chama o gateway e espera a resposta, então o tempo dele inclui a espera ("Pagando…") |
 | 🏦 Gateway de pagamento (externo) | Gateway | a operadora responde. Se a cobrança chegar repetida (teste F2), aparece uma linha por chamada |
@@ -89,14 +89,26 @@ A coluna **Demorou** vai de verde (rápido) a vermelho (1,5 s ou mais). É só l
 ### O desenho da arquitetura do pedido (embaixo das tabelas)
 Mostra o pedido escolhido na tabela de cima (não a soma de todos) sobre o desenho da arquitetura, uma caixa por serviço. **Verde** = o pedido passou por ele, **vermelho** = ele registrou o erro, **cinza** = o pedido não chegou até ele. As caixas azuis são quem usa o sistema pelo celular (cliente e entregador) e a laranja é o RabbitMQ: elas não mudam de cor. A faixa de cima diz **onde a falha começou** (por exemplo, "Gateway de pagamento: recusou a cobrança"): o erro nasce em um serviço e volta pelos outros, que também ficam vermelhos. Sem pedido escolhido, ou num pedido que deu certo, a faixa diz "Sem falha neste pedido".
 
-### Mensagens repetidas (no fim da tela)
-O número **Duplicadas** conta as mensagens que chegaram repetidas e foram descartadas sem repetir o efeito, e o registro ao lado mostra cada uma (o mesmo `messageId`, o tipo `estoque.reservar`). Sobe no teste F3: a mesma mensagem 5 vezes, 1 vale e 4 aparecem aqui. Esse teste usa um pedido que não existe, então ele não aparece nas tabelas.
+### Uma linha para cada teste de falha (no fim da tela)
+Depois do desenho há uma linha recolhida para cada teste (F1 a F8). **Clique no nome** do teste que está rodando: abre um texto curto (o que o teste faz e o que esperar), os números e o registro daquele teste. Os números e o registro olham o período do canto superior direito (padrão: 15 minutos), então mostram o teste que acabou de rodar.
 
-### RabbitMQ fora do ar (teste F6)
-A faixa **RabbitMQ: no ar ou fora**, logo abaixo dos gráficos, fica verde enquanto o Prometheus consegue falar com o RabbitMQ e **vermelha** enquanto ele está parado (o teste desliga por 30 s; a faixa fica vermelha um pouco mais, porque o Prometheus olha de 15 em 15 s). Embaixo, o registro mostra cada serviço avisando "desconectado do RabbitMQ; reconectando" e depois "conectado ao RabbitMQ": eles reconectam sozinhos, sem reiniciar. Junto com "Esperando envio (outbox)", que sobe e volta a zero, é a causa (RabbitMQ fora) e o efeito (mensagens esperando). **No próprio RabbitMQ** (`http://localhost:15672`) não dá para ver o erro: a tela dele cai junto. Depois que volta, a página inicial mostra o "Uptime" do nó zerado e a aba **Connections** mostra as conexões novas.
+| Linha | Números | Registro ou gráfico |
+|---|---|---|
+| **F1 · Compensação** | Recusados, Cancelados | o pagamento recusado |
+| **F2 · Serviço morre** | Refeitos (vezes que o gateway recebeu a mesma chave de novo) | o gateway reconhecendo a chave repetida e não cobrando de novo |
+| **F3 · Mensagem duplicada** | Duplicadas | as mensagens descartadas, com o mesmo messageId |
+| **F4 · Mensagem venenosa** | Na DLQ, Erros | as tentativas do estoque |
+| **F5 · Corrida pelo estoque** | Confirmados, Esgotados | itens com cupom restantes ao longo do tempo (nunca abaixo de 0) |
+| **F6 · RabbitMQ fora do ar** | Pico outbox | os serviços perdendo e retomando a conexão |
+| **F6b · Nuvem (S3) fora do ar** | Pendentes, Exportadas | a rota pendente e depois exportada |
+| **F7 · Resposta tardia** | Por prazo, Estornados | o prazo vencido e o estorno |
+| **F8 · Escala** | Cópias | barras: quantos pedidos cada cópia processou |
 
-### Nuvem (S3) fora do ar (teste F6b)
-O MiniStack é a "AWS em uma caixa" (Secrets Manager e S3). Se ele cair, o pedido continua e é **entregue normalmente**: os segredos já foram lidos quando os serviços subiram. O que não dá é guardar a rota no S3. O serviço de entregas tenta a cada 10 s e, enquanto o S3 está fora, o registro no fim da tela mostra "exportação da rota pendente (S3 indisponível?); tento de novo". Quando o MiniStack volta, aparece "rota exportada para o S3". O MiniStack não tem tela: o arquivo da rota abre no navegador em `http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson` (N é o número do pedido que o teste mostra). Os 6 segredos continuam lá porque o MiniStack guarda o estado (`PERSIST_STATE=1`).
+O que vale lembrar de cada um:
+- **F3** usa um pedido que não existe, então ele não aparece nas tabelas.
+- **F4:** a mensagem fica na DLQ até o próximo F4 ou `./demo.sh limpar`. No RabbitMQ, a fila `estoque.entrada.dlq` mostra o conteúdo dela em **Get messages** (deixe "Nack message requeue true", que só espia).
+- **F6:** a faixa **RabbitMQ: no ar ou fora**, logo abaixo dos gráficos, fica verde enquanto o Prometheus consegue falar com o RabbitMQ e **vermelha** enquanto ele está parado (um pouco mais que os 30 s do teste, porque o Prometheus olha de 15 em 15 s). **No próprio RabbitMQ** (`http://localhost:15672`) não dá para ver o erro: a tela dele cai junto. Depois que volta, a página inicial mostra o "Uptime" do nó zerado e a aba **Connections** mostra as conexões novas.
+- **F6b:** o MiniStack ("AWS em uma caixa": S3 e Secrets Manager) não tem tela. O pedido é entregue normalmente (os segredos já foram lidos); só a rota espera. O arquivo da rota abre em `http://localhost:4566/delivery-rotas/rotas/pedido-N.geojson` (N é o número do pedido que o teste mostra). Os 6 segredos continuam lá (`PERSIST_STATE=1`).
 
 ---
 
@@ -109,12 +121,12 @@ O MiniStack é a "AWS em uma caixa" (Secrets Manager e S3). Se ele cair, o pedid
 |---|---|
 | que o pedido passa por todos os serviços | Grafana → clique no pedido na tabela |
 | onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: a faixa diz onde a falha começou e o desenho mostra em vermelho por onde o erro passou |
-| que uma mensagem repetida vale uma vez só | Grafana → "Duplicadas" e o registro no fim da tela (teste F3) |
-| que o sistema aguenta o RabbitMQ cair | Grafana → a faixa "RabbitMQ: no ar ou fora" (vermelha na queda), "Esperando envio (outbox)" subindo e voltando a 0 e o registro das reconexões (teste F6) |
-| que a entrega termina mesmo com a nuvem (MiniStack) fora | Grafana → no fim da tela, o registro da rota pendente e depois exportada (teste F6b) |
+| que uma mensagem repetida vale uma vez só | Grafana → linha «F3 · Mensagem duplicada» |
+| que o sistema aguenta o RabbitMQ cair | Grafana → a faixa "RabbitMQ: no ar ou fora" (vermelha na queda), "Esperando envio (outbox)" e a linha «F6 · RabbitMQ fora do ar» |
+| que a entrega termina mesmo com a nuvem (MiniStack) fora | Grafana → linha «F6b · Nuvem (S3) fora do ar» |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" |
-| que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto |
+| que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto: cada teste tem a sua linha no fim da tela |
 | o GPS | Painel de gestão (marcador e "última posição há X s") e a página do entregador (cartão do GPS) |
 
 **Por que um pedido não aparece na tabela?** Espere uns 20 segundos e confira o período no canto superior direito.

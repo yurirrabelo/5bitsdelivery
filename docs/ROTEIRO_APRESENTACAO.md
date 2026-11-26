@@ -43,14 +43,14 @@ Como se comunicam (pessoa 3): o cliente fala com o sistema por **HTTP (REST)**; 
 | 0:00 | 1 | Abertura e C4 nível 1 |
 | 2:00 | 2 | C4 nível 2: serviços, onde roda cada um |
 | 5:00 | 3 | Comunicação, saga, outbox/inbox, DLQ |
-| 8:00 | 4 | **Pedido de verdade.** No painel de gestão: **＋ Pedido pelo mapa** → clica no destino (a porta da sala) → **Criar pedido** (usa 1 das 10 unidades do item). Mostra o `202` na hora e o pedido andando até "Aguardando entregador". **Lá fora o celular do colega avisa** (tela, vibração e som): ele toca em **Aceitar** e começa a vir |
+| 8:00 | 4 | **Pedido de verdade.** No painel de gestão: **＋ Pedido pelo mapa** → clica no destino (a porta da sala) → **Criar pedido** (deixe **Sem cupom**: usa 1 dos 20 itens normais). Mostra o `202` na hora e o pedido andando até "Aguardando entregador". **Lá fora o celular do colega avisa** (tela, vibração e som): ele toca em **Aceitar** e começa a vir |
 | 9:00 | 4 | Grafana: clica no pedido na tabela "Pedidos recentes" e mostra o caminho dele (pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um) e, embaixo, o desenho da arquitetura com o pedido em verde. O marcador 🛵 vem andando no mapa do painel |
 | 12:00 | 4 | "Alguém pediu um pedido?" **A pessoa 5 entra na sala.** O sistema marca **ENTREGUE** sozinho (menos de 50 m do destino) ou ele toca em **Confirmar entrega** |
 | 13:00 | 5 | Explica o GPS: o navegador do celular manda a posição a cada 3 s → túnel → serviço de entregas → Redis → WebSocket → mapa. Fala da latência do 4G |
-| 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Quem pede toca em **Pedir item** (o celular pede a localização). Os 10 primeiros levam o item |
+| 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Quem pede toca em **Pedir item** (o celular pede a localização); quem escreve o cupom `#promobcc` leva um dos 10 itens com cupom, e quem não escreve leva um dos 20 normais |
 | 15:30 | 2 | Narra o Grafana enquanto a plateia pede: pedidos feitos, pedidos por minuto, "Unidades restantes" caindo e o caminho de um pedido |
-| 18:00 | todos | Quando as 10 unidades acabam: quem pede lê **"Item esgotado"**; "Pedidos sem sucesso" sobe sem o estoque ficar negativo. É o cenário F5 acontecendo ao vivo |
-| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): no painel de gestão (aberto por http://localhost:8080/painel/) clique em **🧪 Testes de falha** (ou abra http://localhost:8099), ache o cenário pedido, **leia em voz alta o resultado esperado** (o professor quer a previsão antes), aperte **Acionar teste falha N** e mostre a saída e o que aparece em "Mostre agora" (ou `./demo.sh falha N` no terminal). Cada teste zera o banco antes: faça isto depois da parte do QR, não no meio dela. A cola está em [FALHAS.md](FALHAS.md) |
+| 18:00 | todos | Quando os 10 itens com cupom acabam: quem usa o cupom lê **"Itens com cupom esgotados"** (e **Pedir sem cupom** leva um item normal); "Pedidos sem sucesso" sobe sem o estoque ficar negativo. É o cenário F5 acontecendo ao vivo |
+| 19:00 | todos | Perguntas. Se o professor pedir uma falha (F1 a F8): no painel de gestão (aberto por http://localhost:8080/painel/) clique em **🧪 Testes de falha** (ou abra http://localhost:8099), ache o cenário pedido, **leia em voz alta o resultado esperado** (o professor quer a previsão antes), aperte **Acionar teste falha N** e mostre a saída e o que aparece em "Mostre agora" (ou `./demo.sh falha N` no terminal). Em seguida, no Grafana, role até o fim da tela e **clique no nome do teste** (a linha «F1 · …» a «F8 · …»): abre o texto, os números e o registro daquele teste. O quadro azul **Onde ver** da tela de testes diz o que procurar. Cada teste zera o banco antes: faça isto depois da parte do QR, não no meio dela. A cola está em [FALHAS.md](FALHAS.md) |
 
 Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que não se corta: o pedido, a chegada e o QR.
 
@@ -59,7 +59,7 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 1. **Faça o pedido cedo, não no fim.** O colega precisa de tempo para aceitar e chegar. Faça o pedido quando a pessoa 3 estiver terminando (8:00) e deixe o marcador vir andando enquanto a pessoa 4 mostra o Grafana.
 2. **Defina o destino na porta da sala, mas confie no botão.** Use o painel (**＋ Pedido pelo mapa**): o GPS do notebook usa o Wi-Fi e erra muito, então não peça como cliente pelo notebook (o celular de quem pede pelo QR serve). O GPS dentro de prédio erra 10 a 30 m: a conclusão automática vale a menos de 50 m (e só com precisão melhor que 100 m). Se não disparar, o colega toca em **Confirmar entrega**: fica igualmente bom na plateia.
 3. **O colega espera a 200 m ou mais** (outro corredor ou prédio), para o marcador *andar* de verdade antes de chegar. Se ficar perto demais, o pedido vira `ENTREGUE` antes da hora.
-4. **Estoque diferente para cada momento.** Com 10 unidades, o pedido principal usa 1 e sobram 9. Antes do QR, rode `./demo.sh reset 25`: 25 unidades fazem uma turma de 40 pessoas ver sucesso para a maioria e "acabaram" para o resto, o que mostra que o sistema não vende além do estoque.
+4. **Estoque diferente para cada momento.** São 30 itens (10 com cupom e 20 normais): o pedido principal usa 1 dos normais. Antes do QR, `./demo.sh reset` repõe tudo; com `./demo.sh reset 25` (25 no total, 10 com cupom) uma turma de 40 pessoas vê sucesso para a maioria e "acabaram" para o resto, o que mostra que o sistema não vende além do estoque.
 5. **O QR em tela cheia, com a URL em texto embaixo** (alguns celulares não leem o QR da tela). Use o **Modo telão** do painel.
 6. **Grafana em tela cheia no telão** com o endereço `http://localhost:3000/d/apresentacao/apresentacao?kiosk`. Mostre o painel de gestão e o Grafana em duas abas, e troque entre elas.
 7. **Quem narra o Grafana não é quem opera.** A pessoa 4 mexe nas telas e a pessoa 2 explica o que aparece.
@@ -71,7 +71,7 @@ Se a apresentação for mais curta, corte o C4 nível 1 e a falha extra. O que n
 
 - [ ] Notebook na tomada. `./demo.sh subir` e `./demo.sh link`; `docker compose ps` com tudo `healthy`. **Não reinicie o túnel daqui para frente.**
 - [ ] Abra o painel **pelo link do túnel** (assim o QR aponta para o endereço público).
-- [ ] `./demo.sh limpar` (apaga os pedidos do ensaio, 10 unidades, entregadores livres; nada reinicia, o link do túnel continua) e o gateway sem falha e sem atraso (`GATEWAY_TAXA_FALHA=0`, `GATEWAY_LATENCIA_MS=0` no `.env`).
+- [ ] `./demo.sh limpar` (apaga os pedidos do ensaio, repõe os 30 itens, entregadores livres; nada reinicia, o link do túnel continua) e o gateway sem falha e sem atraso (`GATEWAY_TAXA_FALHA=0`, `GATEWAY_LATENCIA_MS=0` no `.env`).
 - [ ] Colega com a página do entregador aberta no celular (**entregador2**), **Disponível**, cartão "GPS enviando" verde, e o marcador aparecendo no painel com "última posição há X s" baixo. Na tela da sala, a página do **entregador1** numa aba (para mostrar a disputa).
 - [ ] Pedido de teste até `EM_ENTREGA`: o celular avisou? Toque em **Aceitar** e conclua pelo botão. Depois `./demo.sh limpar` de novo.
 - [ ] Faça um pedido pelo QR para conferir: aparece no Grafana (espere ~20 s).
@@ -121,7 +121,7 @@ Faça com o notebook que vai ser usado na apresentação. Tudo foi testado com o
 | A chegada não dispara sozinha | o colega toca em **Confirmar entrega** |
 | Túnel ou rede caem antes de começar | roteador do celular no notebook; se não resolver, demonstração com o simulador e sem QR |
 | Um serviço cai | `docker compose restart <serviço>` e use a favor: as mensagens esperaram na fila, nada se perdeu |
-| A turma esgotou o estoque antes da hora | `./demo.sh reset 25` |
+| A turma esgotou o estoque antes da hora | `./demo.sh reset` |
 | O pedido não aparece na tabela do Grafana | espere ~20 s e confira o período (canto superior direito) |
 
 **Segurança:** quem pilota não mexe no celular. O celular fica no suporte, com a página do entregador aberta e a tela ligada, e o pedido é lido antes de sair. Capacete e respeito ao trânsito: nenhuma demonstração vale um risco.

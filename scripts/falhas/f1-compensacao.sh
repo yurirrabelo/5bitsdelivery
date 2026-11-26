@@ -30,4 +30,4 @@ echo
 echo "Histórico do pedido (para ver no trace: reservar -> recusado -> cancelado):"
 api GET "/api/pedidos/$id/historico" | grep -o '"para":"[A-Z_]*"' | sed 's/"para":/   -> /'
 
-finalizar F1 "Grafana: \"Sem sucesso\" subiu 1. Na tabela \"Pedidos recentes\", clique no pedido recusado: o caminho e o desenho dele mostram o erro em vermelho e o estoque devolvendo a unidade."
+finalizar F1 "Grafana, na linha «F1 · Compensação» (clique no nome para abrir): \"Recusados\" e \"Cancelados\" subiram e o registro mostra o pagamento recusado. Em cima, na tabela, clique no pedido \"Recusado\": o desenho mostra em vermelho onde deu errado e o estoque devolvendo a unidade."

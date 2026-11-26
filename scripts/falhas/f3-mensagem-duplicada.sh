@@ -37,4 +37,4 @@ echo "Passo 3: a métrica delivery_mensagens_total{resultado=\"duplicada\"} (che
 esperar_ate "[ -n \"\$(metrica)\" ] && [ \$((\$(metrica) - m0)) -ge 4 ]" 40
 verificar "aumento da métrica de duplicadas do estoque" 4 "$(( $(metrica) - m0 ))"
 
-finalizar F3 "Grafana, no fim da tela: \"Duplicadas\" subiu 4 e o registro ao lado mostra 4 vezes \"mensagem duplicada descartada\", todas com o mesmo messageId. O estoque reservou uma unidade só."
+finalizar F3 "Grafana, na linha «F3 · Mensagem duplicada»: \"Duplicadas\" subiu 4 e o registro mostra 4 vezes \"mensagem duplicada descartada\", todas com o mesmo messageId. O estoque reservou uma unidade só."

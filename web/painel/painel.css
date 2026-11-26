@@ -34,6 +34,7 @@ body.tema-operador {
 .estoque div:nth-child(1) b { color: #4ade80; }
 .estoque div:nth-child(2) b { color: #fbbf24; }
 .estoque div:nth-child(3) b { color: #60a5fa; }
+.estoque div:nth-child(5) b { color: #2dd4bf; }
 
 .acoes { display: flex; align-items: center; gap: 10px; }
 .tema-operador .topo .secundario { background: #1a2742; color: #e2e8f0; padding: 8px 14px; font-weight: 500; }

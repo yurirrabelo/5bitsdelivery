@@ -123,7 +123,7 @@ components:
   messages:
     estoque.reservar:
       name: estoque.reservar
-      title: Comando - reservar uma unidade do item
+      title: Comando - reservar uma unidade do item (com cupom ou normal)
       payload: { $ref: 'schemas/estoque.reservar.v1.schema.json' }
     estoque.reservado:
       name: estoque.reservado

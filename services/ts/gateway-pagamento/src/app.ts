@@ -46,6 +46,8 @@ export function registrarRotasGateway(app: FastifyInstance, cfg: ConfigGateway):
     let c = cobrancas.get(chave);
     if (c) {
       c.requisicoes++;
+      // é o que o F2 mostra no Grafana: a segunda cópia do pagamento refaz a chamada e o gateway não cobra de novo
+      req.log.info({ pedidoId, chave, requisicoes: c.requisicoes }, 'cobrança repetida (mesma chave): devolvo o mesmo resultado, sem cobrar de novo');
     } else {
       const nova: Cobranca = { chave, pedidoId, requisicoes: 1, efetivas: 0, promessa: Promise.resolve({ http: 500, corpo: {} }) };
       nova.promessa = (async (): Promise<Resultado> => {

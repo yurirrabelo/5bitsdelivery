@@ -10,7 +10,7 @@ Documento de referência do trabalho final de Sistemas Distribuídos (FURB): arq
 
 Um sistema de delivery com estoque limitado e rastreamento do entregador em tempo real.
 
-**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa uma das 10 unidades do item, o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega fica esperando um entregador: o pedido aparece no celular dos entregadores e o primeiro a tocar em **Aceitar** leva. Ele é acompanhado no mapa até o endereço do cliente (o GPS do celular do cliente). Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
+**Em um minuto:** o pedido entra e recebe na hora um número de acompanhamento. Por trás, ele passa por três etapas: o estoque separa um dos 30 itens (10 com cupom e 20 normais), o pagamento cobra num gateway externo lento e instável e, se tudo der certo, a entrega fica esperando um entregador: o pedido aparece no celular dos entregadores e o primeiro a tocar em **Aceitar** leva. Ele é acompanhado no mapa até o endereço do cliente (o GPS do celular do cliente). Se o pagamento falha ou demora demais, o sistema desfaz o que já fez: devolve a unidade ao estoque e, se a cobrança passou, estorna.
 
 O que o trabalho demonstra:
 
@@ -27,7 +27,7 @@ O que o trabalho demonstra:
 ## 2. Fluxo principal
 
 1. O pedido entra por `POST /api/pedidos`. O serviço de pedidos grava o pedido como `RECEBIDO` e responde `202 Accepted` com o id. Na mesma transação ele deixa o comando `estoque.reservar` na outbox.
-2. O estoque tenta reservar uma unidade com um UPDATE condicional e responde `estoque.reservado` ou `estoque.esgotado`.
+2. O estoque tenta reservar uma unidade do grupo do pedido (com cupom ou normal) com um UPDATE condicional e responde `estoque.reservado` ou `estoque.esgotado`.
 3. Reservado: o pedido vai para `AGUARDANDO_PAGAMENTO`, ganha um prazo (`PRAZO_PAGAMENTO_SEG`) e o pedidos envia `pagamento.cobrar`. Esgotado: o pedido termina como `ESGOTADO` (para o cliente, a tela avisa "Item esgotado").
 4. O pagamento cobra no gateway simulado, com a chave de idempotência do pedido, e responde `pagamento.aprovado` ou `pagamento.recusado`.
 5. Aprovado dentro do prazo: o pedido vai para `CONFIRMADO` e o pedidos publica `pedido.confirmado`, consumido por dois serviços: o estoque transforma a reserva em venda e as entregas criam a entrega, se o pedido tiver endereço de entrega.
@@ -40,7 +40,7 @@ O que o trabalho demonstra:
 - Prazo vencido sem resposta → pedido `CANCELADO` (motivo `PRAZO_EXPIRADO`) → `pedido.cancelado` → o estoque devolve a unidade.
 - Aprovação que chega depois do cancelamento → o pedidos envia `pagamento.estornar` → o pagamento estorna no gateway → `pagamento.estornado` → pedido `ESTORNADO`.
 
-**Item e estoque:** o item tem `ITEM_QUANTIDADE` unidades (10). Todo pedido reserva uma unidade; com as unidades acabadas o pedido termina `ESGOTADO` e a tela do cliente avisa "Item esgotado". A gestão, ao criar um pedido à mão, usa a mesma regra.
+**Item, estoque e cupom:** o item tem `ITEM_QUANTIDADE` unidades no total (30), em dois grupos: `PROMOCAO_QUANTIDADE` itens com cupom (10) e o resto normais (20). Quem escreve o cupom (`#promobcc`, o `PROMOCAO_CUPOM`) leva um dos itens com cupom; sem cupom, leva um normal; cupom errado dá `422` e nenhum pedido é criado. Todo pedido reserva uma unidade do seu grupo; com o grupo acabado, o pedido termina `ESGOTADO` (a tela avisa "Item esgotado" ou "Itens com cupom esgotados", e o cliente ainda pode pedir sem cupom). A gestão, ao criar um pedido à mão, escolhe o tipo (com ou sem cupom) em vez de digitar o cupom.
 
 **Endereço de entrega:** o cliente do QR manda o endereço dele junto com o pedido (o GPS do celular ou um toque no mapa: o mapa também fica à mão quando ele quer receber em outro endereço). Pedido com endereço vira entrega; sem endereço (chamada direta à API) termina em `CONFIRMADO`. A gestão também pode criar um pedido pelo mapa (ferramenta de apoio), até reservando o pedido para um entregador.
 
@@ -60,7 +60,7 @@ sequenceDiagram
     actor M as Entregador
     C->>P: POST /api/pedidos (endereço)
     P-->>C: 202 Accepted + id
-    Note over P,E: o estoque reserva uma das 10 unidades antes do pagamento
+    Note over P,E: o estoque reserva um item (com cupom ou normal) antes do pagamento
     P--)E: estoque.reservar
     E--)P: estoque.reservado
     P--)PG: pagamento.cobrar
@@ -208,16 +208,16 @@ Nunca expostos pelo Nginx: `GET http://auth:3000/auth/validate` (usado pelo `aut
 **pedidos**
 
 - `GET /api/pedidos/config` → `{origem: {nome, lat, lon}, item: {nome}}`
-- `POST /api/pedidos` → `202 {id, status, statusUrl}` e header `Location` (`status` é `RECEBIDO`).
+- `POST /api/pedidos` → `202 {id, status, promocao, statusUrl}` e header `Location` (`status` é `RECEBIDO`). O cliente pode mandar `cupom` (`#promobcc`; errado: `422`, e nenhum pedido é criado); a gestão manda `promocao` (true ou false) no lugar de digitar o cupom.
   - Gestão (papel `operador`): `{destino: {lat, lon, endereco?}, entregadorPreferidoId?}`.
   - Cliente: `{destino: {lat, lon}}` (o GPS do celular dele; sem `destino` o pedido termina em `CONFIRMADO`). Não escolhe entregador. Respeita o limite de pedidos em andamento.
-- `GET /api/pedidos/{id}` → `{id, status, motivo, origem, destino, entregadorId, criadoEm, atualizadoEm}`. O cliente só vê os próprios pedidos.
+- `GET /api/pedidos/{id}` → `{id, status, motivo, origem, destino, entregadorId, promocao, criadoEm, atualizadoEm}`. O cliente só vê os próprios pedidos.
 - `GET /api/pedidos` (operador) → últimos pedidos, com número e status.
 - `GET /api/pedidos/{id}/historico` → transições com horário e `correlationId`.
 
 **estoque**
 
-- `GET /api/estoque` → `{produto, total, disponivel, reservado, vendido}`.
+- `GET /api/estoque` → `{produto, total, disponivel, reservado, vendido, normal: {...}, cupom: {...}}`: os números de cima somam os dois grupos; `normal` e `cupom` trazem os mesmos quatro campos de cada grupo.
 
 **entregas**
 
@@ -260,7 +260,7 @@ Envelope exigido pelo enunciado, igual para toda mensagem:
 
 | type | Tipo | Produtor | Consumidores | payload |
 |---|---|---|---|---|
-| `estoque.reservar` | comando | pedidos | estoque | `{pedidoId}` |
+| `estoque.reservar` | comando | pedidos | estoque | `{pedidoId, clienteId?, cupom?}` (`cupom` true: um item com cupom) |
 | `estoque.reservado` | evento | estoque | pedidos | `{pedidoId}` |
 | `estoque.esgotado` | evento | estoque | pedidos | `{pedidoId}` |
 | `pagamento.cobrar` | comando | pedidos | pagamento | `{pedidoId, expiraEm}` |
@@ -321,6 +321,7 @@ SET disponivel = disponivel - 1, reservado = reservado + 1
 WHERE produto_id = :id AND disponivel > 0;
 ```
 
+- O `produto_id` é o grupo do pedido: 1 = itens normais, 2 = itens com cupom (os dois esgotam separados).
 - 1 linha afetada: reservou. 0 linhas: esgotado. O banco serializa a disputa pela linha, então não existe venda dupla, nem com réplicas.
 - `reservas (pedido_id PK, status)` impede reservar duas vezes para o mesmo pedido.
 - Invariante conferida nos testes: `disponivel + reservado + vendido = total` e `disponivel >= 0`.
@@ -522,7 +523,9 @@ EVENTO_CODIGO=promo
 
 # ---------- Regras ----------
 ITEM_NOME=Item
-ITEM_QUANTIDADE=10
+ITEM_QUANTIDADE=30
+PROMOCAO_QUANTIDADE=10
+PROMOCAO_CUPOM=promobcc
 PRAZO_PAGAMENTO_SEG=15
 CLIENTE_PEDIDOS_EM_ANDAMENTO=1
 ORIGEM_NOME=Loja
@@ -567,13 +570,13 @@ O objetivo é mostrar por onde cada passo passa, não monitorar tudo.
 - **Logs:** os do Java vão pelo agente; os do TypeScript pela instrumentação do pino. No Grafana, filtrar por `correlationId` e pular do log para o trace pelo `trace_id`.
 - **Métricas de negócio** (nomes como aparecem no Prometheus):
   - `delivery_pedidos_transicoes_total{status}` (pedidos)
-  - `delivery_estoque_unidades{estado}` com `disponivel`, `reservado` e `vendido` (estoque)
+  - `delivery_estoque_unidades{estado, tipo}` com `disponivel`, `reservado` e `vendido` de cada grupo, e `tipo` = `normal` ou `cupom` (estoque)
   - `delivery_pagamentos_total{resultado}` e `delivery_gateway_duracao_ms` (pagamento)
   - `delivery_mensagens_total{type, resultado}` com `processada`, `duplicada` ou `erro`, por instância (todos os consumidores)
   - `delivery_outbox_pendentes` (todos)
   - `delivery_gps_posicoes_total` (entregas)
 - **RabbitMQ:** o Prometheus do `lgtm` coleta `rabbitmq:15692/metrics/per-object` (mensagens prontas, não confirmadas e consumidores por fila, inclusive DLQs). Para isso, montar um `prometheus.yaml` próprio sobre `/otel-lgtm/prometheus.yaml`, partindo do original da imagem (`docker run --rm grafana/otel-lgtm cat /otel-lgtm/prometheus.yaml`) e acrescentando o job.
-- **Painel "5Bits Delivery" (uma tela só, a página inicial)**, provisionado por arquivo (`observabilidade/dashboards/`); acesso anônimo somente leitura, sem tela de login e sem senha (então o link público do Grafana, por um segundo túnel, não deixa editar nada). Quatro números (pedidos feitos, confirmados, sem sucesso e unidades restantes); quatro gráficos (pedidos por minuto, pagamentos processados por cada cópia, mensagens na quarentena/DLQ e mensagens esperando na outbox); e duas tabelas: **pedidos recentes** (clique no número) e o **caminho do pedido serviço por serviço** (busca no Tempo pelo atributo de span `pedido.id`, que pedidos, estoque, pagamento e entregas gravam em cada mensagem tratada). Embaixo, o **desenho da arquitetura** do pedido escolhido (painel `canvas`, uma caixa por serviço: verde passou, vermelho registrou o erro, cinza não chegou; consulta TraceQL pelo `traceid` escolhido) com a faixa "Onde a falha começou" e, no fim, o número **Duplicadas** (`delivery_mensagens_total{resultado="duplicada"}`) com o registro (Loki) das mensagens repetidas descartadas, que mostram o F3. Entre os gráficos e as tabelas há a faixa **RabbitMQ: no ar ou fora** (`up{job="rabbitmq"}`, painel `state-timeline`) e, no fim, o registro (Loki) da perda e da volta da conexão dos serviços, que mostram o F6, e o registro (Loki) do serviço de entregas sobre a exportação da rota (`exportação da rota pendente` e `rota exportada para o S3`), que mostra o F6b. A lista de pedidos e o caminho escolhido olham as últimas 24 horas (período próprio dos painéis, `timeFrom`), para não sumirem durante a análise.
+- **Painel "5Bits Delivery" (uma tela só, a página inicial)**, provisionado por arquivo (`observabilidade/dashboards/`); acesso anônimo somente leitura, sem tela de login e sem senha (então o link público do Grafana, por um segundo túnel, não deixa editar nada). Quatro números (pedidos feitos, confirmados, sem sucesso e unidades restantes); quatro gráficos (pedidos por minuto, pagamentos processados por cada cópia, mensagens na quarentena/DLQ e mensagens esperando na outbox); e duas tabelas: **pedidos recentes** (clique no número) e o **caminho do pedido serviço por serviço** (busca no Tempo pelo atributo de span `pedido.id`, que pedidos, estoque, pagamento e entregas gravam em cada mensagem tratada). Embaixo, o **desenho da arquitetura** do pedido escolhido (painel `canvas`, uma caixa por serviço: verde passou, vermelho registrou o erro, cinza não chegou; consulta TraceQL pelo `traceid` escolhido) com a faixa "Onde a falha começou". Entre os gráficos e as tabelas há a faixa **RabbitMQ: no ar ou fora** (`up{job="rabbitmq"}`, painel `state-timeline`). No fim, **uma linha recolhida para cada teste de falha** (F1 a F8 e F6b; linhas do Grafana com texto curto, números e registro): os números usam o período do painel (`$__range`: valor agora menos o de `$__range` atrás, em Prometheus, ou contagem de linhas, em Loki) e os registros são consultas LogQL sobre os logs dos serviços (por exemplo `duplicada descartada` no estoque, `desconectado do RabbitMQ` e `exportação da rota pendente`). A lista de pedidos pede até 500 pedidos de uma hora (ver acima). A lista de pedidos olha a última hora e pede até 500 pedidos (`limit`): com o limite padrão de 60, o Tempo devolvia 60 pedidos diferentes a cada consulta e a lista oscilava. O caminho escolhido, a faixa e o desenho olham as últimas 24 horas (período próprio dos painéis, `timeFrom`), para não sumirem durante a análise.
 - Volume em `/data`, para não perder o histórico entre reinícios.
 
 ---
@@ -609,9 +612,9 @@ Uma página web comum, sem instalação: o celular abre o link `https://…/entr
 
 ### 9.3 Interface Pedidos (`web/cliente/`) — a página do cliente, pelo QR
 
-- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra o botão **Pedir item** e, abaixo, "Quero receber em outro endereço" (mapa). Quando as unidades acabam, o pedido termina `ESGOTADO` e a tela avisa "Item esgotado". Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para outro, em outro endereço.
+- Abre pelo QR (`/cliente/?codigo=...`), entra sozinho como visitante e mostra os dois contadores (itens normais e itens com cupom), o campo **Cupom (opcional)**, o botão **Pedir item** e, abaixo, "Quero receber em outro endereço" (mapa). Quando acaba o grupo do pedido, ele termina `ESGOTADO` e a tela avisa "Item esgotado" (com o cupom: "Itens com cupom esgotados", e o botão **Pedir sem cupom** refaz o pedido no mesmo endereço). Enquanto o pedido espera um entregador, "Fazer outro pedido" libera a tela para outro, em outro endereço.
 - Ao pedir, o navegador pergunta a localização: a entrega vai para onde o cliente está (`navigator.geolocation`). Sem GPS (negado, sem https ou sem sinal) aparece um mapa para ele tocar no ponto de entrega.
-- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → unidade reservada → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
+- Mostra a linha do tempo do pedido (polling a cada 1 s), com uma frase por passo: recebido → item reservado → pagando → procurando um entregador → entregador a caminho → entregue (ou esgotado, cancelado ou estornado).
 - Um pedido em andamento por pessoa.
 
 ### 9.4 GPS e pipeline das posições (entregas)
@@ -632,7 +635,7 @@ Uma página web comum, sem instalação: o celular abre o link `https://…/entr
 
 Cada serviço cria as próprias tabelas na subida, de forma idempotente (Flyway no Java; arquivos SQL de migração no TypeScript).
 
-- **pg-pedidos:** `pedidos (id BIGSERIAL, status, motivo, cliente_id, origem_lat, origem_lon, destino_lat, destino_lon, destino_endereco, entregador_preferido_id, entregador_id, correlation_id, traceparent, prazo_pagamento, criado_em, atualizado_em)`, `historico (id, pedido_id, de_status, para_status, gatilho, correlation_id, ocorrido_em)`, `outbox`, `mensagens_processadas`.
+- **pg-pedidos:** `pedidos (id BIGSERIAL, status, motivo, cliente_id, origem_lat, origem_lon, destino_lat, destino_lon, destino_endereco, entregador_preferido_id, entregador_id, promocao, correlation_id, traceparent, prazo_pagamento, criado_em, atualizado_em)`, `historico (id, pedido_id, de_status, para_status, gatilho, correlation_id, ocorrido_em)`, `outbox`, `mensagens_processadas`.
 - **pg-estoque:** `estoque (produto_id PK, nome, total, disponivel, reservado, vendido)`, `reservas (pedido_id PK, produto_id, status RESERVADA | CONFIRMADA | LIBERADA, atualizado_em)`, `outbox`, `mensagens_processadas`.
 - **pg-pagamento:** `pagamentos (pedido_id PK, status APROVADO | RECUSADO | ESTORNADO, referencia, motivo, atualizado_em)`, `outbox`, `mensagens_processadas`.
 - **pg-entregas:** `entregadores (id, nome, status)`, `entregas (pedido_id PK, entregador_id, status PENDENTE | ATRIBUIDA | CONCLUIDA, destino_lat, destino_lon, criada_em, concluida_em, rota_exportada)`, `posicoes`, `outbox`, `mensagens_processadas`.
@@ -642,7 +645,7 @@ Ofertas e aceite: toda entrega nasce `PENDENTE` e o sistema **não escolhe entre
 
 Dados iniciais (upsert na subida, a partir do `.env`):
 
-- estoque: produto 1 = `ITEM_NOME` com `ITEM_QUANTIDADE` unidades, criado só se não existir; `scripts/reset-estoque.sh` repõe as unidades para testes e `scripts/limpar.sh` volta tudo ao início (apaga pedidos, entregas, trajetos, as posições de GPS guardadas no Redis e, se o bônus CQRS estiver no ar, a visão no DynamoDB; antes: pedidos, entregas e trajetos de teste e libera os entregadores) sem reiniciar nada.
+- estoque: produto 1 = itens normais (`ITEM_QUANTIDADE` − `PROMOCAO_QUANTIDADE`) e produto 2 = itens com cupom (`PROMOCAO_QUANTIDADE`), criados só se não existirem; `scripts/reset-estoque.sh` repõe as unidades para testes e `scripts/limpar.sh` volta tudo ao início (apaga pedidos, entregas, trajetos, as posições de GPS guardadas no Redis e, se o bônus CQRS estiver no ar, a visão no DynamoDB; antes: pedidos, entregas e trajetos de teste e libera os entregadores) sem reiniciar nada.
 - entregas: entregador 1 e entregador 2 (`ENTREGADOR1_*` e `ENTREGADOR2_*`), ambos `DISPONIVEL`. São duas contas reais: uma fica na tela da aula e a outra no celular de um integrante.
 - auth: `operador`, `entregador1` e `entregador2`.
 
@@ -650,7 +653,7 @@ Dados iniciais (upsert na subida, a partir do `.env`):
 
 ## 11. Testes do professor
 
-O enunciado pede que cada requisito seja apontado no código e na apresentação, e que o professor escolha uma falha para provocarmos ao vivo. Cada cenário tem um script em `scripts/falhas/` que **começa zerando o banco** (`scripts/limpar.sh`: pedidos, entregas, trajetos, posições de GPS no Redis, estoque de volta às unidades e, se o bônus CQRS estiver no ar, a visão no DynamoDB), provoca a falha, espera, compara o esperado com o obtido e termina com **PASSOU** ou **FALHOU**. `scripts/falhas/todos.sh` roda todos; `scripts/estado.sh` mostra o estado dos bancos e das filas; ao terminar, cada script devolve a configuração normal.
+O enunciado pede que cada requisito seja apontado no código e na apresentação, e que o professor escolha uma falha para provocarmos ao vivo. Cada cenário tem um script em `scripts/falhas/` que **começa zerando o banco** (`scripts/limpar.sh`: pedidos, entregas, trajetos, posições de GPS no Redis, estoque de volta aos 30 itens e, se o bônus CQRS estiver no ar, a visão no DynamoDB), provoca a falha, espera, compara o esperado com o obtido e termina com **PASSOU** ou **FALHOU**. `scripts/falhas/todos.sh` roda todos; `scripts/estado.sh` mostra o estado dos bancos e das filas; ao terminar, cada script devolve a configuração normal.
 
 ### 11.1 Requisitos
 
@@ -671,7 +674,7 @@ O enunciado pede que cada requisito seja apontado no código e na apresentação
 | F2 | `f2-servico-morre.sh` | latência de 8 s; cria um pedido; `docker kill` na réplica que pegou a mensagem (achada pelo log) | outra réplica processa; um pagamento; uma cobrança no gateway | logs com o mesmo `messageId` em duas réplicas; `GET /cobrancas` |
 | F3 | `f3-mensagem-duplicada.sh` | publica a mesma `estoque.reservar` 5 vezes, mesmo `messageId`, pela API do RabbitMQ | uma reserva; quatro descartadas | logs "duplicada descartada"; métrica; SQL |
 | F4 | `f4-mensagem-venenosa.sh` | publica payload inválido em `estoque.reservar`, com pedidos normais em paralelo | 3 tentativas e depois `estoque.entrada.dlq`; os outros pedidos seguem | logs; painel de DLQ; RabbitMQ |
-| F5 | `f5-corrida.sh` | repõe 10 unidades; k6 com 100 clientes pedindo ao mesmo tempo | exatamente 10 `CONFIRMADO` e 90 `ESGOTADO`; invariante OK | resumo do script; painel |
+| F5 | `f5-corrida.sh` | repõe os itens; k6 com 100 clientes, todos com o cupom, pedindo ao mesmo tempo | exatamente 10 `CONFIRMADO` e 90 `ESGOTADO`; invariante OK | resumo do script; painel |
 | F6 | `f6-broker-fora.sh` | para o RabbitMQ por 30 s com carga contínua | API segue com 202; outbox cresce; broker volta, serviços reconectam, outbox drena; nenhum pedido parado | painel de outbox; contagem final |
 | F7 | `f7-resposta-tardia.sh` | latência de 20 s, maior que o prazo de 15 s | em 15 s, `CANCELADO` e unidade devolvida; em 20 s, aprovação atrasada → estorno → `ESTORNADO` | trace; histórico do pedido |
 | F8 | `f8-escala.sh` | `docker compose up -d --scale pagamento=3` + carga com latência de 1 s | carga dividida entre 3 réplicas; nenhum pagamento duplicado | painel por réplica; SQL |

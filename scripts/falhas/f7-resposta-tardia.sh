@@ -39,4 +39,4 @@ echo
 echo "Histórico do pedido:"
 api GET "/api/pedidos/$id/historico" | grep -o '"para":"[A-Z_]*"' | sed 's/"para":/   -> /'
 
-finalizar F7 "Grafana: na tabela \"Pedidos recentes\", clique no pedido estornado: o caminho mostra o gateway demorando e, depois, o estorno."
+finalizar F7 "Grafana, na linha «F7 · Resposta tardia»: \"Por prazo\" e \"Estornados\" subiram e o registro mostra o prazo vencido e o estorno. Em cima, na tabela, clique no pedido \"Estornado\": o caminho mostra o gateway demorando e, depois, o estorno."

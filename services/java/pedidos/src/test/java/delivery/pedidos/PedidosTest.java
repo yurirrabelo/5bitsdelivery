@@ -75,10 +75,22 @@ class PedidosTest {
 
     // ---------------------------------------------------------------- utilidades
 
-    /** Todo pedido vai ao estoque antes do pagamento. */
-    private long novoPedido(String cliente, boolean limitar, boolean comDestino) {
+    /** Todo pedido vai ao estoque antes do pagamento: com cupom (promocao), ao grupo dos itens com cupom; sem cupom, ao dos normais. */
+    private long novoPedido(String cliente, boolean limitar, boolean comDestino, boolean promocao) {
         return new TransactionTemplate(transacoes).execute(s -> servico.criar(
-                cliente, limitar, comDestino ? new PedidoServico.Destino(-26.91, -49.07, "Rua A") : null, comDestino ? 2 : null));
+                cliente, limitar, comDestino ? new PedidoServico.Destino(-26.91, -49.07, "Rua A") : null, comDestino ? 2 : null, promocao));
+    }
+
+    /** Pedido sem cupom. */
+    private long novoPedido(String cliente, boolean limitar, boolean comDestino) {
+        return novoPedido(cliente, limitar, comDestino, false);
+    }
+
+    /** O campo cupom do comando estoque.reservar: diz de qual grupo de itens o estoque tira a unidade. */
+    private boolean cupomNoComando(long pedidoId) {
+        return jdbc.queryForObject(
+                "SELECT (payload->'payload'->>'cupom')::boolean FROM outbox WHERE type = 'estoque.reservar' AND payload->'payload'->>'pedidoId' = ?",
+                Boolean.class, String.valueOf(pedidoId));
     }
 
     /** Entrega uma mensagem ao manipulador do tipo, como o consumidor faria (dentro de uma transação). */
@@ -385,6 +397,59 @@ class PedidosTest {
         long id = j.get("id").asLong();
         assertEquals("RECEBIDO", j.get("status").asString());
         assertEquals(List.of("estoque.reservar"), mensagens(id)); // o pagamento só é pedido depois que o estoque reserva
+        assertFalse(j.get("promocao").asBoolean());
+        assertFalse(cupomNoComando(id)); // sem cupom: um item normal
+    }
+
+    // ---------------------------------------------------------------- cupom: um item com cupom ou um item normal
+
+    @Test
+    void pedidoComCupomPedeUmItemComCupomAoEstoque() throws Exception {
+        // o cupom vale com ou sem o #, em maiúsculas ou minúsculas
+        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"cupom\":\"#PromoBCC\"}", "X-User-Id", "c-cupom", "X-User-Role", "cliente");
+        assertEquals(202, r.statusCode());
+        JsonNode j = Json.MAPPER.readTree(r.body());
+        long id = j.get("id").asLong();
+        assertEquals("RECEBIDO", j.get("status").asString());
+        assertTrue(j.get("promocao").asBoolean());
+        assertTrue(repo.buscar(id).orElseThrow().promocao());
+        assertEquals(List.of("estoque.reservar"), mensagens(id));
+        assertTrue(cupomNoComando(id)); // com cupom: um dos itens com cupom
+    }
+
+    @Test
+    void cupomErradoRecebe422ENaoCriaPedido() throws Exception {
+        assertEquals(422, http("POST", "/api/pedidos", "{\"cupom\":\"#outro\"}", "X-User-Id", "c-x", "X-User-Role", "cliente").statusCode());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM pedidos", Integer.class));
+    }
+
+    @Test
+    void cupomEmBrancoContaComoPedidoSemCupom() throws Exception {
+        HttpResponse<String> r = http("POST", "/api/pedidos", "{\"cupom\":\"   \"}", "X-User-Id", "c-branco", "X-User-Role", "cliente");
+        assertEquals(202, r.statusCode());
+        long id = Json.MAPPER.readTree(r.body()).get("id").asLong();
+        assertFalse(repo.buscar(id).orElseThrow().promocao());
+        assertFalse(cupomNoComando(id));
+    }
+
+    @Test
+    void gestaoEscolheSeOPedidoUsaOCupom() throws Exception {
+        String corpo = "{\"destino\":{\"lat\":-26.9,\"lon\":-49.0},\"promocao\":%s}";
+        long normal = Json.MAPPER.readTree(http("POST", "/api/pedidos", corpo.formatted("false"), "X-User-Id", "operador", "X-User-Role", "operador").body()).get("id").asLong();
+        long comCupom = Json.MAPPER.readTree(http("POST", "/api/pedidos", corpo.formatted("true"), "X-User-Id", "operador", "X-User-Role", "operador").body()).get("id").asLong();
+        assertFalse(repo.buscar(normal).orElseThrow().promocao());
+        assertTrue(repo.buscar(comCupom).orElseThrow().promocao());
+        assertFalse(cupomNoComando(normal));
+        assertTrue(cupomNoComando(comCupom));
+    }
+
+    @Test
+    void pedidoComCupomSegueOMesmoCaminhoDoNormalDepoisDeReservar() {
+        long id = novoPedido("c1", true, true, true);
+        assertTrue(cupomNoComando(id));
+        receber("estoque.reservado", id);
+        receber("pagamento.aprovado", id, Map.of("referencia", "ref-c"));
+        assertEquals("CONFIRMADO", status(id));
     }
 
     @Test

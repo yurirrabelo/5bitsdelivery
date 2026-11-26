@@ -57,6 +57,8 @@ status_pedido() { campo "$(api GET "/api/pedidos/$1")" status; }
 motivo_pedido() { campo "$(api GET "/api/pedidos/$1")" motivo; }
 disponivel() { campo "$(api GET /api/estoque)" disponivel; }
 estoque_campo() { campo "$(api GET /api/estoque)" "$1"; }
+# Os 30 itens são dois grupos: 10 com cupom (produto 2) e 20 normais (produto 1). As funções acima falam do item todo (a soma).
+estoque_cupom() { sql estoque "SELECT $1 FROM estoque WHERE produto_id = 2"; } # estoque_cupom disponivel|reservado|vendido|total
 
 # ---------------------------------------------------------------- espera
 esperar_status() { # esperar_status id status segundos

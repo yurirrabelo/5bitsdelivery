@@ -1,5 +1,5 @@
-// Interface "Pedidos" (QR code): entra com um apelido, pede o item (a entrega vai para onde a pessoa está, pelo GPS do
-// celular) e acompanha cada passo até o entregador chegar.
+// Interface "Pedidos" (QR code): entra com um apelido, pede com o cupom (um dos itens com cupom) ou sem cupom (um item normal;
+// a entrega vai para onde a pessoa está, pelo GPS do celular) e acompanha cada passo até o entregador chegar.
 // Todo texto vindo do servidor entra por textContent. O telão nunca mostra o apelido, só o número do pedido.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -9,6 +9,8 @@
   let timerEstoque = null;
   let origemLoja = null; // onde o mapa abre quando não há GPS
   let ultimoGps = null; // o último ponto que o GPS deu: o mapa abre por ali
+  let ultimoDestino = null; // onde foi o último pedido: serve para refazer sem cupom quando os itens com cupom acabam
+  let cupomAcabou = false; // acabaram os itens com cupom: o cupom deixou de valer
 
   // o código do evento vem no link do QR (?codigo=...); sem ele, a pessoa digita
   const codigoDoLink = parametros.get('codigo');
@@ -20,25 +22,51 @@
     for (const t of ['entrar', 'pedir', 'escolher-local', 'acompanhar']) $(t).classList.toggle('oculto', t !== nome);
   }
 
-  // ---------------------------------------------------------------- quantas unidades restam
+  // ---------------------------------------------------------------- quantos itens restam e o cupom
   async function atualizarRestam() {
     try {
       const r = await Auth.api('/api/estoque');
       if (!r.ok) return;
       const e = await r.json();
-      $('restam').classList.remove('oculto');
-      $('restam-n').textContent = e.disponivel + (e.disponivel === 1 ? ' unidade' : ' unidades');
-      $('restam-total').textContent = e.total;
-      $('restam-barra').style.width = (e.total ? (100 * e.disponivel) / e.total : 0) + '%';
+      mostrarRestam('restam', e.normal);
+      mostrarRestam('restam-cupom', e.cupom);
+      cupomAcabou = e.cupom.disponivel <= 0;
+      atualizarCupom();
     } catch (e) { /* sem rede: mantém o último valor */ }
   }
 
+  // um grupo de itens: "restam N de TOTAL" e a barra
+  function mostrarRestam(id, g) {
+    $(id).classList.remove('oculto');
+    $(id + '-n').textContent = g.disponivel + (g.disponivel === 1 ? ' item' : ' itens');
+    $(id + '-total').textContent = g.total;
+    $(id + '-barra').style.width = (g.total ? (100 * g.disponivel) / g.total : 0) + '%';
+  }
+
+  // O que está escrito no cupom (vazio quando os itens com cupom acabaram: o cupom não vale mais e o pedido é normal)
+  const cupomAtual = () => (cupomAcabou ? '' : $('cupom').value.trim());
+
+  // O texto sobre o cupom e o botão acompanham o que a pessoa escreve e quantos itens com cupom restam
+  function atualizarCupom() {
+    const campo = $('cupom');
+    const dica = $('dica-cupom');
+    campo.disabled = cupomAcabou;
+    if (cupomAcabou) campo.value = '';
+    dica.classList.toggle('ruim', cupomAcabou);
+    dica.textContent = cupomAcabou
+      ? 'Os itens com cupom acabaram. Você ainda pode pedir um item normal.'
+      : 'Escreva o cupom para pedir um dos itens com cupom. Sem cupom, você pede um item normal.';
+    const botao = $('btn-pedir');
+    if (!botao.dataset.ocupado) botao.textContent = cupomAtual() ? 'Pedir com o cupom' : 'Pedir item';
+  }
+
   // ---------------------------------------------------------------- passos de cada status
-  // Todo pedido: recebido -> unidade reservada -> pagando -> ...
+  // Todo pedido: recebido -> item reservado -> pagando -> ... (com o cupom, o item reservado é um dos itens com cupom)
   // Com endereço (o normal do app): ... -> procurando entregador -> a caminho -> entregue. Sem endereço: ... -> confirmado.
   const PASSO = {
     recebido: { icone: '📝', texto: 'Pedido recebido' },
-    reservada: { icone: '📦', texto: 'Unidade reservada para você' },
+    reservada: { icone: '📦', texto: 'Item reservado para você' },
+    reservadaCupom: { icone: '🎟️', texto: 'Item com cupom reservado para você' },
     pagando: { icone: '💳', texto: 'Pagando…' },
     procurando: { icone: '🔎', texto: 'Procurando um entregador…' },
     caminho: { icone: '🛵', texto: 'Entregador a caminho' },
@@ -46,10 +74,11 @@
     confirmado: { icone: '🎉', texto: 'Pedido confirmado!' },
   };
 
-  const ANTES = [PASSO.recebido, PASSO.reservada, PASSO.pagando]; // os passos até o pagamento
+  const PASSOS_ANTES = 3; // os passos até o pagamento: recebido, item reservado e pagando
 
   function roteiro(p) {
-    return p.destino ? [...ANTES, PASSO.procurando, PASSO.caminho, PASSO.entregue] : [...ANTES, PASSO.confirmado];
+    const antes = [PASSO.recebido, p.promocao ? PASSO.reservadaCupom : PASSO.reservada, PASSO.pagando];
+    return p.destino ? [...antes, PASSO.procurando, PASSO.caminho, PASSO.entregue] : [...antes, PASSO.confirmado];
   }
 
   // quantos passos já foram vencidos em cada status (n = os passos até o pagamento)
@@ -80,10 +109,12 @@
     };
 
     const PASSOS = roteiro(p);
-    const n = ANTES.length;
+    const n = PASSOS_ANTES;
 
     const falha = {
-      ESGOTADO: ['📦', 'Item esgotado', 'Todas as unidades já foram vendidas.'],
+      ESGOTADO: p.promocao
+        ? ['🎟️', 'Itens com cupom esgotados', 'Os itens com cupom já foram vendidos. Você ainda pode pedir um item normal, sem cupom.']
+        : ['📦', 'Item esgotado', 'Todos os itens normais já foram vendidos.'],
       CANCELADO: p.motivo === 'PRAZO_EXPIRADO'
         ? ['⏱️', 'O pagamento demorou demais', 'Cancelamos o pedido e devolvemos a unidade.']
         : ['❌', 'Pagamento recusado', 'Cancelamos o pedido e devolvemos a unidade.'],
@@ -128,7 +159,9 @@
   function acompanhar(id) {
     guardar(CHAVE_PEDIDO, String(id));
     $('numero').textContent = '#' + id;
+    $('cupom').value = ''; // o cupom foi usado neste pedido
     $('de-novo').classList.add('oculto');
+    $('pedido-normal').classList.add('oculto');
     $('outro-pedido').classList.remove('oculto');
     tela('acompanhar');
     clearInterval(timer);
@@ -143,7 +176,10 @@
         if (fim) {
           clearInterval(timer);
           guardar(CHAVE_PEDIDO, null);
-          $('de-novo').classList.remove('oculto');
+          // o cupom não valeu (os itens com cupom acabaram): o caminho agora é um item normal
+          const semCupom = p.status === 'ESGOTADO' && p.promocao;
+          $('pedido-normal').classList.toggle('oculto', !semCupom);
+          $('de-novo').classList.toggle('oculto', semCupom);
           $('outro-pedido').classList.add('oculto');
           atualizarRestam();
         }
@@ -166,10 +202,13 @@
     });
   }
 
-  async function enviarPedido(destino) {
+  async function enviarPedido(destino, cupom) {
+    ultimoDestino = destino;
     const corpo = { destino: { lat: destino.lat, lon: destino.lon } };
+    if (cupom) corpo.cupom = cupom;
     const r = await Auth.api('/api/pedidos', { method: 'POST', body: corpo });
     if (r.status === 409) throw new Error('Você já tem um pedido em andamento. Espere ele terminar.');
+    if (r.status === 422) throw new Error('Cupom inválido. Confira o que você escreveu (o cupom começa com #).');
     if (r.status !== 202) throw new Error('Não consegui fazer o pedido agora. Tente de novo.');
     acompanhar((await r.json()).id);
   }
@@ -180,6 +219,7 @@
     erro.textContent = '';
     const botao = $('btn-pedir');
     botao.disabled = true;
+    botao.dataset.ocupado = '1';
     botao.textContent = 'Pegando sua localização…';
     try {
       let destino;
@@ -189,12 +229,13 @@
       } catch (e) {
         return mostrarMapaLocal(e.message + ' Toque no mapa onde você está.'); // sem GPS: a pessoa marca no mapa
       }
-      await enviarPedido(destino);
+      await enviarPedido(destino, cupomAtual());
     } catch (e) {
       erro.textContent = e.message;
     } finally {
       botao.disabled = false;
-      botao.textContent = 'Pedir item';
+      delete botao.dataset.ocupado;
+      atualizarCupom();
     }
   }
 
@@ -237,10 +278,24 @@
     $('erro-local').textContent = '';
     $('btn-pedir-aqui').disabled = true;
     try {
-      await enviarPedido(pontoEscolhido);
+      await enviarPedido(pontoEscolhido, cupomAtual());
     } catch (e) {
       $('erro-local').textContent = e.message;
       $('btn-pedir-aqui').disabled = false;
+    }
+  }
+
+  // Os itens com cupom acabaram: refaz o pedido sem cupom, no mesmo endereço (ou no GPS, se a página foi recarregada)
+  async function pedidoNormal() {
+    const botao = $('pedido-normal');
+    botao.disabled = true;
+    try {
+      await enviarPedido(ultimoDestino || (await localizar()), '');
+    } catch (e) {
+      mostrarPedir();
+      $('erro-pedir').textContent = e.message;
+    } finally {
+      botao.disabled = false;
     }
   }
 
@@ -248,6 +303,7 @@
     $('nome').textContent = Auth.usuario().nome; // textContent: o apelido nunca é interpretado como HTML
     $('erro-pedir').textContent = '';
     tela('pedir');
+    atualizarCupom();
     atualizarRestam();
   }
 
@@ -265,6 +321,8 @@
   });
 
   $('form-pedido').addEventListener('submit', pedir);
+  $('cupom').addEventListener('input', atualizarCupom);
+  $('pedido-normal').addEventListener('click', pedidoNormal);
   $('btn-outro-lugar').addEventListener('click', () => mostrarMapaLocal('Toque no mapa onde você quer receber o pedido. Dá para arrastar o marcador para ajustar.'));
   $('btn-pedir-aqui').addEventListener('click', pedirNoPonto);
   $('voltar-local').addEventListener('click', mostrarPedir);
@@ -284,7 +342,7 @@
       origemLoja = cfg.origem;
     } catch (e) { /* mantém o título padrão */ }
     clearInterval(timerEstoque);
-    timerEstoque = setInterval(atualizarRestam, 3000); // o contador de unidades anda sozinho
+    timerEstoque = setInterval(atualizarRestam, 3000); // os contadores de itens andam sozinhos
     const pedido = guardado(CHAVE_PEDIDO); // retoma o acompanhamento depois de recarregar a página
     if (pedido) acompanhar(pedido);
     else mostrarPedir();

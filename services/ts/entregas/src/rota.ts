@@ -15,7 +15,9 @@ export async function montarRota(pool: Pool, pedidoId: number): Promise<RotaGeoJ
 }
 
 export function criarS3(endpoint: string, region: string): S3Client {
-  return new S3Client({ endpoint, region, forcePathStyle: true });
+  // Sem tentativas do SDK e com prazo na conexão: com o S3 fora cada chamada falhava só depois de uns 12 s (3 tentativas) e a falha
+  // nem aparecia no registro enquanto a nuvem não voltava. Quem tenta de novo é o laço (a cada 10 s), e cada falha aparece na hora.
+  return new S3Client({ endpoint, region, forcePathStyle: true, maxAttempts: 1, requestHandler: { connectionTimeout: 3000, requestTimeout: 5000 } });
 }
 
 // Exporta para o S3 a rota das entregas concluídas (rotas/pedido-<id>.geojson). Se o MiniStack estiver fora,

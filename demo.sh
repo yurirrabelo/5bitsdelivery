@@ -50,7 +50,7 @@ Cenários de falha do professor (rode um de cada vez; cada um leva até uns 3 mi
   2    Serviço morre         uma réplica do pagamento morre no meio do trabalho e a outra assume
   3    Mensagem duplicada    a mesma mensagem chega 5 vezes e vale uma vez só
   4    Mensagem venenosa     uma mensagem inválida vai para a DLQ sem travar as outras
-  5    Corrida pelo estoque  100 clientes disputam 10 unidades: vendem exatamente 10
+  5    Corrida pelo estoque  100 clientes com o cupom disputam 10 itens: vendem exatamente 10
   6    Broker fora           o RabbitMQ cai por 30 s e volta: nada se perde
   6b   MiniStack (nuvem) fora o S3 cai durante uma entrega: a rota sai quando ele volta
   7    Resposta tardia       o pagamento demora mais que o prazo: cancela no prazo e estorna depois

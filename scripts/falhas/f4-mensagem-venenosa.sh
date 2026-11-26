@@ -35,4 +35,4 @@ echo
 echo "Conteúdo da DLQ (para mostrar no painel do RabbitMQ: http://localhost:15672):"
 rabbit_api POST "/api/queues/%2F/$DLQ/get" '{"count":1,"ackmode":"ack_requeue_true","encoding":"auto"}' | grep -o '"payload":"[^}]*}' | head -1 | cut -c1-200
 
-finalizar F4 "Grafana: \"Quarentena (DLQ)\" subiu para 1 e continua em 1, e os outros pedidos seguiram normalmente. No RabbitMQ (http://localhost:15672) a fila ${DLQ} guarda o conteúdo dela. A mensagem fica lá até o próximo F4 ou ./demo.sh limpar."
+finalizar F4 "Grafana, na linha «F4 · Mensagem venenosa»: \"Na DLQ\" = 1, \"Erros\" = 3 e o registro mostra as 3 tentativas. No RabbitMQ (http://localhost:15672) a fila ${DLQ} guarda o conteúdo da mensagem. Ela fica lá até o próximo F4 ou ./demo.sh limpar."
