@@ -45,7 +45,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 ## 3. Grafana: uma tela só
 
-Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, as mensagens repetidas que o sistema descartou. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
+Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, a faixa do RabbitMQ (no ar ou fora), as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, o registro das mensagens repetidas descartadas e das quedas do RabbitMQ. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
 
 ### Os quatro números do topo
 | Número | O que conta |
@@ -92,6 +92,9 @@ Mostra o pedido escolhido na tabela de cima (não a soma de todos) sobre o desen
 ### Mensagens repetidas (no fim da tela)
 O número **Duplicadas** conta as mensagens que chegaram repetidas e foram descartadas sem repetir o efeito, e o registro ao lado mostra cada uma (o mesmo `messageId`, o tipo `estoque.reservar`). Sobe no teste F3: a mesma mensagem 5 vezes, 1 vale e 4 aparecem aqui. Esse teste usa um pedido que não existe, então ele não aparece nas tabelas.
 
+### RabbitMQ fora do ar (teste F6)
+A faixa **RabbitMQ: no ar ou fora**, logo abaixo dos gráficos, fica verde enquanto o Prometheus consegue falar com o RabbitMQ e **vermelha** enquanto ele está parado (o teste desliga por 30 s; a faixa fica vermelha um pouco mais, porque o Prometheus olha de 15 em 15 s). Embaixo, o registro mostra cada serviço avisando "desconectado do RabbitMQ; reconectando" e depois "conectado ao RabbitMQ": eles reconectam sozinhos, sem reiniciar. Junto com "Esperando envio (outbox)", que sobe e volta a zero, é a causa (RabbitMQ fora) e o efeito (mensagens esperando). **No próprio RabbitMQ** (`http://localhost:15672`) não dá para ver o erro: a tela dele cai junto. Depois que volta, a página inicial mostra o "Uptime" do nó zerado e a aba **Connections** mostra as conexões novas.
+
 ---
 
 ## 4. Perguntas rápidas
@@ -104,6 +107,7 @@ O número **Duplicadas** conta as mensagens que chegaram repetidas e foram desca
 | que o pedido passa por todos os serviços | Grafana → clique no pedido na tabela |
 | onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: a faixa diz onde a falha começou e o desenho mostra em vermelho por onde o erro passou |
 | que uma mensagem repetida vale uma vez só | Grafana → "Duplicadas" e o registro no fim da tela (teste F3) |
+| que o sistema aguenta o RabbitMQ cair | Grafana → a faixa "RabbitMQ: no ar ou fora" (vermelha na queda), "Esperando envio (outbox)" subindo e voltando a 0 e o registro das reconexões (teste F6) |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" |
 | que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto |

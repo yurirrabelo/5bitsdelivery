@@ -7,7 +7,7 @@
  ],
  "timezone": "browser",
  "schemaVersion": 39,
- "version": 7,
+ "version": 9,
  "refresh": "5s",
  "time": {
   "from": "now-15m",
@@ -29,7 +29,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "**Os números** mostram o que está acontecendo agora. **Os gráficos** mostram os pedidos por minuto, o que cada cópia do pagamento processou, as mensagens na quarentena (DLQ) e as que esperam para ser enviadas (outbox). **Nas tabelas e no desenho**, clique no número de um pedido: veja por onde ele passou, quanto cada serviço demorou e onde deu errado (vermelho). **No fim**, o registro das mensagens repetidas que foram descartadas."
+    "content": "**Os números** mostram o que está acontecendo agora. **Os gráficos** mostram os pedidos por minuto, o que cada cópia do pagamento processou, as mensagens na quarentena (DLQ) e as que esperam para ser enviadas (outbox). **Nas tabelas e no desenho**, clique no número de um pedido: veja por onde ele passou, quanto cada serviço demorou e onde deu errado (vermelho). **No fim**, o registro das mensagens repetidas descartadas e de quando o RabbitMQ caiu e voltou."
    },
    "transparent": true
   },
@@ -513,7 +513,7 @@
    "description": "Cada linha é um pedido que terminou, com o resultado dele (sucesso, recusado, esgotado...). Ficam aqui por 24 horas. Clique no número para ver, ao lado e embaixo, o caminho dele.",
    "gridPos": {
     "x": 0,
-    "y": 14,
+    "y": 17,
     "w": 8,
     "h": 13
    },
@@ -736,7 +736,7 @@
    "description": "O mesmo pedido visto por dentro: cada linha é um serviço trabalhando nele e quanto tempo cada um demorou. Na coluna \"Situação\", vermelho é onde deu errado. Na coluna \"Demorou\", vermelho é só lentidão (1,5 s ou mais), não é erro.",
    "gridPos": {
     "x": 8,
-    "y": 14,
+    "y": 17,
     "w": 16,
     "h": 13
    },
@@ -1132,7 +1132,7 @@
    "timeFrom": "24h",
    "gridPos": {
     "x": 0,
-    "y": 27,
+    "y": 30,
     "w": 24,
     "h": 4
    },
@@ -1302,7 +1302,7 @@
    "timeFrom": "24h",
    "gridPos": {
     "x": 0,
-    "y": 31,
+    "y": 34,
     "w": 24,
     "h": 16
    },
@@ -2444,7 +2444,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 47,
+    "y": 50,
     "w": 5,
     "h": 7
    },
@@ -2507,7 +2507,7 @@
    "timeFrom": "24h",
    "gridPos": {
     "x": 5,
-    "y": 47,
+    "y": 50,
     "w": 19,
     "h": 7
    },
@@ -2521,6 +2521,123 @@
      "queryType": "range",
      "maxLines": 30,
      "expr": "{service_name=~\".+\"} |= \"duplicada descartada\""
+    }
+   ],
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Descending",
+    "enableLogDetails": true,
+    "dedupStrategy": "none",
+    "prettifyLogMessage": false
+   }
+  },
+  {
+   "id": 16,
+   "type": "state-timeline",
+   "title": "RabbitMQ: no ar ou fora",
+   "description": "Verde = o Prometheus conseguiu falar com o RabbitMQ; vermelho = não conseguiu (ele está parado). O teste F6 desliga o RabbitMQ por 30 s: a faixa fica vermelha nesse tempo e o gráfico \"Esperando envio (outbox)\" sobe.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 24,
+    "h": 3
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "refId": "A",
+     "expr": "max(up{job=\"rabbitmq\"})",
+     "legendFormat": "RabbitMQ",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "green"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "FORA",
+         "color": "red",
+         "index": 0
+        },
+        "1": {
+         "text": "no ar",
+         "color": "green",
+         "index": 1
+        }
+       }
+      }
+     ],
+     "custom": {
+      "fillOpacity": 85,
+      "lineWidth": 0
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "mergeValues": true,
+    "showValue": "auto",
+    "alignValue": "center",
+    "rowHeight": 0.9,
+    "legend": {
+     "showLegend": false
+    },
+    "tooltip": {
+     "mode": "single"
+    }
+   }
+  },
+  {
+   "id": 17,
+   "type": "logs",
+   "title": "RabbitMQ caiu e voltou: o que os serviços registraram (teste F6)",
+   "description": "Cada serviço avisa quando perde a conexão com o RabbitMQ (\"desconectado do RabbitMQ; reconectando\" ou \"connection driver error\") e quando ela volta (\"conectado ao RabbitMQ\"). Eles reconectam sozinhos, sem reiniciar.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "timeFrom": "24h",
+   "gridPos": {
+    "x": 0,
+    "y": 57,
+    "w": 24,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "refId": "A",
+     "queryType": "range",
+     "maxLines": 30,
+     "expr": "{service_name=~\".+\"} |~ \"desconectado do RabbitMQ|conectado ao RabbitMQ|connection driver error\""
     }
    ],
    "options": {

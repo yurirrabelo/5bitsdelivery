@@ -62,4 +62,4 @@ echo
 echo "Pedidos desta carga por status final:"
 sql pedidos "SELECT status || ': ' || count(*) FROM pedidos WHERE id >= $primeiro GROUP BY status ORDER BY 1" | sed 's/^/   /'
 
-finalizar F6 "Grafana: \"Esperando envio (outbox)\" subiu durante a queda e voltou a zero."
+finalizar F6 "Grafana: \"Esperando envio (outbox)\" subiu durante a queda e voltou a zero; a faixa \"RabbitMQ: no ar ou fora\" ficou vermelha enquanto ele estava parado e, no fim da tela, o registro mostra os serviços perdendo e retomando a conexão. No RabbitMQ (http://localhost:15672): o Uptime do nó zerou e a aba Connections mostra as conexões novas."

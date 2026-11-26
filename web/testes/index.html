@@ -84,7 +84,8 @@
     <p><b>Onde o erro acontece:</b> no RabbitMQ (a mensageria): pedidos, estoque e pagamento não conseguem enviar nem receber mensagens.</p>
     <p><b>O que acontece:</b> a API continua aceitando pedidos. As mensagens esperam na tabela <code>outbox</code> de cada serviço. Quando o RabbitMQ volta, os serviços reconectam sozinhos (sem reiniciar) e a outbox esvazia.</p>
     <p><b>Resultado esperado:</b> nenhum erro da API, a outbox cresce durante a queda e volta a 0, nenhum serviço reiniciou e nenhum pedido ficou parado.</p>
-    <p><b>No Grafana:</b> "Esperando envio (outbox)" sobe durante a queda do RabbitMQ e volta a 0 quando ele volta.</p>
+    <p><b>No Grafana:</b> "Esperando envio (outbox)" sobe durante a queda e volta a 0. A faixa "RabbitMQ: no ar ou fora" fica vermelha enquanto ele está parado e, no fim da tela, o registro mostra os serviços "desconectado do RabbitMQ; reconectando" e depois "conectado ao RabbitMQ".</p>
+    <p><b>No RabbitMQ:</b> a tela dele (<code>http://localhost:15672</code>) fica fora do ar durante a queda, então o erro não aparece lá. Depois que ele volta, a página inicial mostra o "Uptime" do nó zerado e a aba <b>Connections</b> mostra as conexões novas ("Connected at" logo depois da volta).</p>
     <p><b>Tente novamente:</b> faça um pedido durante a queda: o número do pedido sai na hora, e ele só avança quando o RabbitMQ volta.</p>
     <pre id="saida-6"></pre>
   </section>
