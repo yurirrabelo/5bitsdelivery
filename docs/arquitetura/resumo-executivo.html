@@ -946,7 +946,7 @@ svg.dg { width: 100%; height: auto; display: block; }
         <ul class="pontos">
           <li>Cada serviço envia <b>métricas, logs e rastros</b> (OpenTelemetry) ao Grafana.</li>
           <li>Um pedido vira <b>um rastro só</b>, atravessando todos os serviços, inclusive pelas mensagens.</li>
-          <li>Uma <b>tela só</b> no Grafana: quatro números grandes, quatro gráficos e o <b>caminho de cada pedido</b> pelos serviços, com o erro em vermelho.</li>
+          <li>Uma <b>tela só</b> no Grafana: números, gráficos, o <b>caminho de cada pedido</b> e o <b>desenho da arquitetura</b>, com o erro em vermelho.</li>
           <li>Os gráficos mostram as <b>cópias do pagamento</b>, a <b>quarentena</b> (DLQ) e a <b>caixa de saída</b>.</li>
         </ul>
       </div>
@@ -971,7 +971,7 @@ svg.dg { width: 100%; height: auto; display: block; }
     </div>
 
     <h2>O painel do Grafana: uma tela só</h2>
-    <svg class="dg" viewBox="0 0 900 175" role="img" aria-label="O painel do Grafana: quatro números, quatro gráficos e duas tabelas">
+    <svg class="dg" viewBox="0 0 900 236" role="img" aria-label="O painel do Grafana: quatro números, quatro gráficos, duas tabelas, o desenho da arquitetura e as mensagens repetidas">
       <rect x="10" y="6" width="210" height="56" rx="10" fill="#e7f0ff" stroke="#3b82f6" stroke-width="2"/>
       <text x="115" y="31" text-anchor="middle" style="font-size:16px;font-weight:700;fill:#1e3a8a">Pedidos feitos</text>
       <text x="115" y="51" text-anchor="middle" style="font-size:13px;fill:#1e3a8a">quantos chegaram</text>
@@ -1003,8 +1003,29 @@ svg.dg { width: 100%; height: auto; display: block; }
       <text x="175" y="156" text-anchor="middle" style="font-size:14px;font-weight:700;fill:#334155">1. Pedidos recentes: clique no número</text>
       <rect x="350" y="134" width="540" height="34" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
       <text x="620" y="156" text-anchor="middle" style="font-size:14px;font-weight:700;fill:#334155">2. O caminho do pedido, serviço por serviço (o erro em vermelho)</text>
+
+      <rect x="10" y="176" width="540" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="20" y="193" style="font-size:13px;font-weight:700;fill:#334155">3. Desenho da arquitetura do pedido: verde passou · vermelho erro · cinza não chegou</text>
+      <rect x="20" y="201" width="62" height="24" rx="5" fill="#a5d8ff" stroke="#4dabf7" stroke-width="1.5"/>
+      <text x="51" y="217" text-anchor="middle" style="font-size:11px;fill:#1e3a8a">cliente</text>
+      <rect x="94" y="201" width="62" height="24" rx="5" fill="#ff8787" stroke="#fa5252" stroke-width="1.5"/>
+      <text x="125" y="217" text-anchor="middle" style="font-size:11px;fill:#5c1111">pedidos</text>
+      <rect x="168" y="201" width="16" height="24" rx="3" fill="#ffd8a8" stroke="#f08c00" stroke-width="1.5"/>
+      <rect x="196" y="201" width="62" height="24" rx="5" fill="#69db7c" stroke="#40c057" stroke-width="1.5"/>
+      <text x="227" y="217" text-anchor="middle" style="font-size:11px;fill:#0b3d1a">estoque</text>
+      <rect x="270" y="201" width="70" height="24" rx="5" fill="#ff8787" stroke="#fa5252" stroke-width="1.5"/>
+      <text x="305" y="217" text-anchor="middle" style="font-size:11px;fill:#5c1111">pagamento</text>
+      <rect x="352" y="201" width="70" height="24" rx="5" fill="#ff8787" stroke="#fa5252" stroke-width="1.5"/>
+      <text x="387" y="217" text-anchor="middle" style="font-size:11px;fill:#5c1111">gateway</text>
+      <rect x="434" y="201" width="70" height="24" rx="5" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
+      <text x="469" y="217" text-anchor="middle" style="font-size:11px;fill:#495057">entregas</text>
+
+      <rect x="560" y="176" width="330" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+      <text x="570" y="193" style="font-size:13px;font-weight:700;fill:#334155">4. Mensagens repetidas descartadas (teste F3)</text>
+      <rect x="570" y="200" width="58" height="26" rx="6" fill="#ae3ec9"/>
+      <text x="599" y="219" text-anchor="middle" style="font-size:17px;font-weight:700;fill:#fff">4</text>
+      <path d="M642 206 H880 M642 214 H862 M642 222 H872" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
     </svg>
-    <p class="mini" style="margin:1.5mm 0 0">Ilustração do painel: os números e gráficos mostram o que acontece agora, e as duas tabelas mostram o caminho de cada pedido.</p>
   </div>
   <div class="rod"><span>Sistemas Distribuídos · FURB</span><span class="pg"></span></div>
 </section>

@@ -44,7 +44,19 @@ O professor também pode pedir uma **falha surpresa** (por exemplo, derrubar um 
 | **F7** | gateway com latência de 20 s (`GATEWAY_LATENCIA_MS=20000`), maior que o prazo de 15 s | no gateway: ele aprova depois que o pedido já foi cancelado | cancelado no prazo (`PRAZO_EXPIRADO`) e a unidade volta; quando a aprovação chega, ela é estornada (`ESTORNADO`) |
 | **F8** | `docker compose up --scale pagamento=3`, gateway de 1 s e 120 pedidos por minuto | não há erro: 3 cópias leem a mesma fila (`pagamento.entrada`) | a carga se divide entre as cópias, sem pagamento duplicado e sem cobrança repetida no gateway |
 
-Ao terminar, cada teste escreve em **"Mostre agora"** o que abrir no Grafana (por exemplo, "Sem sucesso" no F1 e "Quarentena (DLQ)" no F4).
+Ao terminar, cada teste escreve em **"Mostre agora"** o que abrir no Grafana, e a tela de testes traz a mesma dica em **No Grafana**:
+
+| # | O que olhar no Grafana |
+|---|---|
+| **F1** | "Sem sucesso" sobe 1; clique no pedido "Recusado": o desenho mostra em vermelho o gateway, o pagamento e o pedidos |
+| **F2** | "Pagamentos por cópia": uma cópia para e a outra assume; no pedido, 2 linhas do gateway (as 2 chamadas, mesma chave) e 1 cobrança |
+| **F3** | no fim da tela, "Duplicadas" sobe 4 e o registro mostra o mesmo `messageId` 4 vezes (o pedido não existe, então não aparece na tabela) |
+| **F4** | "Quarentena (DLQ)" sobe para 1 |
+| **F5** | "Unidades restantes" cai a 0, "Sem sucesso" sobe 90 e "Pedidos por minuto" mostra o pico |
+| **F6** | "Esperando envio (outbox)" sobe durante a queda e volta a 0 |
+| **F6b** | nada específico (o MiniStack não tem painel): veja a saída do teste |
+| **F7** | "Sem sucesso" sobe; clique no pedido "Estornado": o gateway demorando e, depois, o estorno |
+| **F8** | "Pagamentos por cópia" mostra 3 linhas dividindo a carga |
 
 `./demo.sh falha todas` roda todos em sequência (uns 14 minutos): serve para ensaiar, não para a apresentação.
 
@@ -54,4 +66,4 @@ Ao terminar, cada teste escreve em **"Mostre agora"** o que abrir no Grafana (po
 - **Antes:** `./demo.sh estado` confere que está tudo no ar (containers `healthy`, filas e DLQs vazias).
 - **Depois de um cenário** o sistema volta ao normal sozinho, mas o que ele provocou fica no banco (para mostrar). Para começar limpo: `./demo.sh limpar`.
 - **Não mexa** em `docker-compose.yml`, `.env` ou nos arquivos do Terraform enquanto um cenário roda.
-- **Pedidos no Grafana:** os pedidos dos cenários aparecem na tabela "Pedidos recentes" por 24 horas. Clique no número de um deles e a tabela do lado mostra por quais serviços ele passou, em ordem, e onde deu erro.
+- **Pedidos no Grafana:** os pedidos dos cenários aparecem na tabela "Pedidos recentes" por 24 horas. Clique no número de um deles e a tabela do lado mostra por quais serviços ele passou, em ordem, e onde deu erro; embaixo, o desenho da arquitetura mostra por onde o erro passou (vermelho).

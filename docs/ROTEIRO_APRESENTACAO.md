@@ -44,7 +44,7 @@ Como se comunicam (pessoa 3): o cliente fala com o sistema por **HTTP (REST)**; 
 | 2:00 | 2 | C4 nível 2: serviços, onde roda cada um |
 | 5:00 | 3 | Comunicação, saga, outbox/inbox, DLQ |
 | 8:00 | 4 | **Pedido de verdade.** No painel de gestão: **＋ Pedido pelo mapa** → clica no destino (a porta da sala) → **Criar pedido** (usa 1 das 10 unidades do item). Mostra o `202` na hora e o pedido andando até "Aguardando entregador". **Lá fora o celular do colega avisa** (tela, vibração e som): ele toca em **Aceitar** e começa a vir |
-| 9:00 | 4 | Grafana: clica no pedido na tabela "Pedidos recentes" e mostra o caminho dele (pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um). O marcador 🛵 vem andando no mapa do painel |
+| 9:00 | 4 | Grafana: clica no pedido na tabela "Pedidos recentes" e mostra o caminho dele (pedidos → estoque → pagamento → gateway → entregas, com o tempo de cada um) e, embaixo, o desenho da arquitetura com o pedido em verde. O marcador 🛵 vem andando no mapa do painel |
 | 12:00 | 4 | "Alguém pediu um pedido?" **A pessoa 5 entra na sala.** O sistema marca **ENTREGUE** sozinho (menos de 50 m do destino) ou ele toca em **Confirmar entrega** |
 | 13:00 | 5 | Explica o GPS: o navegador do celular manda a posição a cada 3 s → túnel → serviço de entregas → Redis → WebSocket → mapa. Fala da latência do 4G |
 | 15:00 | 4 | **QR code.** Repõe o estoque, deixa os dois entregadores **Offline** (senão o celular apita a cada pedido da plateia) e abre o telão com o QR. Quem pede toca em **Pedir item** (o celular pede a localização). Os 10 primeiros levam o item |

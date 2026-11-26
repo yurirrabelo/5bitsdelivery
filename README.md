@@ -55,7 +55,7 @@ Atalho que faz os três e espera ficar pronto: `./demo.sh subir`.
 
 Um cliente pede (com endereço), o entregador 2 aceita e "dirige" até o destino (o teste faz o papel do celular) e o pedido termina `ENTREGUE` (a rota fica no S3). No fim: **`SMOKE: PASSOU`**. Deixe o painel aberto para ver a moto 🛵 andar e rode com os celulares dos entregadores fechados.
 
-Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Pedir item** e permita a localização: recebido → unidade reservada → pagando → procurando um entregador. Depois das 10 unidades, o pedido termina como "Item esgotado". Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparece o caminho dele por cada serviço (espere uns 20 s).
+Depois, abra `http://localhost:8080/cliente/?codigo=promo`, toque em **Pedir item** e permita a localização: recebido → unidade reservada → pagando → procurando um entregador. Depois das 10 unidades, o pedido termina como "Item esgotado". Em outra aba, entre em `/entregador/` como `entregador1`, toque em **Disponível**: o pedido aparece e, ao tocar em **Aceitar**, o cliente vê "Entregador a caminho". No Grafana (http://localhost:3000), na tabela "Pedidos recentes", clique no número do pedido: aparecem o caminho dele por cada serviço e, embaixo, o desenho da arquitetura com o erro em vermelho (espere uns 20 s).
 
 ## 3. Celular do entregador (GPS real)
 

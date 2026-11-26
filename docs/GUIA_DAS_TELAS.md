@@ -45,7 +45,7 @@ Tudo roda no seu notebook, mas **não é uma imitação do sistema**: são os me
 
 ## 3. Grafana: uma tela só
 
-Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
+Atualiza sozinha a cada 5 segundos. O período fica no canto superior direito (padrão: últimos 15 minutos). Passe o mouse no ⓘ de cada painel para ler o que ele conta. De cima para baixo: os números, os gráficos, as duas tabelas, o desenho da arquitetura do pedido escolhido e, no fim, as mensagens repetidas que o sistema descartou. **Dica:** um pedido leva uns 20 segundos para aparecer nas tabelas (o Grafana indexa o trace).
 
 ### Os quatro números do topo
 | Número | O que conta |
@@ -74,13 +74,23 @@ Se um serviço reiniciar, os contadores recomeçam do zero: é esperado.
 | 📝 Pedido recebido (API) | Pedidos | o cliente recebeu o "202" na hora |
 | 📦 Estoque separa a unidade | Estoque | a unidade foi reservada (tela do cliente: "Unidade reservada") |
 | 🧭 Pedidos recebe a reserva | Pedidos | a saga avança |
-| 💳 Pagamento cobra | Pagamento | começa a cobrança ("Pagando…") |
-| 🏦 Gateway de pagamento (externo) | Gateway | a operadora responde |
+| 💳 Pagamento cobra | Pagamento | o serviço de Pagamento pega a mensagem da fila e cobra: chama o gateway e espera a resposta, então o tempo dele inclui a espera ("Pagando…") |
+| 🏦 Gateway de pagamento (externo) | Gateway | a operadora responde. Se a cobrança chegar repetida (teste F2), aparece uma linha por chamada |
 | ✅ Pedidos confirma o pagamento | Pedidos | "Pedido confirmado!" |
 | 📦 Estoque dá baixa (venda) | Estoque | a unidade reservada vira vendida |
 | 🛵 Entregas recebe o pedido | Entregas | o pedido com endereço vira uma entrega que espera: aparece na lista dos entregadores até um tocar em Aceitar (o pedido sem endereço termina aqui, confirmado) |
 
 Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos registra o estorno": é a compensação, visível no mesmo lugar. **Onde deu errado fica em vermelho** (coluna "Situação": ❌ registrou o erro, e "O que deu errado" diz o motivo). Num pagamento recusado, por exemplo, ficam vermelhos o Pagamento e o Gateway; num item esgotado, o Estoque.
+
+A coluna **Demorou** vai de verde (rápido) a vermelho (1,5 s ou mais). É só lentidão: o erro de verdade aparece na coluna **Situação**.
+
+**Como ler um pedido do teste F2** (uma cópia do pagamento morre): o gateway aparece **duas vezes** e o Pagamento **uma**. A primeira chamada ao gateway foi da cópia que morreu (a linha dela é cortada quando ela cai); a segunda é da cópia que assumiu, com a mesma chave. O gateway reconheceu a chave e esperou a primeira cobrança terminar, em vez de cobrar de novo: duas chamadas, uma cobrança. A linha do Pagamento da cópia que morreu não aparece, porque ela caiu antes de terminar.
+
+### O desenho da arquitetura do pedido (embaixo das tabelas)
+Mostra o pedido escolhido na tabela de cima (não a soma de todos) sobre o desenho da arquitetura, uma caixa por serviço. **Verde** = o pedido passou por ele, **vermelho** = ele registrou o erro, **cinza** = o pedido não chegou até ele. As caixas azuis são quem usa o sistema pelo celular (cliente e entregador) e a laranja é o RabbitMQ: elas não mudam de cor. A faixa de cima diz **onde a falha começou** (por exemplo, "Gateway de pagamento: recusou a cobrança"): o erro nasce em um serviço e volta pelos outros, que também ficam vermelhos. Sem pedido escolhido, ou num pedido que deu certo, a faixa diz "Sem falha neste pedido".
+
+### Mensagens repetidas (no fim da tela)
+O número **Duplicadas** conta as mensagens que chegaram repetidas e foram descartadas sem repetir o efeito, e o registro ao lado mostra cada uma (o mesmo `messageId`, o tipo `estoque.reservar`). Sobe no teste F3: a mesma mensagem 5 vezes, 1 vale e 4 aparecem aqui. Esse teste usa um pedido que não existe, então ele não aparece nas tabelas.
 
 ---
 
@@ -92,7 +102,8 @@ Em caso de falha aparecem passos como "Estoque devolve a unidade" ou "Pedidos re
 | Quero provar | Mostro |
 |---|---|
 | que o pedido passa por todos os serviços | Grafana → clique no pedido na tabela |
-| onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: o caminho mostra em vermelho onde deu erro |
+| onde o erro aconteceu | Grafana → clique num pedido recusado ou esgotado: a faixa diz onde a falha começou e o desenho mostra em vermelho por onde o erro passou |
+| que uma mensagem repetida vale uma vez só | Grafana → "Duplicadas" e o registro no fim da tela (teste F3) |
 | que a plateia está pedindo | os números do topo e "Pedidos por minuto" |
 | que não vende mais que o estoque | "Unidades restantes" |
 | que o sistema se recupera de falhas | os testes F1 a F8 (http://localhost:8099) com o Grafana aberto |
